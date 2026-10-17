@@ -6,6 +6,31 @@ Instructions for AI coding agents working on this repository. See [README.md](RE
 
 The "Repository structure" section of `README.md` documents the folder layout. Whenever you add, remove, rename or move a folder or an important file (for example inside `docs/`), update `README.md` in the same change so it matches the real structure.
 
+## Keep the docs index up to date
+
+`docs/README.md` explains each folder and file in `docs/`. Whenever you add, remove, rename, move or fill in a file there, update that index in the same change.
+
+## Keep the iteration log up to date
+
+Each iteration has a running log at `docs/sprints/iteration_N/log.md` (currently [iteration 0](docs/sprints/iteration_0/log.md)). Whenever something new is added or decided in the project, update the log of the current iteration in the same change. This includes:
+
+- a new document, requirement change, design or screen
+- a new ADR or any technical decision
+- a new template, workflow, script, or change to the repository structure
+- a new issue, milestone or change to the GitHub board
+- code, features or fixes that land in `apps/`
+
+How to write an entry:
+
+- Add it under the right date heading (`### YYYY-MM-DD: Topic`), newest at the bottom. Use the real date, never a guess.
+- Say what was done and, for decisions, why and what was rejected.
+- Link the evidence with relative links: the commit hash (and the PR or issue number when there is one), the files or ADRs, and the assets (screenshots, diagrams, Figma link). Example: `` `6120659` `` for a commit, `[ADR-0001](../../ADRs/0001-choose-tech-stack.md)` for a document.
+- A commit hash is only known after committing, so add the entry in the commit itself without it, or add the hash in a follow-up `docs:` commit.
+- Keep the **Status** table and **Next steps** list of the log current: move finished items out of "Next steps" and update the state of each area.
+- Do not duplicate what the log links to. Summarise in a line or two and point to the source.
+
+The log is the day-to-day history. The `release_notes.md` of the iteration is the summary written at the end.
+
 ## Design color palette
 
 Use these colors for any UI work. They are also listed in [docs/design/README.md](docs/design/README.md); if the palette changes, update both files.
