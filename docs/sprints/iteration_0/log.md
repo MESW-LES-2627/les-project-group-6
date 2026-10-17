@@ -58,6 +58,8 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added this log and the rule in [`AGENTS.md`](../../../AGENTS.md) to keep it updated (`ad52fb1`). Empty `log.md` files were created for iterations 1 to 4 (`e5d9c9c`).
 - Added [`docs/README.md`](../../README.md), an index that explains every folder and file in `docs/` and marks which ones are still empty. `AGENTS.md` now requires keeping it up to date.
 
+- Filled in `.gitignore` (editor folders, `.env` files and secrets, `node_modules`, build output, coverage, logs, caches) and stopped tracking `.vscode/`. `.env.example` stays tracked.
+
 ## Next steps
 
 - Create the `Iteration 0` milestone and the product issues from the requirements, each one referencing its requirement ID.
