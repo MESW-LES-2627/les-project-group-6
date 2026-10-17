@@ -16,6 +16,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | External dependencies decision (ADR-0002) | Accepted |
 | Issue templates | Done |
 | Kanban board (GitHub Project) | Created |
+| Database tables model | v1.0 drafted |
 | Product issues created from the requirements | Not started |
 | MVP, vertical prototype, CLAIM, release notes | Empty, to be written |
 
@@ -59,6 +60,12 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added [`docs/README.md`](../../README.md), an index that explains every folder and file in `docs/` and marks which ones are still empty. `AGENTS.md` now requires keeping it up to date.
 
 - Filled in `.gitignore` (editor folders, `.env` files and secrets, `node_modules`, build output, coverage, logs, caches) and stopped tracking `.vscode/`. `.env.example` stays tracked.
+
+### 2026-10-17: Database tables model
+
+- Added the `docs/architecture/` folder for technical models, with the database tables UML [`table_UML.md`](../../architecture/table_UML.md) (v1.0). It is derived from `LES-UML.drawio` (17 skeleton classes) and the requirements v1.1, and adds the tables needed to cover them (friendships, library entries, streaks, goals, group members, badges, notifications, ...).
+- Main mapping decisions, explained in the file: `ReadingStatus` and `ChallengeStatus` are lookup tables, `Club` and `Challenge` are subtypes of a shared `groups` table (F-GRP-01), and `List` serves both as a private shelf (F-LIB-03) and a public curated list (F-EXP-05).
+- *Why a new folder:* the model covers the whole project, not one iteration, and it describes tables rather than domain classes, so it does not belong in `OOP_documents/` or `sprints/`.
 
 ## Next steps
 

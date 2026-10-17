@@ -11,6 +11,7 @@ Index of everything inside `docs/`: what each folder and file is for, and whethe
 | What the product must do | `product/` |
 | How the UI looks | `design/` |
 | A technical decision and its reasons | `ADRs/` |
+| A technical model of the system (database tables, ...) | `architecture/` |
 | What the team did, day by day | `sprints/iteration_N/log.md` |
 | An LES class deliverable | `sprints/iteration_N/` |
 | An OOP class deliverable | `OOP_documents/iteration_N/` |
@@ -38,6 +39,14 @@ Architecture Decision Records. One file per decision, numbered `NNNN-short-title
 |---|---|---|
 | [`0001-choose-tech-stack.md`](ADRs/0001-choose-tech-stack.md) | TypeScript with Vue on the frontend and TypeScript on Node on the backend, and why other options were rejected. | ✅ |
 | [`0002-external-dependencies.md`](ADRs/0002-external-dependencies.md) | Supabase Auth, Open Library API and Resend, and the rule of hiding each behind an interface we own. | ✅ |
+
+## `architecture/`
+
+Technical models of the system. They are not tied to an iteration: update them as the design changes.
+
+| File | Purpose | Status |
+|---|---|---|
+| [`table_UML.md`](architecture/table_UML.md) | Database tables UML (v1.0): every table with its columns, keys and relationships, derived from `LES-UML.drawio` and the requirements v1.1, plus the mapping decisions. | ✅ |
 
 ## `sprints/`
 
