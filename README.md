@@ -24,6 +24,7 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 │   └── backend/
 ├── docs/
 │   ├── ADRs/
+│   ├── design/
 │   ├── OOP_documents/
 │   ├── product/
 │   └── sprints/
@@ -46,6 +47,7 @@ The application source code.
 All project documentation.
 
 - `docs/ADRs/`: Architecture Decision Records. The technical decisions the team makes, with their context and consequences.
+- `docs/design/`: UI design (Figma link, screen snapshots and the color palette).
 - `docs/OOP_documents/`: deliverables for the OOP classes (domain model, component diagrams, event storming, coupling analysis, patterns used, refactored code), organized by iteration (`iteration_0` to `iteration_4`).
 - `docs/product/`: documents about the business rules and design of the product, such as the [requirements](docs/product/requirements.md).
 - `docs/sprints/`: deliverables for the Software Engineering Lab classes (vision, MVP, vertical prototype, claims, release notes), organized by iteration (`iteration_0` to `iteration_4`).

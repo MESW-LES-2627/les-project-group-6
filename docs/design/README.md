@@ -8,6 +8,16 @@ UI design for Bookmarked (desktop, 1440 px wide), made in Figma.
 
 > The designs use the name "Marginalia" on some screens. The product name in this repo is still "Bookmarked" (temporary name).
 
+## Color palette
+
+| Swatch | Hex | Name |
+|---|---|---|
+| ![#6f1d1b](https://placehold.co/24x24/6f1d1b/6f1d1b.png) | `#6f1d1b` | Burgundy |
+| ![#bb9457](https://placehold.co/24x24/bb9457/bb9457.png) | `#bb9457` | Gold |
+| ![#432818](https://placehold.co/24x24/432818/432818.png) | `#432818` | Dark brown |
+| ![#99582a](https://placehold.co/24x24/99582a/99582a.png) | `#99582a` | Copper |
+| ![#ffe6a7](https://placehold.co/24x24/ffe6a7/ffe6a7.png) | `#ffe6a7` | Cream |
+
 ## Screens
 
 ### Access and onboarding
