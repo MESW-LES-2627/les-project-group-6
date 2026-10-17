@@ -44,7 +44,7 @@ The application source code.
 
 ### `docs/`
 
-All project documentation.
+All project documentation. See [docs/README.md](docs/README.md) for an index that explains each folder and file.
 
 - `docs/ADRs/`: Architecture Decision Records. The technical decisions the team makes, with their context and consequences.
 - `docs/design/`: UI design (Figma link, screen snapshots and the color palette).

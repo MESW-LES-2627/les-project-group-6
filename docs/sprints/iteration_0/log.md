@@ -53,6 +53,11 @@ A running record of what the team did and decided in iteration 0. The [release n
 - **GitHub issue templates** (`6120659`): feature, bug, refactor and tests, in `.github/ISSUE_TEMPLATE/`. Blank issues are disabled. A pull request template was also added.
 - **Kanban board**: created the GitHub Project board on the organization, with the columns To do, Doing, In review, QA and Done.
 
+### 2026-10-17: Iteration logs and docs index
+
+- Added this log and the rule in [`AGENTS.md`](../../../AGENTS.md) to keep it updated (`ad52fb1`). Empty `log.md` files were created for iterations 1 to 4 (`e5d9c9c`).
+- Added [`docs/README.md`](../../README.md), an index that explains every folder and file in `docs/` and marks which ones are still empty. `AGENTS.md` now requires keeping it up to date.
+
 ## Next steps
 
 - Create the `Iteration 0` milestone and the product issues from the requirements, each one referencing its requirement ID.

@@ -6,6 +6,10 @@ Instructions for AI coding agents working on this repository. See [README.md](RE
 
 The "Repository structure" section of `README.md` documents the folder layout. Whenever you add, remove, rename or move a folder or an important file (for example inside `docs/`), update `README.md` in the same change so it matches the real structure.
 
+## Keep the docs index up to date
+
+`docs/README.md` explains each folder and file in `docs/`. Whenever you add, remove, rename, move or fill in a file there, update that index in the same change.
+
 ## Keep the iteration log up to date
 
 Each iteration has a running log at `docs/sprints/iteration_N/log.md` (currently [iteration 0](docs/sprints/iteration_0/log.md)). Whenever something new is added or decided in the project, update the log of the current iteration in the same change. This includes:
