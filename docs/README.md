@@ -23,6 +23,7 @@ Tasks and bugs are not documented here: they live in GitHub Issues and on the Pr
 | File | Purpose | Status |
 |---|---|---|
 | [`requirements.md`](product/requirements.md) | The feature list and detailed business requirements, each with a stable ID (`F-AUTH-01`, `F-READ-03`, ...), plus the open questions. Issues and PRs reference these IDs. | ✅ |
+| [`features_priority.md`](product/features_priority.md) | Cuts the requirements into Core (sprints 1–2), Extras (sprints 3–4) and Optional, with a sprint plan for 5 developers. Used to create the issues. | ✅ (draft) |
 
 ## `design/`
 
@@ -47,6 +48,7 @@ Technical models of the system. They are not tied to an iteration: update them a
 | File | Purpose | Status |
 |---|---|---|
 | [`table_UML.md`](architecture/table_UML.md) | Database tables UML (v1.0): every table with its columns, keys and relationships, derived from `LES-UML.drawio` and the requirements v1.1, plus the mapping decisions. | ✅ |
+| [`infra.md`](architecture/infra.md) | Infrastructure for Core: database, backend server, frontend hosting, external services, environments, CI/CD and secrets. Also records the infra decisions (compute on read with no background jobs, user identity linked to Supabase Auth, user timezone) and the open ones. | ✅ (draft) |
 
 ## `sprints/`
 
