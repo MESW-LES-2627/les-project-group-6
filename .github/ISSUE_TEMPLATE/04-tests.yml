@@ -1,0 +1,43 @@
+name: Tests
+description: Add or improve automated tests.
+title: "[Tests] "
+labels: ["tests"]
+body:
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+  - type: dropdown
+    id: test-type
+    attributes:
+      label: Test type
+      options:
+        - Unit
+        - Integration
+        - End-to-end
+    validations:
+      required: true
+  - type: textarea
+    id: coverage
+    attributes:
+      label: What needs coverage
+      description: Which code, behavior or scenarios should be tested.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ]
+  - type: input
+    id: related
+    attributes:
+      label: Related issue
+      description: The feature or bug these tests cover, e.g. #12.

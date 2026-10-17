@@ -62,7 +62,7 @@ Helper scripts for development and automation.
 
 ### `.github/`
 
-GitHub configuration, such as the pull request template.
+GitHub configuration: the pull request template and the issue templates (`ISSUE_TEMPLATE/`: feature, bug, refactor and tests). Work is tracked on the org GitHub Project board (columns: To do, Doing, In review, QA, Done).
 
 ### `.agents/` and `AGENTS.md`
 

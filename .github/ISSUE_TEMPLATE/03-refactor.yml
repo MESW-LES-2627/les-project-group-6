@@ -1,0 +1,35 @@
+name: Refactor
+description: Improve the structure of existing code without changing its behavior.
+title: "[Refactor] "
+labels: ["refactor"]
+body:
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+  - type: textarea
+    id: what-why
+    attributes:
+      label: What and why
+      description: What code is being refactored and why it needs it.
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed approach and risks
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      value: |
+        - [ ] Behavior is unchanged
+        - [ ]
+    validations:
+      required: true

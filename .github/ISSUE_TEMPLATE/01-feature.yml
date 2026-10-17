@@ -1,0 +1,40 @@
+name: Feature
+description: A new feature or improvement. Split big features into sub-issues.
+title: "[Feature] "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If this feature is big, split it into smaller deliverable parts: after creating this issue, use **Create sub-issue** on it.
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary and motivation
+      description: What should be built and why it is needed.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: What must be true for this feature to be considered done.
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: input
+    id: requirement
+    attributes:
+      label: Related requirement
+      description: ID from `docs/product/requirements.md`, if any.
