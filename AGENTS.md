@@ -31,6 +31,18 @@ How to write an entry:
 
 The log is the day-to-day history. The `release_notes.md` of the iteration is the summary written at the end.
 
+## Keep the LLM log up to date
+
+Every major change in content and major code generation performed with AI must be logged in the current iteration's LLM log at `docs/sprints/iteration_N/LLM_LOG.md` (currently [iteration 0](docs/sprints/iteration_0/LLM_LOG.md)), determined by the context of the conversation.
+
+Follow the template defined at the top of the respective `LLM_LOG.md` file:
+
+- Date (`YYYY-MM-DD`)
+- Author, Model, and Tool used
+- Domain of the change (e.g., docs, database, architecture, frontend, backend, testing)
+- Prompt used to generate the content (fenced in a code block)
+- Brief explanation of what was changed, generated, or decided
+
 ## Design color palette
 
 Use these colors for any UI work. They are also listed in [docs/design/README.md](docs/design/README.md); if the palette changes, update both files.

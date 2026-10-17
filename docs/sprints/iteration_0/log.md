@@ -92,6 +92,11 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added three setup sub-issues under #6: #70 a spike comparing hosts, costs and deploying from source vs. a Docker image (blocks #66), #71 release versioning with a tag and GitHub Release per iteration (blocked by #66), and #72 pre-commit hooks and Conventional Commits (blocked by #62).
 - Decisions proposed in the issues, to confirm when reviewing them: Hono + Drizzle + Postgres in Docker for local work (#6), case-insensitive usernames (#7), a session counts on the day it started (#15, #21), a challenge's window is fixed in UTC from the creator's timezone (#21), and winners reuse the leaderboard service (#21, #22).
 
+### 2026-10-17: LLM interaction logs template
+
+- Added standardized `LLM_LOG.md` files across all iterations (`docs/sprints/iteration_0` to `iteration_4`) to track team LLM and AI assistant usage, prompts, models, and changes.
+- Updated [`docs/README.md`](../../README.md) to index the LLM log files.
+
 ## Next steps
 
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
