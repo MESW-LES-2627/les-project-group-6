@@ -1,0 +1,20 @@
+{
+  "name": "bookmarked",
+  "private": true,
+  "engines": {
+    "node": ">=22.13",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.18.0",
+  "scripts": {
+    "dev:backend": "pnpm --filter @bookmarked/backend dev",
+    "build": "pnpm -r --if-present build",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.9.10"
+  }
+}
