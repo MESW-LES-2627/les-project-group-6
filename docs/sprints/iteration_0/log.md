@@ -134,6 +134,11 @@ A running record of what the team did and decided in iteration 0. The [release n
 - The `Makefile` now runs `install` and `format` once at the root, because there is one lockfile and one Prettier config. The other targets still run each app's own scripts.
 - Still open: `.nvmrc` says Node 24 but `engines` says `>=22.13`.
 
+### 2026-10-18: Node 24 LTS enforced
+
+- Aligned the Node version: `engines.node` in the root `package.json` is now `>=24`, matching `.nvmrc` and `@types/node` 24, and a root `.npmrc` sets `engine-strict=true` so `pnpm install` fails on an older Node instead of only warning. This closes the mismatch listed as open above. Found while testing: `make dev` crashed on Node 18 because `--env-file-if-exists` needs a newer Node.
+- **Decision: Node 24.** *Why:* it is the Active LTS today (security fixes until April 2028) and the version the lockfile and checks were run on. *Rejected:* Node 22 (maintenance only, and the code is typed for 24) and Node 26 (becomes LTS in late October 2026; nothing the backend needs and would mean re-testing).
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, Vitest, ADR-0004 for the layering), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.

@@ -40,6 +40,7 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 ├── pnpm-lock.yaml
 ├── tsconfig.base.json
 ├── .nvmrc
+├── .npmrc
 ├── .editorconfig
 ├── .prettierrc.json
 └── .prettierignore
@@ -62,7 +63,7 @@ Shared by every app, so a change is made in one place:
 
 - `package.json` and `pnpm-workspace.yaml`: the pnpm workspace (one `pnpm install` and one `pnpm-lock.yaml` for all apps; `packageManager` pins the pnpm version) and root scripts that run in every workspace: `lint`, `typecheck`, `build`, `format`, `format:check`.
 - `tsconfig.base.json`: the strict TypeScript flags; each app's `tsconfig.json` extends it.
-- `.nvmrc`: the Node.js version (run `nvm use`).
+- `.nvmrc`: the Node.js version, 24 LTS (run `nvm use`). `engines` in `package.json` requires the same version, and `.npmrc` sets `engine-strict=true` so `pnpm install` fails on an older Node.
 - `.editorconfig`, `.prettierrc.json` and `.prettierignore`: the same formatting everywhere.
 
 Per-app files stay in each app: `package.json`, `tsconfig.json`, ESLint config and `.env.example`. Each app still has its own CI workflow and deploy.

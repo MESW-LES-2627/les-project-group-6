@@ -138,3 +138,21 @@ actually, lets use a shared repo format. global config files. commit and push la
 
 #### Explanation of Changes
 Moved the Node, editor and Prettier config back to the repository root and restored a pnpm workspace with one lockfile and `tsconfig.base.json`. The backend's `tsconfig.json` extends the base again and its own lockfile, Prettier config and format scripts were removed. Changed the Makefile so `install` and `format` run at the root. Checked `make check`, `make build APP=backend` and `GET /health`. Updated the READMEs and the iteration log. Not committed yet, as requested.
+
+### 2026-10-18: Align and enforce the Node version
+
+- **Date:** 2026-10-18
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** tooling
+
+#### Prompt
+```text
+the files are inconsistent?
+how can we solve this? what is the lts version
+yes
+```
+
+#### Explanation of Changes
+Found that `.nvmrc` and `@types/node` targeted Node 24 while `engines` allowed `>=22.13`. Checked the current Node LTS schedule, set `engines.node` to `>=24` and added a root `.npmrc` with `engine-strict=true`. Verified that install fails on Node 18 and that `make check` passes on Node 24. Updated the README and the iteration log.
