@@ -156,3 +156,19 @@ yes
 
 #### Explanation of Changes
 Found that `.nvmrc` and `@types/node` targeted Node 24 while `engines` allowed `>=22.13`. Checked the current Node LTS schedule, set `engines.node` to `>=24` and added a root `.npmrc` with `engine-strict=true`. Verified that install fails on Node 18 and that `make check` passes on Node 24. Updated the README and the iteration log.
+
+### 2026-10-18: README setup and run guide
+
+- **Date:** 2026-10-18
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs
+
+#### Prompt
+```text
+lets do the following, add in the readme how to setup and run the project with the commands (add the make commands and the original commands)
+```
+
+#### Explanation of Changes
+Rewrote the README "Getting started" section with prerequisites, setup steps, and tables pairing each `make` target with the equivalent pnpm command, plus a troubleshooting list based on the Node version problems found while testing.

@@ -97,12 +97,74 @@ Configuration and instructions for AI coding agents working on this repository.
 
 ## Getting started
 
+### Prerequisites
+
+Install these once per machine:
+
+| Tool | Why | How |
+|---|---|---|
+| Git | Clone the repository | Usually already installed |
+| [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) | Installs the Node.js version in [`.nvmrc`](.nvmrc) (Node 24 LTS) | See the link |
+| make | Runs the [`Makefile`](Makefile) shortcuts (optional) | macOS: `xcode-select --install`. Linux: usually installed. Windows: use WSL, or skip `make` and use the pnpm commands |
+
+You do not need to install pnpm yourself: Corepack ships with Node 24 and provides the pnpm version pinned in `package.json`.
+
+### Setup
+
 ```bash
-nvm use
-corepack enable
-make install
-make dev   # http://localhost:3000/health
+git clone git@github.com:MESW-LES-2627/les-project-group-6.git
+cd les-project-group-6
+
+nvm install                # installs and switches to Node 24 from .nvmrc
+nvm alias default 24       # optional: use Node 24 in every new terminal
+corepack enable            # makes the pinned pnpm available
+
+cp apps/backend/.env.example apps/backend/.env   # optional, the defaults work
 ```
+
+Then install the dependencies for every app:
+
+| With make | With pnpm |
+|---|---|
+| `make install` | `pnpm install --frozen-lockfile` |
+
+`pnpm install` fails with `ERR_PNPM_UNSUPPORTED_ENGINE` if your terminal is not on Node 24. Run `nvm use` and try again.
+
+### Run
+
+| Task | With make | With pnpm |
+|---|---|---|
+| Start the backend in watch mode (restarts on save) | `make dev` | `pnpm dev:backend` |
+| Build | `make build` | `pnpm build` |
+| Run the compiled build | `make start` | `pnpm --filter @bookmarked/backend start` |
+
+The backend listens on <http://localhost:3000>. Check it with:
+
+```bash
+curl -i localhost:3000/health   # HTTP/1.1 200 OK  {"status":"ok"}
+```
+
+To use another port, set `PORT` (for example `PORT=3977 make dev`) or change it in `apps/backend/.env`.
+
+### Check the code
+
+| Task | With make | With pnpm |
+|---|---|---|
+| Everything CI should run | `make check` | `pnpm lint && pnpm typecheck && pnpm format:check && pnpm build` |
+| Lint | `make lint` | `pnpm lint` |
+| Type-check | `make typecheck` | `pnpm typecheck` |
+| Check formatting | `make format-check` | `pnpm format:check` |
+| Fix formatting | `make format` | `pnpm format` |
+| Tests | `make test` | Not set up yet |
+| Remove build output and dependencies | `make clean` | `rm -rf node_modules apps/*/node_modules apps/*/dist` |
+
+Run `make help` to list every target. Add `APP=<name>` to limit a target to one app, for example `make build APP=backend`. The pnpm equivalent is `pnpm --filter @bookmarked/backend <script>`, or `pnpm <script>` from inside `apps/backend`.
+
+### Troubleshooting
+
+- **`bad option: --env-file-if-exists`** or **`ERR_PNPM_UNSUPPORTED_ENGINE`**: the terminal is on an older Node. Run `nvm use` (or `nvm alias default 24` and open a new terminal), then check `node --version`.
+- **`pnpm: command not found`**: run `corepack enable`.
+- **Port 3000 already in use**: start with another port, for example `PORT=3977 make dev`.
 
 ## Status
 
