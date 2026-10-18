@@ -95,7 +95,11 @@ A running record of what the team did and decided in iteration 0. The [release n
 ### 2026-10-17: LLM interaction logs template
 
 - Added standardized `LLM_LOG.md` files across all iterations (`docs/sprints/iteration_0` to `iteration_4`) to track team LLM and AI assistant usage, prompts, models, and changes.
-- Updated [`docs/README.md`](../../README.md) to index the LLM log files.
+### 2026-10-18: Database UML refactor and unbloat
+
+- Refactored [`table_UML.md`](../../architecture/table_UML.md) to match the new unified UML diagram at `docs/imgs/uml-diagram.png`.
+- Replaced the fragmented 720-line Mermaid model with clean attribute tables grouped by module (Core Entities, Book Data, Book Actions, Groups, User Statistics, Notifications).
+- Aligned schema with Supabase Auth: removed `password_hash` and reset tokens from user tables, added `timezone`. Incorporated group live sessions (`GroupSession`, `MemberSession`), polymorphic notifications, and XOR constraints for `List` (User XOR Group) and `Post` (Conversation XOR Round).
 
 ## Next steps
 
@@ -105,5 +109,4 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Resolve the open questions in the requirements.
 - Write the MVP definition, the vertical prototype plan and the CLAIM.
 - Decide whether Supabase also serves as the database (new ADR), and close the other open decisions in [`infra.md`](../../architecture/infra.md).
-- Update `table_UML.md` for Supabase Auth: remove `USER.password_hash` and `PASSWORD_RESET_TOKEN`, add `USER.timezone`.
 - Write the release notes at the end of the iteration.
