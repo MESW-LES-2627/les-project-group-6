@@ -61,7 +61,7 @@ Shortcuts for the pnpm workspace. `install` and `format` run once at the root; t
 
 Shared by every app, so a change is made in one place:
 
-- `package.json` and `pnpm-workspace.yaml`: the pnpm workspace (one `pnpm install` and one `pnpm-lock.yaml` for all apps; `packageManager` pins the pnpm version) and root scripts that run in every workspace: `lint`, `typecheck`, `build`, `format`, `format:check`.
+- `package.json` and `pnpm-workspace.yaml`: the pnpm workspace (one `pnpm install` and one `pnpm-lock.yaml` for all apps; `packageManager` pins the pnpm version) and root scripts that run in every workspace: `lint`, `typecheck`, `test`, `build`, `format`, `format:check`.
 - `tsconfig.base.json`: the strict TypeScript flags; each app's `tsconfig.json` extends it.
 - `.nvmrc`: the Node.js version, 24 LTS (run `nvm use`). `engines` in `package.json` requires the same version, and `.npmrc` sets `engine-strict=true` so `pnpm install` fails on an older Node.
 - `.editorconfig`, `.prettierrc.json` and `.prettierignore`: the same formatting everywhere.
@@ -89,7 +89,16 @@ Helper scripts for development and automation.
 
 ### `.github/`
 
-GitHub configuration: the pull request template and the issue templates (`ISSUE_TEMPLATE/`: feature, bug, refactor and tests). Work is tracked on the org GitHub Project board (columns: To do, Doing, In review, QA, Done).
+GitHub configuration: the pull request template, the issue templates (`ISSUE_TEMPLATE/`: feature, bug, refactor and tests) and the CI workflows (`workflows/`). Work is tracked on the org GitHub Project board (columns: To do, Doing, In review, QA, Done).
+
+#### Continuous integration
+
+Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks and `<app>-cd.yml` for deploys (CD is not set up yet), so each app's CI and CD stay separate. A change to one app does not run the other app's checks:
+
+- `backend-ci.yml`: runs on every pull request to `main` and on push to `main` when `apps/backend/`, the shared root config or the workflow itself changes. It installs with the locked dependencies, then runs lint, format check, typecheck, tests and build.
+- `frontend-ci.yml`: the same steps for `apps/frontend/`. It is fully commented out until the frontend exists; uncomment it when `apps/frontend/package.json` is added.
+
+A pull request must be green before review. Run `make check` locally to run the same checks before pushing.
 
 ### `.agents/` and `AGENTS.md`
 
@@ -150,12 +159,12 @@ To use another port, set `PORT` (for example `PORT=3977 make dev`) or change it 
 
 | Task | With make | With pnpm |
 |---|---|---|
-| Everything CI should run | `make check` | `pnpm lint && pnpm typecheck && pnpm format:check && pnpm build` |
+| Everything CI should run | `make check` | `pnpm lint && pnpm typecheck && pnpm format:check && pnpm test && pnpm build` |
 | Lint | `make lint` | `pnpm lint` |
 | Type-check | `make typecheck` | `pnpm typecheck` |
 | Check formatting | `make format-check` | `pnpm format:check` |
 | Fix formatting | `make format` | `pnpm format` |
-| Tests | `make test` | Not set up yet |
+| Tests (passes while there are no test files) | `make test` | `pnpm test` |
 | Remove build output and dependencies | `make clean` | `rm -rf node_modules apps/*/node_modules apps/*/dist` |
 
 Run `make help` to list every target. Add `APP=<name>` to limit a target to one app, for example `make build APP=backend`. The pnpm equivalent is `pnpm --filter @bookmarked/backend <script>`, or `pnpm <script>` from inside `apps/backend`.

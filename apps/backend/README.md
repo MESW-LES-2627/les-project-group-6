@@ -32,6 +32,9 @@ Run them inside `apps/backend`, or from the root with `pnpm --filter @bookmarked
 | `start` | Runs the compiled server (`pnpm build` first) |
 | `lint` | Runs ESLint |
 | `typecheck` | Type-checks without emitting files |
+| `test` | Runs `src/**/*.test.ts` with the Node.js test runner (through `tsx`); passes when there are no test files yet |
+
+CI runs lint, format check, typecheck, test and build on every pull request (see [`.github/workflows/backend-ci.yml`](../../.github/workflows/backend-ci.yml)).
 
 ## Environment variables
 
