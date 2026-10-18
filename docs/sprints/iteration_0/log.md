@@ -143,9 +143,17 @@ A running record of what the team did and decided in iteration 0. The [release n
 
 - Rewrote the "Getting started" section of the [README](../../../README.md): prerequisites (Git, nvm, make, with a Windows/WSL note), setup from clone to install, and tables with each `make` target next to the plain pnpm command, plus troubleshooting for the wrong Node version, a missing pnpm and a busy port. *Why:* testing the setup showed that a terminal on an old Node fails in confusing ways, and not everyone will have `make`.
 
+### 2026-10-18: CI workflows (#65)
+
+- Added one GitHub Actions workflow per app: [`backend-ci.yml`](../../../.github/workflows/backend-ci.yml) runs install (`pnpm install --frozen-lockfile` with the pnpm cache), lint, format check, typecheck, test and build on pull requests to `main` and on push to `main`; [`frontend-ci.yml`](../../../.github/workflows/frontend-ci.yml) has the same steps but is commented out until `apps/frontend` exists. Files are named `<app>-ci.yml` so the future deploy workflows can sit next to them as `<app>-cd.yml`, each with its own concurrency group. Both use `permissions: contents: read`, pinned major versions of the actions, no secrets, cancel older runs on the same branch, and Node from `.nvmrc`.
+- **Decision: one workflow per app with path filters.** *Why:* the frontend and backend are built and deployed separately, so a backend change should not wait for frontend checks. Changes to the shared root config (lockfile, `tsconfig.base.json`, Prettier, Node version) trigger both. *Rejected:* a single `ci.yml` with both jobs (as first written in #65), simpler but runs everything on every change. *Trade-off:* a path-filtered check that does not run stays "pending" if it is marked as required in branch protection, so the required checks need care.
+- Added a backend `test` script (`tsx --test "src/**/*.test.ts"`, the Node.js test runner) and a root `test` script. It passes while there are no tests, so CI is green now and starts checking as soon as the first `*.test.ts` lands. The test runner can still be replaced (for example by Vitest) in its own ADR.
+- Still open from #65: the Postgres service container and `db:migrate` (no database yet), `packages/shared` (does not exist yet) and the branch protection rule on `main` (needs an admin).
+
 ## Next steps
 
-- Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, Vitest, ADR-0004 for the layering), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
+- Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
+- Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands, and uncomment `frontend-ci.yml` when `apps/frontend` exists.
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
 - Create the issues for Extras once Core is under way.

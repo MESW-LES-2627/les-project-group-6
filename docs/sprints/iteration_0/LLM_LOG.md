@@ -172,3 +172,19 @@ lets do the following, add in the readme how to setup and run the project with t
 
 #### Explanation of Changes
 Rewrote the README "Getting started" section with prerequisites, setup steps, and tables pairing each `make` target with the equivalent pnpm command, plus a troubleshooting list based on the Node version problems found while testing.
+
+### 2026-10-18: CI workflows for frontend and backend
+
+- **Date:** 2026-10-18
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** infra
+
+#### Prompt
+```text
+now, add a ci for frontend and backend. the frontend file must be commented because fron not exists yer, and backend will run lint checks and tests (must pass when we have no  tests)
+```
+
+#### Explanation of Changes
+Added `.github/workflows/backend-ci.yml` (install, lint, format check, typecheck, test and build on pull requests and pushes to `main`, filtered to backend and shared root files) and a fully commented `frontend-ci.yml` with the same steps. Added a backend `test` script using the Node.js test runner through `tsx`, which passes with no test files, and a root `test` script. Updated the READMEs and the iteration log.

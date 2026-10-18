@@ -1,0 +1,63 @@
+# Checks the backend on every pull request to main and on every push to main.
+# It runs only when the backend, the shared root config or this file change.
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths: &paths
+      - apps/backend/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - tsconfig.base.json
+      - .nvmrc
+      - .npmrc
+      - .prettierrc.json
+      - .prettierignore
+      - .github/workflows/backend-ci.yml
+  push:
+    branches: [main]
+    paths: *paths
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      # Uses the pnpm version pinned in packageManager (root package.json)
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter @bookmarked/backend lint
+
+      - name: Format check
+        run: pnpm exec prettier --check apps/backend
+
+      - name: Typecheck
+        run: pnpm --filter @bookmarked/backend typecheck
+
+      # Passes when there are no test files yet
+      - name: Test
+        run: pnpm --filter @bookmarked/backend test
+
+      - name: Build
+        run: pnpm --filter @bookmarked/backend build
