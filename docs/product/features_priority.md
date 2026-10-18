@@ -207,9 +207,9 @@ Notifications (#8) · streak freeze (#9) · public profiles and user search (#10
 
 Only a subset of [table_UML.md](../architecture/table_UML.md) is needed for sprints 1 and 2. The rest is added when its feature is built.
 
-`users`, `books`, `authors`, `book_authors`, `reading_status`, `user_books`, `reviews`, `reading_sessions`, `friendships`, `groups`, `group_members`, `group_invites`, `challenges`, `challenge_status`, `challenge_winners`.
+`users`, `friendships`, `books`, `authors`, `book_authors`, `reading_status`, `reviews`, `reading_sessions`, `groups`, `member`, `challenges`, `challenge_status`.
 
-Streak and leaderboard values can be computed from `reading_sessions` in Core. Cached tables (`user_streak`, `leaderboard_entry`) can come later if queries get slow.
+Totals and leaderboard rankings can be computed dynamically from `reading_sessions` and `challenge_status`, while streak attributes are stored directly on `users`.
 
 ---
 

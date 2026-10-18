@@ -47,7 +47,7 @@ Technical models of the system. They are not tied to an iteration: update them a
 
 | File | Purpose | Status |
 |---|---|---|
-| [`table_UML.md`](architecture/table_UML.md) | Database tables UML (v1.0): every table with its columns, keys and relationships, derived from `LES-UML.drawio` and the requirements v1.1, plus the mapping decisions. | ✅ |
+| [`table_UML.md`](architecture/table_UML.md) | Database tables specification: detailed relational tables derived from the unified UML diagram (`docs/imgs/uml-diagram.png`), organized by domain module. | ✅ |
 | [`infra.md`](architecture/infra.md) | Infrastructure for Core: database, backend server, frontend hosting, external services, environments, CI/CD and secrets. Also records the infra decisions (compute on read with no background jobs, user identity linked to Supabase Auth, user timezone) and the open ones. | ✅ (draft) |
 
 ## `sprints/`

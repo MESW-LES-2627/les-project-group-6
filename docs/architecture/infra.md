@@ -48,15 +48,15 @@ The app is reachable 24/7, but no feature in Core needs a process that does work
 
 | Value | Calculated from |
 |---|---|
-| Current and longest streak | The user's sessions, grouped by day in the user's timezone (a day counts when it has at least one session of 5 counted minutes or more; a session counts on the day it started) |
-| Total minutes, books read | `reading_sessions` and `user_books` |
+| Streak status and history | Stored directly on `User` (`streak_type`, `current_streak`, `longest_streak`, `hit_streak`), updated whenever a qualifying session (>= 5 minutes) finishes in the user's timezone |
+| Total minutes, books read | `reading_sessions` and `reading_status` |
 | Challenge status (scheduled, active, finished) | `start_date`, `end_date` and the current time |
 | Leaderboard | Sessions inside the challenge period, from current members |
 | Winners and "challenges won" | The same leaderboard once the challenge has ended |
 
-- *Why:* no scheduler to run or monitor, no "midnight job" to reset streaks or close challenges, and the backend stays stateless, so a host that sleeps when idle still works.
-- *Consequence:* cached tables from [table_UML.md](table_UML.md) (`USER_STREAK`, `LEADERBOARD_ENTRY`, `challenge_winners`, and the counter columns on `USER` such as `counted_minutes`, `books_read_count`, `challenges_won`) are **not** created in Core. We add them only if queries become slow.
-- *Rejected:* storing the values and keeping them up to date, because it needs a scheduled job to reset streaks and close challenges.
+- *Why:* no scheduler to run or monitor, no "midnight job" to close challenges, and the backend stays stateless, so a host that sleeps when idle still works.
+- *Consequence:* Streak fields are maintained on the `User` profile at session completion. Aggregated totals (such as total counted minutes, books read, challenges won) are computed dynamically on read without background jobs.
+- *Rejected:* scheduled background workers to calculate streaks or close challenges.
 
 Known edge cases:
 
@@ -81,8 +81,8 @@ auth.users (Supabase, never touched)          users (ours)
 └──────────────────────┘                      │ profile_visibility, ...        │
                                               └────────────────────────────────┘
                                                  ▲ reading_sessions.user_id
-                                                 ▲ user_books.user_id
-                                                 ▲ group_members.user_id ...
+                                                 ▲ reading_status.user_id
+                                                 ▲ member.user_id ...
 ```
 
 How a request is authenticated:
@@ -94,7 +94,7 @@ How a request is authenticated:
 
 Creating our user row: right after sign-up, the frontend calls `POST /me { username, displayName, timezone }`. The backend inserts the `users` row and checks that the username is unique (F-AUTH-01). A logged-in user with no `users` row is sent back to this step, which also covers an interrupted sign-up.
 
-*Consequence for [table_UML.md](table_UML.md):* `USER.password_hash` and the `PASSWORD_RESET_TOKEN` table are handled by Supabase and should be removed, and `USER.timezone` should be added.
+*Note:* As specified in [table_UML.md](table_UML.md), `User` stores application profile fields and `timezone`, while passwords and tokens are handled externally by Supabase Auth.
 
 ### HTTP
 
