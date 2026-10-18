@@ -20,6 +20,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
 | Infrastructure | Draft v0.1, database host and local setup still open |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
+| Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
 | MVP, vertical prototype, CLAIM, release notes | Empty, to be written |
 
 ## Log
@@ -97,8 +98,45 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added standardized `LLM_LOG.md` files across all iterations (`docs/sprints/iteration_0` to `iteration_4`) to track team LLM and AI assistant usage, prompts, models, and changes.
 - Updated [`docs/README.md`](../../README.md) to index the LLM log files.
 
+### 2026-10-18: Backend setup (#62)
+
+- Narrowed issue #62 to the project setup only: TypeScript on Node, tooling, scripts and a running server. Layering, error handling, config validation, CORS, logging and tests were cut from it and still need their own issues.
+- Added the npm workspace root shared by both apps: `package.json` (workspaces, root `lint`, `typecheck`, `build`, `format:check` scripts), `tsconfig.base.json` (strict flags), `.nvmrc` (Node 24 LTS), `.editorconfig` and Prettier. Later replaced by isolated apps (see the entry below).
+- **Decision: thin root, per-app TypeScript and ESLint configs.** The Vue frontend needs `bundler` resolution, DOM types, `vue-tsc` and `eslint-plugin-vue`; the Node backend needs `NodeNext` and Node types. *Rejected:* one TS/ESLint config for both, which would be full of exceptions; and a self-contained backend with no root, which would mean moving config later.
+- Added `apps/backend`: Hono on `@hono/node-server`, `tsx watch` for `dev`, `tsc` for `build`, ESLint (flat config, `typescript-eslint`), and `GET /health` returning `{ "status": "ok" }`. `createApp()` is separate from `server.ts` so tests can call the app without a port. See [apps/backend/README.md](../../../apps/backend/README.md).
+- TypeScript is pinned to 6.0 because `typescript-eslint` does not support TypeScript 7 yet.
+
+### 2026-10-18: Switch to pnpm
+
+- Replaced npm with pnpm: `pnpm-lock.yaml` replaces `package-lock.json` (imported, so versions are unchanged) and `packageManager` pins `pnpm@10.18.0`. READMEs updated.
+- **Decision: pnpm instead of npm.** *Why:* its strict `node_modules` fails locally when an app imports a dependency it did not declare, and it gives catalogs for the single-version-per-dependency policy once the frontend exists. *Rejected:* staying on npm, which is simpler and ships with Node but hides undeclared dependencies through hoisting. Switched now because no CI or frontend depends on npm yet.
+
+### 2026-10-18: Isolated apps, no shared root config
+
+- Reversed the thin-root setup from the "Backend setup (#62)" entry: removed the root `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json` and root lockfile, and moved `.nvmrc`, `.editorconfig`, `.prettierrc.json` and `.prettierignore` into `apps/backend`. The backend's `tsconfig.json` now holds the strict flags itself, and it has its own `pnpm-lock.yaml`, `packageManager`, `engines` and `format`/`format:check` scripts. Install and run from inside `apps/backend` (`pnpm install`, `pnpm dev`).
+- **Decision: every app is fully isolated.** *Why:* each app can pick its own Node, TypeScript and tooling versions, with no shared lockfile to conflict on and a simple per-folder deploy and CI. *Rejected:* the shared root (one lockfile, one style, `packages/shared`), which costs less to maintain but couples the apps. *Trade-off:* formatting config is duplicated in each app, and code shared between apps has to be copied or published.
+- pnpm is kept (decision above). `apps/frontend` should follow the same layout when it is added.
+
+### 2026-10-18: Express instead of Hono
+
+- Added [ADR-0003](../../ADRs/0003-backend-http-framework.md): the backend HTTP layer is **Express 5**, replacing Hono from the first skeleton. `app.ts` and `server.ts` were rewritten (`createApp()` still returns the app, `server.ts` calls `listen`), `hono` and `@hono/node-server` were removed, and `express` and `@types/express` were added. `GET /health` is unchanged and checked.
+- *Why:* team familiarity and ecosystem matter more than Hono's portability and typing, and performance is not a constraint. *Rejected:* Hono (smaller ecosystem, edge portability we do not need) and Fastify (more structure and learning curve than needed). The cost is looser request typing, so inputs must be validated at the boundary.
+- The "Backend setup (#62)" entry above still says Hono; it records what was done that day.
+
+### 2026-10-18: Makefile
+
+- Added a root `Makefile` with `install`, `dev`, `build`, `start`, `lint`, `typecheck`, `format`, `format-check`, `test`, `check` and `clean`. It only runs each app's own pnpm scripts, so it adds no shared config and the apps stay isolated. It loops over `apps/*`, skips apps without the script, and `APP=backend` limits a target to one app. `make check` is what CI should run. There are no tests yet, so `make test` does nothing until a `test` script exists.
+
+### 2026-10-18: Back to a shared root config
+
+- Reversed the isolated-apps decision above: the repository is a **pnpm workspace with a shared root** again. The root holds `package.json` (private, `packageManager`, scripts that run in every workspace), `pnpm-workspace.yaml` (`apps/*`, esbuild install script), one `pnpm-lock.yaml`, `tsconfig.base.json`, `.nvmrc`, `.editorconfig`, `.prettierrc.json` and `.prettierignore` (now also ignoring `docs/` and `.github/`). `apps/backend` keeps only its own `package.json`, ESLint and TypeScript config (its `tsconfig.json` extends the root base), and no longer has its own lockfile, Node version file or Prettier config.
+- **Decision: shared root config, global files.** *Why:* one lockfile, one Node version and one code style for every app, changed in one place, and `packages/shared` becomes possible when the frontend needs the backend's types. *Rejected:* fully isolated apps, which let each app upgrade alone but copy the formatting config into every app and make shared code harder. *Trade-off:* a single lockfile can conflict when two people add dependencies, and a change to shared files has to be checked against every app.
+- The `Makefile` now runs `install` and `format` once at the root, because there is one lockfile and one Prettier config. The other targets still run each app's own scripts.
+- Still open: `.nvmrc` says Node 24 but `engines` says `>=22.13`.
+
 ## Next steps
 
+- Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, Vitest, ADR-0004 for the layering), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
 - Create the issues for Extras once Core is under way.

@@ -33,15 +33,39 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 ├── scripts/
 ├── .github/
 ├── .agents/
-└── AGENTS.md
+├── AGENTS.md
+├── Makefile
+├── package.json
+├── pnpm-workspace.yaml
+├── pnpm-lock.yaml
+├── tsconfig.base.json
+├── .nvmrc
+├── .editorconfig
+├── .prettierrc.json
+└── .prettierignore
 ```
 
 ### `apps/`
 
-The application source code.
+The application source code. Each app is a pnpm workspace with its own `package.json`, `tsconfig.json` (extending the root base) and ESLint config. Tooling shared by every app lives in the repository root (see [Root config](#root-config)).
 
 - `apps/frontend/`: the web client.
-- `apps/backend/`: the server, API and business logic.
+- `apps/backend/`: the server, API and business logic (TypeScript, Node.js, Express). See [apps/backend/README.md](apps/backend/README.md) for how to run it.
+
+### Makefile
+
+Shortcuts for the pnpm workspace. `install` and `format` run once at the root; the other targets run each app's own pnpm scripts. Run `make help` to list the targets: `install`, `dev`, `build`, `lint`, `typecheck`, `format`, `format-check`, `test`, `check` (everything CI should run) and `clean`. Add `APP=backend` to limit a target to one app. New folders in `apps/` are picked up automatically, and apps without a given script are skipped.
+
+### Root config
+
+Shared by every app, so a change is made in one place:
+
+- `package.json` and `pnpm-workspace.yaml`: the pnpm workspace (one `pnpm install` and one `pnpm-lock.yaml` for all apps; `packageManager` pins the pnpm version) and root scripts that run in every workspace: `lint`, `typecheck`, `build`, `format`, `format:check`.
+- `tsconfig.base.json`: the strict TypeScript flags; each app's `tsconfig.json` extends it.
+- `.nvmrc`: the Node.js version (run `nvm use`).
+- `.editorconfig`, `.prettierrc.json` and `.prettierignore`: the same formatting everywhere.
+
+Per-app files stay in each app: `package.json`, `tsconfig.json`, ESLint config and `.env.example`. Each app still has its own CI workflow and deploy.
 
 ### `docs/`
 
@@ -70,6 +94,15 @@ GitHub configuration: the pull request template and the issue templates (`ISSUE_
 
 Configuration and instructions for AI coding agents working on this repository.
 
+## Getting started
+
+```bash
+nvm use
+corepack enable
+make install
+make dev   # http://localhost:3000/health
+```
+
 ## Status
 
-Early stage: the repository is set up and the product is being defined (iteration 0).
+Early stage: the repository is set up, the product is being defined (iteration 0) and the backend skeleton runs.
