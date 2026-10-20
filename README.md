@@ -33,15 +33,40 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 ├── scripts/
 ├── .github/
 ├── .agents/
-└── AGENTS.md
+├── AGENTS.md
+├── Makefile
+├── package.json
+├── pnpm-workspace.yaml
+├── pnpm-lock.yaml
+├── tsconfig.base.json
+├── .nvmrc
+├── .npmrc
+├── .editorconfig
+├── .prettierrc.json
+└── .prettierignore
 ```
 
 ### `apps/`
 
-The application source code.
+The application source code. Each app is a pnpm workspace with its own `package.json`, `tsconfig.json` (extending the root base) and ESLint config. Tooling shared by every app lives in the repository root (see [Root config](#root-config)).
 
 - `apps/frontend/`: the web client.
-- `apps/backend/`: the server, API and business logic.
+- `apps/backend/`: the server, API and business logic (TypeScript, Node.js, Express). See [apps/backend/README.md](apps/backend/README.md) for how to run it.
+
+### Makefile
+
+Shortcuts for the pnpm workspace. `install` and `format` run once at the root; the other targets run each app's own pnpm scripts. Run `make help` to list the targets: `install`, `dev`, `build`, `lint`, `typecheck`, `format`, `format-check`, `test`, `check` (everything CI should run) and `clean`. Add `APP=backend` to limit a target to one app. New folders in `apps/` are picked up automatically, and apps without a given script are skipped.
+
+### Root config
+
+Shared by every app, so a change is made in one place:
+
+- `package.json` and `pnpm-workspace.yaml`: the pnpm workspace (one `pnpm install` and one `pnpm-lock.yaml` for all apps; `packageManager` pins the pnpm version) and root scripts that run in every workspace: `lint`, `typecheck`, `test`, `build`, `format`, `format:check`.
+- `tsconfig.base.json`: the strict TypeScript flags; each app's `tsconfig.json` extends it.
+- `.nvmrc`: the Node.js version, 24 LTS (run `nvm use`). `engines` in `package.json` requires the same version, and `.npmrc` sets `engine-strict=true` so `pnpm install` fails on an older Node.
+- `.editorconfig`, `.prettierrc.json` and `.prettierignore`: the same formatting everywhere.
+
+Per-app files stay in each app: `package.json`, `tsconfig.json`, ESLint config and `.env.example`. Each app still has its own CI workflow and deploy.
 
 ### `docs/`
 
@@ -64,12 +89,92 @@ Helper scripts for development and automation.
 
 ### `.github/`
 
-GitHub configuration: the pull request template and the issue templates (`ISSUE_TEMPLATE/`: feature, bug, refactor and tests). Work is tracked on the org GitHub Project board (columns: To do, Doing, In review, QA, Done).
+GitHub configuration: the pull request template, the issue templates (`ISSUE_TEMPLATE/`: feature, bug, refactor and tests) and the CI workflows (`workflows/`). Work is tracked on the org GitHub Project board (columns: To do, Doing, In review, QA, Done).
+
+#### Continuous integration
+
+Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks and `<app>-cd.yml` for deploys (CD is not set up yet), so each app's CI and CD stay separate. A change to one app does not run the other app's checks:
+
+- `backend-ci.yml`: runs on every pull request to `main` and on push to `main` when `apps/backend/`, the shared root config or the workflow itself changes. It installs with the locked dependencies, then runs lint, format check, typecheck, tests and build.
+- `frontend-ci.yml`: the same steps for `apps/frontend/`. It is fully commented out until the frontend exists; uncomment it when `apps/frontend/package.json` is added.
+
+A pull request must be green before review. Run `make check` locally to run the same checks before pushing.
 
 ### `.agents/` and `AGENTS.md`
 
 Configuration and instructions for AI coding agents working on this repository.
 
+## Getting started
+
+### Prerequisites
+
+Install these once per machine:
+
+| Tool | Why | How |
+|---|---|---|
+| Git | Clone the repository | Usually already installed |
+| [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) | Installs the Node.js version in [`.nvmrc`](.nvmrc) (Node 24 LTS) | See the link |
+| make | Runs the [`Makefile`](Makefile) shortcuts (optional) | macOS: `xcode-select --install`. Linux: usually installed. Windows: use WSL, or skip `make` and use the pnpm commands |
+
+You do not need to install pnpm yourself: Corepack ships with Node 24 and provides the pnpm version pinned in `package.json`.
+
+### Setup
+
+```bash
+git clone git@github.com:MESW-LES-2627/les-project-group-6.git
+cd les-project-group-6
+
+nvm install                # installs and switches to Node 24 from .nvmrc
+nvm alias default 24       # optional: use Node 24 in every new terminal
+corepack enable            # makes the pinned pnpm available
+
+cp apps/backend/.env.example apps/backend/.env   # optional, the defaults work
+```
+
+Then install the dependencies for every app:
+
+| With make | With pnpm |
+|---|---|
+| `make install` | `pnpm install --frozen-lockfile` |
+
+`pnpm install` fails with `ERR_PNPM_UNSUPPORTED_ENGINE` if your terminal is not on Node 24. Run `nvm use` and try again.
+
+### Run
+
+| Task | With make | With pnpm |
+|---|---|---|
+| Start the backend in watch mode (restarts on save) | `make dev` | `pnpm dev:backend` |
+| Build | `make build` | `pnpm build` |
+| Run the compiled build | `make start` | `pnpm --filter @bookmarked/backend start` |
+
+The backend listens on <http://localhost:3000>. Check it with:
+
+```bash
+curl -i localhost:3000/health   # HTTP/1.1 200 OK  {"status":"ok"}
+```
+
+To use another port, set `PORT` (for example `PORT=3977 make dev`) or change it in `apps/backend/.env`.
+
+### Check the code
+
+| Task | With make | With pnpm |
+|---|---|---|
+| Everything CI should run | `make check` | `pnpm lint && pnpm typecheck && pnpm format:check && pnpm test && pnpm build` |
+| Lint | `make lint` | `pnpm lint` |
+| Type-check | `make typecheck` | `pnpm typecheck` |
+| Check formatting | `make format-check` | `pnpm format:check` |
+| Fix formatting | `make format` | `pnpm format` |
+| Tests (passes while there are no test files) | `make test` | `pnpm test` |
+| Remove build output and dependencies | `make clean` | `rm -rf node_modules apps/*/node_modules apps/*/dist` |
+
+Run `make help` to list every target. Add `APP=<name>` to limit a target to one app, for example `make build APP=backend`. The pnpm equivalent is `pnpm --filter @bookmarked/backend <script>`, or `pnpm <script>` from inside `apps/backend`.
+
+### Troubleshooting
+
+- **`bad option: --env-file-if-exists`** or **`ERR_PNPM_UNSUPPORTED_ENGINE`**: the terminal is on an older Node. Run `nvm use` (or `nvm alias default 24` and open a new terminal), then check `node --version`.
+- **`pnpm: command not found`**: run `corepack enable`.
+- **Port 3000 already in use**: start with another port, for example `PORT=3977 make dev`.
+
 ## Status
 
-Early stage: the repository is set up and the product is being defined (iteration 0).
+Early stage: the repository is set up, the product is being defined (iteration 0) and the backend skeleton runs.

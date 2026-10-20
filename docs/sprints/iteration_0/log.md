@@ -20,6 +20,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
 | Infrastructure | Draft v0.1, database host and local setup still open |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
+| Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
 | MVP, vertical prototype, CLAIM, release notes | Empty, to be written |
 
 ## Log
@@ -101,8 +102,62 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Replaced the fragmented 720-line Mermaid model with clean attribute tables grouped by module (Core Entities, Book Data, Book Actions, Groups, User Statistics, Notifications).
 - Aligned schema with Supabase Auth: removed `password_hash` and reset tokens from user tables, added `timezone`. Incorporated group live sessions (`GroupSession`, `MemberSession`), polymorphic notifications, and XOR constraints for `List` (User XOR Group) and `Post` (Conversation XOR Round).
 
+### 2026-10-18: Backend setup (#62)
+
+- Narrowed issue #62 to the project setup only: TypeScript on Node, tooling, scripts and a running server. Layering, error handling, config validation, CORS, logging and tests were cut from it and still need their own issues.
+- Added the npm workspace root shared by both apps: `package.json` (workspaces, root `lint`, `typecheck`, `build`, `format:check` scripts), `tsconfig.base.json` (strict flags), `.nvmrc` (Node 24 LTS), `.editorconfig` and Prettier. Later replaced by isolated apps (see the entry below).
+- **Decision: thin root, per-app TypeScript and ESLint configs.** The Vue frontend needs `bundler` resolution, DOM types, `vue-tsc` and `eslint-plugin-vue`; the Node backend needs `NodeNext` and Node types. *Rejected:* one TS/ESLint config for both, which would be full of exceptions; and a self-contained backend with no root, which would mean moving config later.
+- Added `apps/backend`: Hono on `@hono/node-server`, `tsx watch` for `dev`, `tsc` for `build`, ESLint (flat config, `typescript-eslint`), and `GET /health` returning `{ "status": "ok" }`. `createApp()` is separate from `server.ts` so tests can call the app without a port. See [apps/backend/README.md](../../../apps/backend/README.md).
+- TypeScript is pinned to 6.0 because `typescript-eslint` does not support TypeScript 7 yet.
+
+### 2026-10-18: Switch to pnpm
+
+- Replaced npm with pnpm: `pnpm-lock.yaml` replaces `package-lock.json` (imported, so versions are unchanged) and `packageManager` pins `pnpm@10.18.0`. READMEs updated.
+- **Decision: pnpm instead of npm.** *Why:* its strict `node_modules` fails locally when an app imports a dependency it did not declare, and it gives catalogs for the single-version-per-dependency policy once the frontend exists. *Rejected:* staying on npm, which is simpler and ships with Node but hides undeclared dependencies through hoisting. Switched now because no CI or frontend depends on npm yet.
+
+### 2026-10-18: Isolated apps, no shared root config
+
+- Reversed the thin-root setup from the "Backend setup (#62)" entry: removed the root `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json` and root lockfile, and moved `.nvmrc`, `.editorconfig`, `.prettierrc.json` and `.prettierignore` into `apps/backend`. The backend's `tsconfig.json` now holds the strict flags itself, and it has its own `pnpm-lock.yaml`, `packageManager`, `engines` and `format`/`format:check` scripts. Install and run from inside `apps/backend` (`pnpm install`, `pnpm dev`).
+- **Decision: every app is fully isolated.** *Why:* each app can pick its own Node, TypeScript and tooling versions, with no shared lockfile to conflict on and a simple per-folder deploy and CI. *Rejected:* the shared root (one lockfile, one style, `packages/shared`), which costs less to maintain but couples the apps. *Trade-off:* formatting config is duplicated in each app, and code shared between apps has to be copied or published.
+- pnpm is kept (decision above). `apps/frontend` should follow the same layout when it is added.
+
+### 2026-10-18: Express instead of Hono
+
+- Added [ADR-0003](../../ADRs/0003-backend-http-framework.md): the backend HTTP layer is **Express 5**, replacing Hono from the first skeleton. `app.ts` and `server.ts` were rewritten (`createApp()` still returns the app, `server.ts` calls `listen`), `hono` and `@hono/node-server` were removed, and `express` and `@types/express` were added. `GET /health` is unchanged and checked.
+- *Why:* team familiarity and ecosystem matter more than Hono's portability and typing, and performance is not a constraint. *Rejected:* Hono (smaller ecosystem, edge portability we do not need) and Fastify (more structure and learning curve than needed). The cost is looser request typing, so inputs must be validated at the boundary.
+- The "Backend setup (#62)" entry above still says Hono; it records what was done that day.
+
+### 2026-10-18: Makefile
+
+- Added a root `Makefile` with `install`, `dev`, `build`, `start`, `lint`, `typecheck`, `format`, `format-check`, `test`, `check` and `clean`. It only runs each app's own pnpm scripts, so it adds no shared config and the apps stay isolated. It loops over `apps/*`, skips apps without the script, and `APP=backend` limits a target to one app. `make check` is what CI should run. There are no tests yet, so `make test` does nothing until a `test` script exists.
+
+### 2026-10-18: Back to a shared root config
+
+- Reversed the isolated-apps decision above: the repository is a **pnpm workspace with a shared root** again. The root holds `package.json` (private, `packageManager`, scripts that run in every workspace), `pnpm-workspace.yaml` (`apps/*`, esbuild install script), one `pnpm-lock.yaml`, `tsconfig.base.json`, `.nvmrc`, `.editorconfig`, `.prettierrc.json` and `.prettierignore` (now also ignoring `docs/` and `.github/`). `apps/backend` keeps only its own `package.json`, ESLint and TypeScript config (its `tsconfig.json` extends the root base), and no longer has its own lockfile, Node version file or Prettier config.
+- **Decision: shared root config, global files.** *Why:* one lockfile, one Node version and one code style for every app, changed in one place, and `packages/shared` becomes possible when the frontend needs the backend's types. *Rejected:* fully isolated apps, which let each app upgrade alone but copy the formatting config into every app and make shared code harder. *Trade-off:* a single lockfile can conflict when two people add dependencies, and a change to shared files has to be checked against every app.
+- The `Makefile` now runs `install` and `format` once at the root, because there is one lockfile and one Prettier config. The other targets still run each app's own scripts.
+- Still open: `.nvmrc` says Node 24 but `engines` says `>=22.13`.
+
+### 2026-10-18: Node 24 LTS enforced
+
+- Aligned the Node version: `engines.node` in the root `package.json` is now `>=24`, matching `.nvmrc` and `@types/node` 24, and a root `.npmrc` sets `engine-strict=true` so `pnpm install` fails on an older Node instead of only warning. This closes the mismatch listed as open above. Found while testing: `make dev` crashed on Node 18 because `--env-file-if-exists` needs a newer Node.
+- **Decision: Node 24.** *Why:* it is the Active LTS today (security fixes until April 2028) and the version the lockfile and checks were run on. *Rejected:* Node 22 (maintenance only, and the code is typed for 24) and Node 26 (becomes LTS in late October 2026; nothing the backend needs and would mean re-testing).
+
+### 2026-10-18: Setup and run guide
+
+- Rewrote the "Getting started" section of the [README](../../../README.md): prerequisites (Git, nvm, make, with a Windows/WSL note), setup from clone to install, and tables with each `make` target next to the plain pnpm command, plus troubleshooting for the wrong Node version, a missing pnpm and a busy port. *Why:* testing the setup showed that a terminal on an old Node fails in confusing ways, and not everyone will have `make`.
+
+### 2026-10-18: CI workflows (#65)
+
+- Added one GitHub Actions workflow per app: [`backend-ci.yml`](../../../.github/workflows/backend-ci.yml) runs install (`pnpm install --frozen-lockfile` with the pnpm cache), lint, format check, typecheck, test and build on pull requests to `main` and on push to `main`; [`frontend-ci.yml`](../../../.github/workflows/frontend-ci.yml) has the same steps but is commented out until `apps/frontend` exists. Files are named `<app>-ci.yml` so the future deploy workflows can sit next to them as `<app>-cd.yml`, each with its own concurrency group. Both use `permissions: contents: read`, pinned major versions of the actions, no secrets, cancel older runs on the same branch, and Node from `.nvmrc`.
+- **Decision: one workflow per app with path filters.** *Why:* the frontend and backend are built and deployed separately, so a backend change should not wait for frontend checks. Changes to the shared root config (lockfile, `tsconfig.base.json`, Prettier, Node version) trigger both. *Rejected:* a single `ci.yml` with both jobs (as first written in #65), simpler but runs everything on every change. *Trade-off:* a path-filtered check that does not run stays "pending" if it is marked as required in branch protection, so the required checks need care.
+- Added a backend `test` script (`tsx --test "src/**/*.test.ts"`, the Node.js test runner) and a root `test` script. It passes while there are no tests, so CI is green now and starts checking as soon as the first `*.test.ts` lands. The test runner can still be replaced (for example by Vitest) in its own ADR.
+- Still open from #65: the Postgres service container and `db:migrate` (no database yet), `packages/shared` (does not exist yet) and the branch protection rule on `main` (needs an admin).
+
 ## Next steps
 
+- Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
+- Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands, and uncomment `frontend-ci.yml` when `apps/frontend` exists.
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
 - Create the issues for Extras once Core is under way.
