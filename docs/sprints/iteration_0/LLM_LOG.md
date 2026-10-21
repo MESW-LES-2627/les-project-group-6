@@ -188,3 +188,21 @@ now, add a ci for frontend and backend. the frontend file must be commented beca
 
 #### Explanation of Changes
 Added `.github/workflows/backend-ci.yml` (install, lint, format check, typecheck, test and build on pull requests and pushes to `main`, filtered to backend and shared root files) and a fully commented `frontend-ci.yml` with the same steps. Added a backend `test` script using the Node.js test runner through `tsx`, which passes with no test files, and a root `test` script. Updated the READMEs and the iteration log.
+
+### 2026-10-22: PostgreSQL schema generation from UML specification
+
+- **Date:** 2026-10-22
+- **Author:** Vasco
+- **Model:** Gemini 3.8 Flash
+- **Tool:** Antigravity
+- **Domain:** database, backend
+
+#### Prompt
+```text
+First task, under app/backend/ , create a database/ folder and generate the .sql file based on postgres and on the database specification made in the branch refactor/docs-uml-table on docs/architecture/ uml table specification.
+
+You should follow the tables already specified there with the correct attributes, primary keys, foreign keys and add nothing of your own.
+```
+
+#### Explanation of Changes
+Created `apps/backend/database/schema.sql` containing the DDL definitions for all 27 relational tables defined in `docs/architecture/table_UML.md` on branch `refactor/docs-uml-table`. Configured PostgreSQL data types (UUID, TIMESTAMPTZ, integers, booleans, VARCHAR/TEXT), primary keys, foreign keys with ON DELETE rules, and domain XOR constraints (on `lists` and `posts`), ordered to satisfy dependency graph resolution when executing against PostgreSQL/Supabase.

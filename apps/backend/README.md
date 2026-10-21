@@ -48,6 +48,8 @@ Read from `apps/backend/.env` when it exists. See [`.env.example`](.env.example)
 
 ```
 apps/backend/
+├── database/
+│   └── schema.sql   # PostgreSQL database schema matching UML specification
 ├── src/
 │   ├── app.ts       # createApp(): builds the Express app and its routes
 │   └── server.ts    # entry point: starts the HTTP server
