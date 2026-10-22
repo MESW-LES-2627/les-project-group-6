@@ -56,3 +56,151 @@ a {
 main {
   padding: var(--space-8);
 }
+
+/* Visually hidden, still read by screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Centered page column used by the layout and the views */
+.page-column {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding-inline: var(--page-gutter);
+}
+
+/* Shared buttons */
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--control-height);
+  padding: 0 1.25rem;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: var(--color-on-primary-strong);
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--duration-fast);
+}
+
+.button:hover {
+  background: var(--color-primary-hover);
+  color: var(--color-on-primary-strong);
+}
+
+.text-link {
+  font-size: var(--text-md);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}
+
+/* A book link that lifts on hover and shows a tooltip with the title */
+.book-link {
+  position: relative;
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  transition: transform var(--duration-lift) var(--ease-out);
+}
+
+.book-link:hover,
+.book-link:focus-visible {
+  color: inherit;
+  transform: translateY(-4px);
+}
+
+.book-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 5;
+  padding: 6px 9px;
+  border-radius: 4px;
+  background: var(--color-tooltip);
+  color: var(--color-on-tooltip);
+  font: 500 var(--text-xs) / 1.35 var(--font-body);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity var(--duration-fast),
+    transform 0.22s var(--ease-out);
+}
+
+.book-tooltip.align-start {
+  left: 0;
+  transform: translate(0, 4px);
+}
+
+.book-link:hover .book-tooltip,
+.book-link:focus-visible .book-tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.book-link:hover .book-tooltip.align-start,
+.book-link:focus-visible .book-tooltip.align-start {
+  transform: translate(0, 0);
+}
+
+/* Progress bar for pages read and XP */
+.progress-bar {
+  display: block;
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 3px;
+  background: var(--color-track);
+  color: var(--color-primary);
+  appearance: none;
+}
+
+.progress-bar::-webkit-progress-bar {
+  background: var(--color-track);
+  border-radius: 3px;
+}
+
+.progress-bar::-webkit-progress-value {
+  background: var(--color-primary);
+  border-radius: 3px;
+}
+
+.progress-bar::-moz-progress-bar {
+  background: var(--color-primary);
+  border-radius: 3px;
+}
+
+/* Section heading used across the profile */
+.section-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+  }
+}

@@ -11,7 +11,7 @@ pnpm dev:backend
 pnpm --filter @bookmarked/frontend dev
 ```
 
-Open the Vite URL (normally http://localhost:5173), then visit `/home`. The placeholder initially shows “Checking backend…” and then the backend result (normally “Backend status: ok”) or an error. It remains available in production as a connection smoke check.
+Open the Vite URL (normally http://localhost:5173), then visit `/home`. The profile prototype is at `/profile` (mock data); `/profile?state=new` shows every section's empty state. The placeholder initially shows “Checking backend…” and then the backend result (normally “Backend status: ok”) or an error. It remains available in production as a connection smoke check.
 
 The default API base is `/api`. Vite proxies `/api/health` to `http://localhost:3000/health`, avoiding browser CORS errors. If your backend uses a different local port, change the proxy target in `vite.config.ts`. Copy `.env.example` to `.env.local` only if overriding the API base. Requests time out after ten seconds.
 
@@ -41,9 +41,12 @@ Lint uses Oxlint and ESLint with `eslint-plugin-vue`. Formatting uses the root P
 
 ## Source layout and design
 
-- `src/assets/styles/tokens.css`: the five brand colors, semantic aliases, typography, spacing and radii. Brand hex values are defined once here.
-- `src/assets/styles/main.css`: global styles consuming tokens.
-- `src/views/`: Login, Home and not-found placeholders; Home component tests in `__tests__/`.
+- `src/assets/styles/tokens.css`: the five brand colors, semantic aliases, typography, spacing and radii. Brand hex values are defined once here. A second block holds the tokens added for the profile page and app layout (hover and on-primary colors, the `--text-*` type scale, page width, cover and menu shadows, motion).
+- `src/assets/styles/main.css`: global styles consuming tokens, plus shared classes (`.page-column`, `.button`, `.text-link`, `.book-link`, `.progress-bar`, `.section-title`, `.sr-only`).
+- `src/views/`: Login, Home and not-found placeholders, and the profile page prototype (`ProfileView`); Home component tests in `__tests__/`.
+- `src/components/layout/`: `AppHeader` (nav, search, notifications, account menu) and `AppFooter`, shown on every route except those with `meta.hideAppChrome` (Login).
+- `src/components/profile/`: the profile sections (`ProfileBookplate`, `CurrentlyReading`, `BookShelf`, `CoverGrid`, `ChapterLevel`, `StreakCalendar`, `ReadingTime`, `ChallengesSummary`, `FolderList`, `MonthRecap`, `BookCover`). Each one handles its own empty state.
+- `src/mocks/`, `src/types/`, `src/utils/`: typed mock profile data used until the API exists, its types, and date helpers.
 - `src/router/`: routes and router tests.
 - `src/services/api.ts`: configurable health request and response validation.
 

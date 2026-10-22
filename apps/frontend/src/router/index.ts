@@ -14,11 +14,17 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView,
+      meta: { hideAppChrome: true },
     },
     {
       path: '/home',
       name: 'home',
       component: HomeView,
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('../views/ProfileView.vue'),
     },
     {
       path: '/:pathMatch(.*)*',

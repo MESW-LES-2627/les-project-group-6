@@ -248,3 +248,37 @@ has been blocked: no Access-Control-Allow-Origin header.
 
 #### Explanation of Changes
 Found the ignored frontend .env overriding the API base with the backend origin. Changed that setting to /api so requests use the existing same-origin Vite proxy. Documented troubleshooting and the required Vite restart in the frontend README.
+
+### 2026-10-22: Profile page prototype
+
+- **Date:** 2026-10-22
+- **Author:** João Taveira
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend
+
+#### Prompt
+```text
+Read Bookmarkedprofilepage.html . These are design references, not code to copy. First, look at how our app is structured and add the design tokens to our existing styling setup. Then build the profile page as components (Bookplate, CurrentlyReading, Shelf, CoverGrid, ChapterLevel, StreakCalendar, ReadingTime, FolderList, MonthRecap) using mock data that matches the design. Each component should handle its own empty state. Show me the plan before writing code. Use, as suported by the project, Vue with typescript
+[...]
+Account dropdown, search and notifications. all on the header, include them.
+```
+
+#### Explanation of Changes
+Built the profile section components with empty states, typed mock data (full and new user), a shared `AppHeader` and `AppFooter`, design tokens and shared classes, and a `/profile` route. Neutrals were taken from the project palette instead of the reference.
+
+### 2026-10-22: Move the profile prototype onto the #64 frontend skeleton
+
+- **Date:** 2026-10-22
+- **Author:** João Taveira
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, docs
+
+#### Prompt
+```text
+someone did already a skeleton on main and commited, change our current skeleton for the one in the main (i think its just pull main but do it yourself and thinking )
+```
+
+#### Explanation of Changes
+Found that the other skeleton was on `feat/64-frontend-setup`, not yet on `main`. Rebased the branch onto it, dropped our own skeleton (configs, Pinia, styles, Home test) and kept only the profile code. Renamed the profile's CSS tokens to the #64 names, added the missing ones to `tokens.css` and the shared classes to `main.css`, wired the header and footer into `App.vue` (hidden on Login) and added `/profile` to the router with a test. Fixed the two lint errors and the type error the stricter #64 config found. Checked the profile, home and login pages in a headless browser. Updated the frontend README, root README and iteration log.

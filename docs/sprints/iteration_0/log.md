@@ -21,6 +21,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Infrastructure | Draft v0.1, database host and local setup still open |
 | Frontend routes (#64) | Initial routes implemented |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
+| Profile page prototype | `/profile` with app header and footer, mock data and empty states, built on the #64 skeleton |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
 | Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
 | MVP, vertical prototype, CLAIM, release notes | Empty, to be written |
@@ -167,6 +168,14 @@ A running record of what the team did and decided in iteration 0. The [release n
 
 - The ignored frontend `.env` still pointed directly to `http://localhost:3000`, bypassing the configured Vite proxy. Changed its API base to `/api`; no backend change is needed for the same-origin development setup. Added [troubleshooting instructions](../../../apps/frontend/README.md) for stale environment overrides and restarting Vite.
 
+### 2026-10-22: Profile page prototype on the #64 skeleton
+
+- Built the profile page at `/profile` from the "Bookmarked profile" HTML design reference, as Vue components in [`src/components/profile/`](../../../apps/frontend/src/components/profile/) (bookplate, currently reading, shelf, recently added, chapter level, streak, reading time, challenges, folders, monthly recap). Each section has its own empty state; `/profile?state=new` shows them all. Data comes from typed mocks until the API exists. Added a shared `AppHeader` (nav, search, notifications, account menu) and `AppFooter` in `App.vue`, hidden on `/login` through `meta.hideAppChrome`.
+- The prototype was first built on a separate frontend skeleton made in parallel with #64. **Decision: drop that skeleton and keep the #64 one.** *Why:* #64 has the fuller setup (Oxlint, Prettier, API proxy, health check, router tests) and is the one the team reviews. Only the profile code was moved over: its tokens were renamed to the #64 names where the meaning matched (for example `--color-primary`, `--color-border`, `--color-text-muted`, and spacing on the `--space-N` = N × 0.25rem scale), and the tokens #64 does not have were added to [`tokens.css`](../../../apps/frontend/src/assets/styles/tokens.css). Pinia was dropped because no store exists yet. `Bookplate` and `Shelf` were renamed `ProfileBookplate` and `BookShelf` for the multi-word component-name lint rule. Added a router test for `/profile`. Lint, format, typecheck, tests (9) and build pass.
+- **Decision: warm neutrals from our palette, not the reference's grey-greens.** *Why:* AGENTS.md says UI uses the five palette colors. *Rejected:* adding the reference's `#EEF0EC` and `#1B1F1C` as palette colors.
+- Typography now follows the #64 roles (Lora headings, Inter body), so the profile name and section titles are in Lora. This replaces the earlier prototype choice of sans for headings.
+- **Open:** the profile still uses its own `--text-*` type scale next to the #64 `--font-size-*` one; merge them into one scale. Caveat, used for the handwritten reading-time note, is not loaded yet and falls back to the system cursive.
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
@@ -178,4 +187,5 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Write the MVP definition, the vertical prototype plan and the CLAIM.
 - Decide whether Supabase also serves as the database (new ADR), and close the other open decisions in [`infra.md`](../../architecture/infra.md).
 - Update `table_UML.md` for Supabase Auth: remove `USER.password_hash` and `PASSWORD_RESET_TOKEN`, add `USER.timezone`.
+- Merge the `--text-*` and `--font-size-*` type scales, and decide whether to load Caveat for the handwritten notes.
 - Write the release notes at the end of the iteration.
