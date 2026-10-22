@@ -248,3 +248,39 @@ has been blocked: no Access-Control-Allow-Origin header.
 
 #### Explanation of Changes
 Found the ignored frontend .env overriding the API base with the backend origin. Changed that setting to /api so requests use the existing same-origin Vite proxy. Documented troubleshooting and the required Vite restart in the frontend README.
+
+### 2026-10-22: Backend deploy to Render with Docker
+
+- **Date:** 2026-10-22
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** infra
+
+#### Prompt
+```text
+I have a render project but I cant connect my github account because I am not the owener to accept the request. Can I create using github actions and render cli?
+the repo owner already approved render, how can we check?
+lets use docker, we already have docker? if not, add to /infra
+commit please and push for me into a pr
+```
+
+#### Explanation of Changes
+Added a multi-stage backend `Dockerfile` and a root `.dockerignore`, built and ran the image locally to check `/health`. A GHCR + deploy hook workflow was drafted first, then dropped once the owner approved the Render GitHub app; Render now builds the Dockerfile from the repo. Compared hosting options (Render, AWS, Oracle, Vercel, Railway, Hetzner, Supabase) and documented the Render settings in the README and the decision in the iteration log.
+
+### 2026-10-22: Backend staging deploy workflow
+
+- **Date:** 2026-10-22
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** infra
+
+#### Prompt
+```text
+ok, so, now I want to have a stg env, can I create a github workflow to run the the backend to stg env in render?
+i prefer the workflow because this way we can controle which branch go to stg
+```
+
+#### Explanation of Changes
+Added `.github/workflows/backend-cd-stg.yml`, a manual workflow that deploys the chosen branch to a Render stg service through the Render API and checks `/health` after the deploy. Documented the setup in the README and the decision (API over deploy hooks, which cannot choose a branch) in the iteration log.
