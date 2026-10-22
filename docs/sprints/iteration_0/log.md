@@ -180,13 +180,13 @@ A running record of what the team did and decided in iteration 0. The [release n
 
 ### 2026-10-22: Book detail page
 
-- Added the responsive [`/library/:bookId` page](../../../apps/frontend/src/views/BookDetailView.vue) from the [book-detail design](../../design/screens/07-book-detail.png). Library cards now open the page from the cover, title or body, while the card itself keeps its existing menu and status controls.
+- Added the responsive [`/library/:bookId` page](../../../apps/frontend/src/views/BookDetailView.vue) from the [book-detail design](../../design/screens/07-book-detail.png) (`9b6e8d3`). Library cards now open the page from the cover, title or body, while the card itself keeps its existing menu and status controls.
 - Split the page into [reading](../../../apps/frontend/src/components/library/BookReadingPanel.vue), [edition](../../../apps/frontend/src/components/library/BookEditionPanel.vue), [thoughts](../../../apps/frontend/src/components/library/BookThoughtsPanel.vue), [review](../../../apps/frontend/src/components/library/ReviewItem.vue) and [reading-club](../../../apps/frontend/src/components/library/ReadingClubPanel.vue) components. The Emma mock reproduces the design content, with a portrait [detail cover](../../../apps/frontend/src/assets/covers/emma-detail.png) and a generic fallback for other books.
 - Added the detail route and tests for the view, library-card navigation and router. Unknown ids show a friendly message and a link back to the library. Verified the responsive layout at desktop and mobile widths; the backend book endpoint and real review/club data are still placeholders.
 
 ### 2026-10-22: Active reading session
 
-- Added the responsive [`/session/:bookId` page](../../../apps/frontend/src/views/ActiveSessionView.vue) from the [active-session design](../../design/screens/10-active-session.png), opened by the “Start session” button on the [book reading panel](../../../apps/frontend/src/components/library/BookReadingPanel.vue).
+- Added the responsive [`/session/:bookId` page](../../../apps/frontend/src/views/ActiveSessionView.vue) from the [active-session design](../../design/screens/10-active-session.png) (`9b6e8d3`), opened by the “Start session” button on the [book reading panel](../../../apps/frontend/src/components/library/BookReadingPanel.vue).
 - Built the [timer as a separate component](../../../apps/frontend/src/components/session/ReadingTimer.vue) with running and paused states, pause/resume/stop events and autoplay. The page keeps the page and percentage fields in sync, shows the session note and saves-back count, and brings the eligible groups, profile-total explanation and locked rules into a responsive right rail.
 - Added [session types](../../../apps/frontend/src/types/session.ts), [mock session data](../../../apps/frontend/src/mocks/session.ts), the session route and timer/view/router tests. “Stop & save” returns to the book detail page for now; persisting the session is deferred until the backend endpoints exist. The layout was checked against the 1266×886 reference and at 390 px without horizontal overflow.
 
