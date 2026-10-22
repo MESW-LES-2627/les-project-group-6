@@ -66,7 +66,7 @@ withDefaults(
 .title {
   display: block;
   margin-top: 10px;
-  font-size: var(--text-md);
+  font-size: var(--font-size-sm);
   font-weight: 600;
   line-height: 1.3;
 }
@@ -74,7 +74,7 @@ withDefaults(
 .author {
   display: block;
   margin-top: 2px;
-  font-size: var(--text-sm);
+  font-size: var(--font-size-xs);
 }
 
 .empty {

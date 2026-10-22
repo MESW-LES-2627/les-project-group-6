@@ -86,7 +86,7 @@ main {
   background: var(--color-primary);
   color: var(--color-on-primary-strong);
   font: inherit;
-  font-size: var(--text-base);
+  font-size: var(--font-size-base);
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
@@ -99,7 +99,7 @@ main {
 }
 
 .text-link {
-  font-size: var(--text-md);
+  font-size: var(--font-size-sm);
   font-weight: 600;
   text-decoration: none;
 }
@@ -132,7 +132,7 @@ main {
   border-radius: 4px;
   background: var(--color-tooltip);
   color: var(--color-on-tooltip);
-  font: 500 var(--text-xs) / 1.35 var(--font-body);
+  font: 500 var(--font-size-xs) / 1.35 var(--font-body);
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
@@ -156,6 +156,13 @@ main {
 .book-link:hover .book-tooltip.align-start,
 .book-link:focus-visible .book-tooltip.align-start {
   transform: translate(0, 0);
+}
+
+/* Touch screens have no hover, and the hidden tooltips would widen the page */
+@media (hover: none) {
+  .book-tooltip {
+    display: none;
+  }
 }
 
 /* Progress bar for pages read and XP */
@@ -189,7 +196,7 @@ main {
 /* Section heading used across the profile */
 .section-title {
   margin: 0;
-  font-size: var(--text-xl);
+  font-size: var(--font-size-md);
   font-weight: 600;
 }
 

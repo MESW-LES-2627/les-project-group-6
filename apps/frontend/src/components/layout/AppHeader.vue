@@ -214,7 +214,7 @@ async function toggleSearch() {
   align-items: center;
   padding: var(--space-2) 0;
   color: var(--color-text);
-  font-size: 19px;
+  font-size: var(--font-size-md);
   font-weight: 650;
   letter-spacing: -0.01em;
   text-decoration: none;
@@ -232,7 +232,7 @@ async function toggleSearch() {
   display: flex;
   flex: 1;
   gap: 28px;
-  font-size: var(--text-base);
+  font-size: var(--font-size-base);
   font-weight: 500;
 }
 
@@ -280,7 +280,7 @@ async function toggleSearch() {
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
-  font-size: var(--text-md);
+  font-size: var(--font-size-sm);
 }
 
 .search input::placeholder {
@@ -325,7 +325,7 @@ async function toggleSearch() {
   background: var(--color-primary);
   box-shadow: 0 0 0 2px var(--color-bg);
   color: var(--color-on-primary-strong);
-  font-size: 11px;
+  font-size: var(--font-size-2xs);
   font-weight: 700;
   line-height: 17px;
   text-align: center;
@@ -353,7 +353,7 @@ async function toggleSearch() {
   border-radius: 50%;
   background: var(--color-primary);
   color: var(--color-on-primary-strong);
-  font-size: var(--text-sm);
+  font-size: var(--font-size-xs);
   font-weight: 600;
 }
 

@@ -18,11 +18,16 @@
 
   --font-heading: 'Lora', Georgia, serif;
   --font-body: 'Inter', system-ui, sans-serif;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.5rem;
-  --font-size-xl: 2rem;
-  --font-size-display: 3.5rem;
+  --font-size-2xs: 0.6875rem; /* 11px, badges */
+  --font-size-xs: 0.8125rem; /* 13px */
+  --font-size-sm: 0.875rem; /* 14px */
+  --font-size-base: 1rem; /* 16px */
+  --font-size-md: 1.125rem; /* 18px */
+  --font-size-lg: 1.5rem; /* 24px */
+  --font-size-xl: 2rem; /* 32px */
+  --font-size-2xl: 2.5rem; /* 40px */
+  --font-size-3xl: 3rem; /* 48px */
+  --font-size-display: 3.5rem; /* 56px */
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
@@ -51,17 +56,6 @@
   --color-on-tooltip: var(--color-bg);
 
   --font-hand: Caveat, 'Bradley Hand', cursive;
-  --text-xs: 0.75rem; /* 12px */
-  --text-sm: 0.8125rem; /* 13px */
-  --text-md: 0.875rem; /* 14px */
-  --text-base: 0.9375rem; /* 15px */
-  --text-lg: 1rem; /* 16px */
-  --text-xl: 1.125rem; /* 18px */
-  --text-2xl: 1.5rem; /* 24px */
-  --text-3xl: 1.625rem; /* 26px */
-  --text-4xl: 2.5rem; /* 40px */
-  --text-5xl: 3rem; /* 48px */
-
   --space-10: 2.5rem;
   --space-14: 3.5rem;
   --page-max: 79rem; /* 1264px */

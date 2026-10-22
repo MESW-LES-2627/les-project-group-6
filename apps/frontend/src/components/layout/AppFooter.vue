@@ -17,7 +17,7 @@ footer {
   padding: 18px 0 28px;
   border-top: 1px solid var(--color-border);
   color: var(--color-text-muted);
-  font-size: var(--text-sm);
+  font-size: var(--font-size-xs);
 }
 
 .footer a {

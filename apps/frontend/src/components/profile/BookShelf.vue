@@ -76,7 +76,7 @@ const placeholderSpines: [number, number][] = [
 }
 
 .count {
-  font-size: var(--text-md);
+  font-size: var(--font-size-sm);
 }
 
 .scroller {
@@ -130,7 +130,7 @@ const placeholderSpines: [number, number][] = [
   min-height: 0;
   overflow: hidden;
   font-family: var(--font-heading);
-  font-size: 12.5px;
+  font-size: var(--font-size-xs);
   font-weight: 500;
   letter-spacing: 0.01em;
   white-space: nowrap;

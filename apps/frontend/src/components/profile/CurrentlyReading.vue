@@ -103,7 +103,7 @@ function percent({ page, pages }: ReadingProgress): number {
 
 .title {
   margin: 0;
-  font-size: var(--text-2xl);
+  font-size: var(--font-size-lg);
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
@@ -123,7 +123,7 @@ function percent({ page, pages }: ReadingProgress): number {
   display: flex;
   justify-content: space-between;
   margin-bottom: var(--space-2);
-  font-size: var(--text-md);
+  font-size: var(--font-size-sm);
 }
 
 .continue {
@@ -146,7 +146,7 @@ function percent({ page, pages }: ReadingProgress): number {
 
 .empty-text {
   margin: 0 0 14px;
-  font-size: var(--text-lg);
+  font-size: var(--font-size-base);
 }
 
 @media (max-width: 899px) {

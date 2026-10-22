@@ -104,13 +104,13 @@ function stacked(folder: Folder) {
 .name {
   display: block;
   margin-top: var(--space-3);
-  font-size: var(--text-base);
+  font-size: var(--font-size-base);
   font-weight: 600;
 }
 
 .count {
   display: block;
-  font-size: var(--text-sm);
+  font-size: var(--font-size-xs);
 }
 
 .new-folder {

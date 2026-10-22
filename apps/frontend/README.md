@@ -41,7 +41,7 @@ Lint uses Oxlint and ESLint with `eslint-plugin-vue`. Formatting uses the root P
 
 ## Source layout and design
 
-- `src/assets/styles/tokens.css`: the five brand colors, semantic aliases, typography, spacing and radii. Brand hex values are defined once here. A second block holds the tokens added for the profile page and app layout (hover and on-primary colors, the `--text-*` type scale, page width, cover and menu shadows, motion).
+- `src/assets/styles/tokens.css`: the five brand colors, semantic aliases, typography, spacing and radii. Brand hex values are defined once here. Use the `--font-size-*` scale (`2xs` 11px to `display` 56px) for every font size. A second block holds the tokens added for the profile page and app layout (hover and on-primary colors, page width, cover and menu shadows, motion).
 - `src/assets/styles/main.css`: global styles consuming tokens, plus shared classes (`.page-column`, `.button`, `.text-link`, `.book-link`, `.progress-bar`, `.section-title`, `.sr-only`).
 - `src/views/`: Login, Home and not-found placeholders, and the profile page prototype (`ProfileView`); Home component tests in `__tests__/`.
 - `src/components/layout/`: `AppHeader` (nav, search, notifications, account menu) and `AppFooter`, shown on every route except those with `meta.hideAppChrome` (Login).

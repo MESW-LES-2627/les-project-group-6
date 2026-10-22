@@ -80,7 +80,7 @@ const summary = computed(() => {
 }
 
 .range {
-  font-size: var(--text-sm);
+  font-size: var(--font-size-xs);
 }
 
 .weekdays,
@@ -93,7 +93,7 @@ const summary = computed(() => {
   gap: 6px;
   margin-bottom: var(--space-2);
   color: var(--color-text-muted);
-  font-size: var(--text-xs);
+  font-size: var(--font-size-xs);
   text-align: center;
 }
 
@@ -117,7 +117,7 @@ const summary = computed(() => {
   height: 34px;
   border-radius: 50%;
   color: var(--color-text-muted);
-  font-size: var(--text-sm);
+  font-size: var(--font-size-xs);
 }
 
 .day.read {

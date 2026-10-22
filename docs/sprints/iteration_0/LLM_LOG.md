@@ -267,7 +267,8 @@ Account dropdown, search and notifications. all on the header, include them.
 #### Explanation of Changes
 Built the profile section components with empty states, typed mock data (full and new user), a shared `AppHeader` and `AppFooter`, design tokens and shared classes, and a `/profile` route. Neutrals were taken from the project palette instead of the reference.
 
-### 2026-10-22: Move the profile prototype onto the #64 frontend skeleton
+
+### 2026-10-22: One font-size scale and Lora headings on the profile
 
 - **Date:** 2026-10-22
 - **Author:** João Taveira
@@ -277,8 +278,8 @@ Built the profile section components with empty states, typed mock data (full an
 
 #### Prompt
 ```text
-someone did already a skeleton on main and commited, change our current skeleton for the one in the main (i think its just pull main but do it yourself and thinking )
+ok perfect can you solve this ? use font size for everything and solve the ehadings thingy and then push it towards my profilepageprototype branch
 ```
 
 #### Explanation of Changes
-Found that the other skeleton was on `feat/64-frontend-setup`, not yet on `main`. Rebased the branch onto it, dropped our own skeleton (configs, Pinia, styles, Home test) and kept only the profile code. Renamed the profile's CSS tokens to the #64 names, added the missing ones to `tokens.css` and the shared classes to `main.css`, wired the header and footer into `App.vue` (hidden on Login) and added `/profile` to the router with a test. Fixed the two lint errors and the type error the stricter #64 config found. Checked the profile, home and login pages in a headless browser. Updated the frontend README, root README and iteration log.
+Extended the `--font-size-*` scale in `tokens.css` to 10 steps without changing the existing values, moved every profile and layout font size (the `--text-*` tokens and hard-coded px values) onto it, and removed the `--text-*` tokens. After asking, kept the team's Lora headings and removed the leftover heading font override. A phone-width check found that the hidden cover tooltips made the page scroll sideways, so they are now turned off on touch screens. Updated the frontend README and the iteration log, then pushed the branch.

@@ -32,8 +32,7 @@ const xpLabel = computed(
 
 .title {
   margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-3xl);
+  font-size: var(--font-size-lg);
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.01em;
@@ -41,11 +40,11 @@ const xpLabel = computed(
 
 .label {
   margin: 10px 0;
-  font-size: var(--text-md);
+  font-size: var(--font-size-sm);
 }
 
 .hint {
   margin: 10px 0 0;
-  font-size: var(--text-md);
+  font-size: var(--font-size-sm);
 }
 </style>

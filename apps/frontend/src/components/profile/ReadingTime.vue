@@ -66,14 +66,14 @@ const importedNote = computed(
 }
 
 .number {
-  font-size: var(--text-5xl);
+  font-size: var(--font-size-3xl);
   font-weight: 600;
   line-height: 1;
   letter-spacing: -0.02em;
 }
 
 .unit {
-  font-size: var(--text-xl);
+  font-size: var(--font-size-md);
 }
 
 .note {
@@ -83,7 +83,7 @@ const importedNote = computed(
   margin: 0 0 0 var(--space-1);
   color: var(--color-text-muted);
   font-family: var(--font-hand);
-  font-size: 19px;
+  font-size: var(--font-size-md);
   line-height: 1.1;
   transform: rotate(-2deg);
 }
@@ -98,7 +98,7 @@ const importedNote = computed(
 
 .hint {
   margin: 10px 0 0;
-  font-size: var(--text-md);
+  font-size: var(--font-size-sm);
 }
 
 @media (max-width: 899px) {

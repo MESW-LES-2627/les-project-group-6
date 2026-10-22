@@ -87,7 +87,7 @@ const summary = computed(() => {
 
 .title {
   margin: 0;
-  font-size: var(--text-lg);
+  font-size: var(--font-size-base);
   font-weight: 600;
 }
 
@@ -100,6 +100,6 @@ const summary = computed(() => {
   gap: 6px;
   align-items: center;
   min-height: var(--control-height);
-  font-size: var(--text-base);
+  font-size: var(--font-size-base);
 }
 </style>

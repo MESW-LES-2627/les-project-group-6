@@ -103,7 +103,7 @@ const privacyLabel = computed(
     0 0 0 3px var(--color-primary),
     0 0 0 4px rgb(255 230 167 / 45%);
   color: var(--color-on-primary);
-  font-size: 38px;
+  font-size: var(--font-size-2xl);
   font-weight: 500;
 }
 
@@ -121,7 +121,7 @@ const privacyLabel = computed(
 .name {
   margin: 0;
   color: var(--color-on-primary-strong);
-  font-size: var(--text-4xl);
+  font-size: var(--font-size-2xl);
   font-weight: 600;
   line-height: 1.1;
   letter-spacing: -0.015em;
@@ -129,12 +129,12 @@ const privacyLabel = computed(
 
 .secondary {
   color: var(--color-on-primary);
-  font-size: var(--text-md);
+  font-size: var(--font-size-sm);
 }
 
 .details .bio {
   margin-top: 6px;
-  font-size: var(--text-lg);
+  font-size: var(--font-size-base);
 }
 
 .add-details {
@@ -162,7 +162,7 @@ const privacyLabel = computed(
   border-radius: var(--radius-control);
   background: var(--color-bg);
   color: var(--color-primary);
-  font-size: var(--text-base);
+  font-size: var(--font-size-base);
   font-weight: 600;
   text-decoration: none;
   transition: background-color var(--duration-fast);
@@ -179,7 +179,7 @@ const privacyLabel = computed(
   align-items: center;
   min-height: 32px;
   color: var(--color-on-primary);
-  font-size: var(--text-md);
+  font-size: var(--font-size-sm);
   text-decoration: none;
 }
 
@@ -210,7 +210,7 @@ const privacyLabel = computed(
   }
 
   .name {
-    font-size: 2rem;
+    font-size: var(--font-size-xl);
   }
 
   .actions {
