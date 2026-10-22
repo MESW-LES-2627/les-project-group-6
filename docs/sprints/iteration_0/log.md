@@ -162,12 +162,13 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added example clean architecture domain entity and repository interface (`User`, `IUserRepository` in `src/domain/user.ts`) and Drizzle implementation (`DrizzleUserRepository` in `src/infrastructure/repositories/drizzle-user-repository.ts`).
 - Set up backend test structure under `apps/backend/tests/` (`helpers/`, `integration/`) with integration tests for health check and user repository.
 - Documented [ADR-0004: Database Host, Access Library and Migrations](../../ADRs/0004-database-access-and-migrations.md) (PostgreSQL 17, Drizzle ORM and Drizzle Kit).
+- Added PostgreSQL 17 service container and migration step to GitHub Actions ([`.github/workflows/backend-ci.yml`](../../../.github/workflows/backend-ci.yml)) for CI test execution.
 - Updated [`apps/backend/README.md`](../../../apps/backend/README.md) and [`docs/README.md`](../../README.md).
 
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
-- Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands, and uncomment `frontend-ci.yml` when `apps/frontend` exists.
+- Turn on branch protection on `main` (required `backend` check and one approval), and uncomment `frontend-ci.yml` when `apps/frontend` exists.
 
 ### 2026-10-22: Frontend routes (#64)
 
