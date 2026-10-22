@@ -1,0 +1,42 @@
+:root {
+  --color-burgundy: #6f1d1b;
+  --color-gold: #bb9457;
+  --color-dark-brown: #432818;
+  --color-copper: #99582a;
+  --color-cream: #ffe6a7;
+
+  --color-primary: var(--color-burgundy);
+  --color-on-primary: var(--color-cream);
+  --color-accent: var(--color-gold);
+  --color-bg: #f6f1e7;
+  --color-surface: #fffcf7;
+  --color-text: var(--color-dark-brown);
+  --color-text-muted: #7b6b5b;
+  --color-border: #dfcdb8;
+  --color-focus: var(--color-copper);
+  --color-error: var(--color-burgundy);
+
+  --font-heading: 'Lora', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.5rem;
+  --font-size-xl: 2rem;
+  --font-size-display: 3.5rem;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --line-height-body: 1.5;
+  --line-height-heading: 1.2;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+}

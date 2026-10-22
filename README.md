@@ -20,7 +20,7 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 ```
 .
 ├── apps/
-│   ├── frontend/
+│   ├── frontend/                  # Vue client; see apps/frontend/README.md
 │   └── backend/
 ├── docs/
 │   ├── ADRs/
@@ -50,7 +50,7 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 
 The application source code. Each app is a pnpm workspace with its own `package.json`, `tsconfig.json` (extending the root base) and ESLint config. Tooling shared by every app lives in the repository root (see [Root config](#root-config)).
 
-- `apps/frontend/`: the web client.
+- `apps/frontend/`: the Vue 3 web client with shared CSS tokens, Home backend health status, router and component tests, ESLint, Prettier, vue-tsc and Vitest. See [apps/frontend/README.md](apps/frontend/README.md) for commands and production API routing.
 - `apps/backend/`: the server, API and business logic (TypeScript, Node.js, Express). See [apps/backend/README.md](apps/backend/README.md) for how to run it.
 
 ### Makefile
@@ -96,7 +96,7 @@ GitHub configuration: the pull request template, the issue templates (`ISSUE_TEM
 Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks and `<app>-cd.yml` for deploys (CD is not set up yet), so each app's CI and CD stay separate. A change to one app does not run the other app's checks:
 
 - `backend-ci.yml`: runs on every pull request to `main` and on push to `main` when `apps/backend/`, the shared root config or the workflow itself changes. It installs with the locked dependencies, then runs lint, format check, typecheck, tests and build.
-- `frontend-ci.yml`: the same steps for `apps/frontend/`. It is fully commented out until the frontend exists; uncomment it when `apps/frontend/package.json` is added.
+- `frontend-ci.yml`: the same steps for `apps/frontend/`. It is enabled and runs lint, format check, typecheck, component/router tests and build.
 
 A pull request must be green before review. Run `make check` locally to run the same checks before pushing.
 
@@ -144,6 +144,7 @@ Then install the dependencies for every app:
 | Task | With make | With pnpm |
 |---|---|---|
 | Start the backend in watch mode (restarts on save) | `make dev` | `pnpm dev:backend` |
+| Start the frontend | `make dev APP=frontend` | `pnpm --filter @bookmarked/frontend dev` |
 | Build | `make build` | `pnpm build` |
 | Run the compiled build | `make start` | `pnpm --filter @bookmarked/backend start` |
 

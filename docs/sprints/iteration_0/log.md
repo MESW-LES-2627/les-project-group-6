@@ -19,6 +19,8 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Database tables model | v1.0 drafted |
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
 | Infrastructure | Draft v0.1, database host and local setup still open |
+| Frontend routes (#64) | Initial routes implemented |
+| Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
 | Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
 | MVP, vertical prototype, CLAIM, release notes | Empty, to be written |
@@ -150,10 +152,25 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added a backend `test` script (`tsx --test "src/**/*.test.ts"`, the Node.js test runner) and a root `test` script. It passes while there are no tests, so CI is green now and starts checking as soon as the first `*.test.ts` lands. The test runner can still be replaced (for example by Vitest) in its own ADR.
 - Still open from #65: the Postgres service container and `db:migrate` (no database yet), `packages/shared` (does not exist yet) and the branch protection rule on `main` (needs an admin).
 
+### 2026-10-22: Frontend routes (#64)
+
+- Added the initial Vue Router routes: `/` redirects to `/login` (the requirements say the authentication page appears when the app opens), `/login` and `/home` show placeholders, and unknown paths show the not-found page.
+- Added router tests for the root redirect, home route and unknown-path fallback.
+
+### 2026-10-22: Frontend tokens, health status and checks (#64)
+
+- Extended [CSS tokens](../../../apps/frontend/src/assets/styles/tokens.css) with semantic aliases, typography and spacing. Based on the [Home](../../design/screens/05-home.png) and [authentication](../../design/screens/01-authentication.png) screenshots, use Lora for headings and Inter for body/controls, with warm neutral surfaces alongside the unchanged brand palette.
+- Added a [Home health status](../../../apps/frontend/src/views/HomeView.vue) using the [API service](../../../apps/frontend/src/services/api.ts), including loading, backend response and error states. Use a same-origin `/api` proxy locally rather than adding backend CORS for development; production needs equivalent host routing or an explicit API URL with CORS. See the [frontend guide](../../../apps/frontend/README.md).
+- Made lint and tests suitable for CI (no automatic edits or watch mode), added Prettier commands and [component coverage](../../../apps/frontend/src/views/__tests__/HomeView.spec.ts) for successful and failed health calls, and enabled [frontend CI](../../../.github/workflows/frontend-ci.yml). Verified lint, formatting, vue-tsc, 7 tests and production build; the running Vite proxy returned `{ "status": "ok" }` from `/api/health`. Production smoke verification awaits deployment.
+
+### 2026-10-22: Fix local health request CORS error
+
+- The ignored frontend `.env` still pointed directly to `http://localhost:3000`, bypassing the configured Vite proxy. Changed its API base to `/api`; no backend change is needed for the same-origin development setup. Added [troubleshooting instructions](../../../apps/frontend/README.md) for stale environment overrides and restarting Vite.
+
 ## Next steps
 
-- Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
-- Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands, and uncomment `frontend-ci.yml` when `apps/frontend` exists.
+- Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
+- Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands, (frontend CI is now enabled).
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
 - Create the issues for Extras once Core is under way.

@@ -188,3 +188,63 @@ now, add a ci for frontend and backend. the frontend file must be commented beca
 
 #### Explanation of Changes
 Added `.github/workflows/backend-ci.yml` (install, lint, format check, typecheck, test and build on pull requests and pushes to `main`, filtered to backend and shared root files) and a fully commented `frontend-ci.yml` with the same steps. Added a backend `test` script using the Node.js test runner through `tsx`, which passes with no test files, and a root `test` script. Updated the READMEs and the iteration log.
+
+### 2026-10-22: Initial frontend routes
+
+- **Date:** 2026-10-22
+- **Author:** Segun Adesanya
+- **Model:** GPT-6 Luna
+- **Tool:** GitHub Copilot in VS Code
+- **Domain:** frontend, testing
+
+#### Prompt
+```text
+Create these initial routes:
+PathPlaceholder
+`/`Redirect to the agreed starting route
+`/login`Login placeholder
+`/home`Home placeholder
+Any unknown path Not-found page
+```
+
+#### Explanation of Changes
+Implemented the initial routes with `/login` as the starting route, following the product requirements, and added router tests for the redirect, home route and not-found fallback.
+
+### 2026-10-22: Frontend foundations and connectivity
+
+- **Date:** 2026-10-22
+- **Author:** Segun Adesanya
+- **Model:** GPT-6
+- **Tool:** Codex
+- **Domain:** frontend, testing, tooling, docs
+
+#### Prompt
+```text
+1. Keep the palette defined once in tokens.css with semantic aliases, base typography
+and spacing. Use Lora and Inter and inspect the design screenshots.
+2. A dev status line or Home/404 placeholder calls GET /health and shows the result
+locally and in production.
+3. ESLint (eslint-plugin-vue), Prettier, vue-tsc and Vitest + @vue/test-utils with
+one component test.
+```
+
+#### Explanation of Changes
+Inspected Home and authentication screenshots; added Lora heading and Inter body font roles, semantic tokens and global styles. Implemented a configurable health request and Home status with timeout/error handling, a local same-origin Vite proxy, and component tests. Adjusted existing scripts for non-mutating lint and single-run tests, added formatting scripts, enabled frontend CI and documented production API routing. Updated the design index, repository guide and iteration log; Verified frontend lint, formatting, typecheck, 7 tests, production build and a live local proxy response of `{ "status": "ok" }`; deployment verification remains external to this change.
+
+### 2026-10-22: Fix local CORS environment override
+
+- **Date:** 2026-10-22
+- **Author:** Segun Adesanya
+- **Model:** GPT-6
+- **Tool:** Codex
+- **Domain:** frontend, docs
+
+#### Prompt
+```text
+fix CORS error
+Access to fetch at http://localhost:3000/health from origin http://localhost:5173
+has been blocked: no Access-Control-Allow-Origin header.
+```
+
+#### Explanation of Changes
+Found the ignored frontend .env overriding the API base with the backend origin. Changed that setting to /api so requests use the existing same-origin Vite proxy. Documented troubleshooting and the required Vite restart in the frontend README.

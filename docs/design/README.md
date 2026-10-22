@@ -18,6 +18,12 @@ UI design for Bookmarked (desktop, 1440 px wide), made in Figma.
 | ![#99582a](https://placehold.co/24x24/99582a/99582a.png) | `#99582a` | Copper |
 | ![#ffe6a7](https://placehold.co/24x24/ffe6a7/ffe6a7.png) | `#ffe6a7` | Cream |
 
+## Typography and frontend tokens
+
+Use [Lora](https://fonts.google.com/specimen/Lora) for headings, book titles and editorial text, and [Inter](https://fonts.google.com/specimen/Inter) for body copy, navigation, labels and controls. This pairing follows the serif/sans-serif roles visible in the authentication and Home snapshots below.
+
+The frontend defines the palette once in [`tokens.css`](../../apps/frontend/src/assets/styles/tokens.css), alongside semantic colors, warm neutral surfaces, base typography, spacing and radii. [`main.css`](../../apps/frontend/src/assets/styles/main.css) consumes these tokens; `index.html` loads both font families with system fallbacks.
+
 ## Screens
 
 ### Access and onboarding
