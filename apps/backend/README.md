@@ -33,6 +33,8 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | `GET` | `/book/:id` | Returns a single book by UUID (`200 OK` or `404 Not Found`) |
 | `DELETE` | `/book/:id` | Deletes a book by UUID (`204 No Content` or `404 Not Found`) |
 | `PUT` | `/reading-status` | Sets reading status and page progress for a book (`200 OK`) |
+| `PATCH` | `/reading-status/:id` | Edits an existing reading status by ID (`200 OK` or `404 Not Found`) |
+| `PATCH` | `/reading-status` | Edits an existing reading status by ID or userId + bookId (`200 OK` or `404 Not Found`) |
 | `GET` | `/user/:userId/library` | Returns user's library with progress, supports `?status=` (`200 OK`) |
 
 ## Scripts

@@ -155,6 +155,74 @@ export function createApp(deps: AppDependencies = {}): Express {
     }
   });
 
+  const updateReadingStatusHandler = async (req: express.Request, res: express.Response) => {
+    if (!deps.readingStatusRepository) {
+      res.status(500).json({ error: 'Reading status repository not configured' });
+      return;
+    }
+
+    const id = req.params.id || req.body.id;
+    let existing: ReadingStatus | null = null;
+
+    if (id) {
+      if (!UUID_REGEX.test(id)) {
+        res.status(400).json({ error: 'Invalid UUID format' });
+        return;
+      }
+      existing = await deps.readingStatusRepository.findById(id);
+    } else if (req.body.userId && req.body.bookId) {
+      if (!UUID_REGEX.test(req.body.userId) || !UUID_REGEX.test(req.body.bookId)) {
+        res.status(400).json({ error: 'Valid userId and bookId are required' });
+        return;
+      }
+      existing = await deps.readingStatusRepository.findByUserAndBook(
+        req.body.userId,
+        req.body.bookId,
+      );
+    } else {
+      res.status(400).json({ error: 'Reading status ID or userId and bookId are required' });
+      return;
+    }
+
+    if (!existing) {
+      res.status(404).json({ error: 'Reading status not found' });
+      return;
+    }
+
+    const { status, currentPage } = req.body;
+    if (status !== undefined && !VALID_STATUSES.includes(status)) {
+      res.status(400).json({
+        error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,
+      });
+      return;
+    }
+
+    if (currentPage !== undefined && (typeof currentPage !== 'number' || currentPage < 0)) {
+      res.status(400).json({ error: 'currentPage must be a non-negative number' });
+      return;
+    }
+
+    const updated = new ReadingStatus({
+      id: existing.id,
+      userId: existing.userId,
+      bookId: existing.bookId,
+      status: status ?? existing.status,
+      currentPage: currentPage !== undefined ? currentPage : existing.currentPage,
+      updatedAt: new Date(),
+    });
+
+    try {
+      const result = await deps.readingStatusRepository.update(existing, updated);
+      res.status(200).json(result);
+    } catch {
+      res.status(500).json({ error: 'Failed to update reading status' });
+    }
+  };
+
+  app.patch('/reading-status/:id', updateReadingStatusHandler);
+  app.put('/reading-status/:id', updateReadingStatusHandler);
+  app.patch('/reading-status', updateReadingStatusHandler);
+
   app.get('/user/:userId/library', async (req, res) => {
     if (!deps.readingStatusRepository) {
       res.status(500).json({ error: 'Reading status repository not configured' });

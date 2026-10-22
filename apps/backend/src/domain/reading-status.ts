@@ -31,6 +31,7 @@ export class ReadingStatus {
 }
 
 export interface UserLibraryItem {
+  id: string;
   book: Book;
   status: ReadingStatusType;
   currentPage: number;
@@ -38,7 +39,9 @@ export interface UserLibraryItem {
 }
 
 export interface IReadingStatusRepository {
+  findById(id: string): Promise<ReadingStatus | null>;
   findByUserAndBook(userId: string, bookId: string): Promise<ReadingStatus | null>;
   save(entry: ReadingStatus): Promise<void>;
+  update(target: string | ReadingStatus, updated?: ReadingStatus): Promise<ReadingStatus | null>;
   findUserLibrary(userId: string, statusFilter?: ReadingStatusType): Promise<UserLibraryItem[]>;
 }

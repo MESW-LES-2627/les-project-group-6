@@ -13,6 +13,18 @@ import { readingStatus, books } from '../database/schema.js';
 export class DrizzleReadingStatusRepository implements IReadingStatusRepository {
   constructor(private readonly db: NodePgDatabase<typeof schema>) {}
 
+  async findById(id: string): Promise<ReadingStatus | null> {
+    const rows = await this.db
+      .select()
+      .from(readingStatus)
+      .where(eq(readingStatus.id, id))
+      .limit(1);
+
+    const row = rows[0];
+    if (!row) return null;
+    return this.mapToDomain(row);
+  }
+
   async findByUserAndBook(userId: string, bookId: string): Promise<ReadingStatus | null> {
     const rows = await this.db
       .select()
@@ -49,6 +61,53 @@ export class DrizzleReadingStatusRepository implements IReadingStatusRepository 
     }
   }
 
+  async update(
+    target: string | ReadingStatus,
+    updated?: ReadingStatus,
+  ): Promise<ReadingStatus | null> {
+    let existingId: string;
+    let entryToApply: ReadingStatus;
+
+    if (updated) {
+      existingId = typeof target === 'string' ? target : target.id;
+      entryToApply = updated;
+    } else {
+      entryToApply = target as ReadingStatus;
+      existingId = entryToApply.id;
+    }
+
+    let existing = await this.findById(existingId);
+    if (!existing && entryToApply.userId && entryToApply.bookId) {
+      existing = await this.findByUserAndBook(entryToApply.userId, entryToApply.bookId);
+    }
+    if (!existing) {
+      return null;
+    }
+
+    const updatedStatus = entryToApply.status ?? existing.status;
+    const updatedPage =
+      entryToApply.currentPage !== undefined ? entryToApply.currentPage : existing.currentPage;
+    const updatedDate = entryToApply.updatedAt ?? new Date();
+
+    await this.db
+      .update(readingStatus)
+      .set({
+        status: updatedStatus,
+        currentPage: updatedPage,
+        updatedAt: updatedDate.toISOString(),
+      })
+      .where(eq(readingStatus.id, existing.id));
+
+    return new ReadingStatus({
+      id: existing.id,
+      userId: existing.userId,
+      bookId: existing.bookId,
+      status: updatedStatus,
+      currentPage: updatedPage,
+      updatedAt: updatedDate,
+    });
+  }
+
   async findUserLibrary(
     userId: string,
     statusFilter?: ReadingStatusType,
@@ -73,6 +132,7 @@ export class DrizzleReadingStatusRepository implements IReadingStatusRepository 
       .where(and(...conditions));
 
     return rows.map((row) => ({
+      id: row.statusId,
       book: new Book({
         id: row.book.id,
         title: row.book.title,
