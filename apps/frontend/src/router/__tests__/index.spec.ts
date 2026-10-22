@@ -15,6 +15,12 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('home');
   });
 
+  it('routes to the library page', async () => {
+    await router.push('/library');
+
+    expect(router.currentRoute.value.name).toBe('library');
+  });
+
   it('routes unknown paths to the not-found page', async () => {
     await router.push('/unknown');
 

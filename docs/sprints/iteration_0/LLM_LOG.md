@@ -248,3 +248,19 @@ has been blocked: no Access-Control-Allow-Origin header.
 
 #### Explanation of Changes
 Found the ignored frontend .env overriding the API base with the backend origin. Changed that setting to /api so requests use the existing same-origin Vite proxy. Documented troubleshooting and the required Vite restart in the frontend README.
+
+### 2026-10-22: Library page prototype
+
+- **Date:** 2026-10-22
+- **Author:** Segun Adesanya
+- **Model:** Big Pickle
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+I want to Implement a library page, use the color theme available in the project, implement this in a standard structure, book compnent for the cards, side menu component(Your Shelves). make it look exactly like the image and follow the project setup, also make it mobile responsive
+```
+
+#### Explanation of Changes
+Built the responsive `/library` page from the attached design and the existing project tokens. Added the reusable `LibraryBookCard` and `LibrarySidebar` components, library types, filter/progress/sort helpers and mock data with six cover crops. Search, status, folder, tag, genre and sort filters work; the default Autumn reading view reproduces the target content. Added the `/library` route, component/view/router tests and frontend README notes. Verified formatting, lint, typecheck, 16 tests, production build and screenshots at 1264, 800 and 390 px. Backend wiring, folder actions and the card menu are placeholders for the next API pass.

@@ -21,6 +21,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Infrastructure | Draft v0.1, database host and local setup still open |
 | Frontend routes (#64) | Initial routes implemented |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
+| Library page prototype (#76) | Responsive `/library` UI with mock data, reusable card and shelves components, filters and tests; API wiring and menu actions still to do |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
 | Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
 | MVP, vertical prototype, CLAIM, release notes | Empty, to be written |
@@ -167,10 +168,19 @@ A running record of what the team did and decided in iteration 0. The [release n
 
 - The ignored frontend `.env` still pointed directly to `http://localhost:3000`, bypassing the configured Vite proxy. Changed its API base to `/api`; no backend change is needed for the same-origin development setup. Added [troubleshooting instructions](../../../apps/frontend/README.md) for stale environment overrides and restarting Vite.
 
+### 2026-10-22: Library page prototype (#76)
+
+- Added the responsive [`/library` page](../../../apps/frontend/src/views/LibraryView.vue) from the [library design](../../design/screens/06-library.png), with the hero, search and filter bar, status tabs, three-column book grid and footer note. The layout collapses to two columns and then one, the filters stack and the status tabs scroll on small screens.
+- Split the UI into a reusable [book card](../../../apps/frontend/src/components/library/LibraryBookCard.vue) and a separate [“Your shelves” side menu](../../../apps/frontend/src/components/library/LibrarySidebar.vue), as requested. The card covers the cover, title, author, status, progress, page count, summary, folder/tag chip and menu; the side menu covers shelves, folders, tags and the “Shelves, not duplicates” tip.
+- Added the library domain types, filter/progress/sort helpers and mock data in [`types/library.ts`](../../../apps/frontend/src/types/library.ts), [`utils/library.ts`](../../../apps/frontend/src/utils/library.ts) and [`mocks/library.ts`](../../../apps/frontend/src/mocks/library.ts), plus six [cover crops](../../../apps/frontend/src/assets/covers). Search, status, folder, tag, genre and sort controls work against the mock data; the default “Autumn reading” folder reproduces the design content. API wiring, folder management and the card menu come later.
+- Reused the shared tokens and global styles from the [frontend foundations](#2026-10-22-frontend-tokens-health-status-and-checks-64) and added the small surface, divider and progress pieces the page needs. No new ADR: this is the agreed Vue/TypeScript stack and the existing palette, with the library-specific layout kept in the view and components.
+- Added component and view tests, the `/library` route and route test, and documented the route and source layout in [`apps/frontend/README.md`](../../../apps/frontend/README.md). Verified formatting, lint, `vue-tsc`, 16 tests, the production build and screenshots at 1264 px, 800 px and 390 px.
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
 - Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands, (frontend CI is now enabled).
+- Wire the library page to the library API when the backend endpoints exist; replace the mock data and implement the folder and card menu actions.
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
 - Create the issues for Extras once Core is under way.
