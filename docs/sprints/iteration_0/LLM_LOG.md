@@ -268,18 +268,3 @@ Account dropdown, search and notifications. all on the header, include them.
 Built the profile section components with empty states, typed mock data (full and new user), a shared `AppHeader` and `AppFooter`, design tokens and shared classes, and a `/profile` route. Neutrals were taken from the project palette instead of the reference.
 
 
-### 2026-10-22: One font-size scale and Lora headings on the profile
-
-- **Date:** 2026-10-22
-- **Author:** João Taveira
-- **Model:** Claude Opus 5.5
-- **Tool:** Claude Code
-- **Domain:** frontend, docs
-
-#### Prompt
-```text
-ok perfect can you solve this ? use font size for everything and solve the ehadings thingy and then push it towards my profilepageprototype branch
-```
-
-#### Explanation of Changes
-Extended the `--font-size-*` scale in `tokens.css` to 10 steps without changing the existing values, moved every profile and layout font size (the `--text-*` tokens and hard-coded px values) onto it, and removed the `--text-*` tokens. After asking, kept the team's Lora headings and removed the leftover heading font override. A phone-width check found that the hidden cover tooltips made the page scroll sideways, so they are now turned off on touch screens. Updated the frontend README and the iteration log, then pushed the branch.
