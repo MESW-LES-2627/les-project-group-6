@@ -20,7 +20,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
 | Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done |
 | Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
-| Vertical prototype book CRUD (#78) | Backend CRUD implemented: domain model, Drizzle repository, Express endpoints, and integration tests |
+| Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
 | Frontend routes (#64) | Initial routes implemented |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
@@ -216,6 +216,16 @@ A running record of what the team did and decided in iteration 0. The [release n
   - [`book-api.test.ts`](../../../apps/backend/tests/integration/book-api.test.ts): HTTP endpoint verification with `withApp`.
 - Updated backend test script to `--test-concurrency=1` to prevent database table truncation race conditions.
 - Updated [`apps/backend/README.md`](../../../apps/backend/README.md) with API endpoints documentation.
+
+### 2026-10-23: Reading status, user library, and seed script (#78)
+
+- Implemented `ReadingStatus` entity and `IReadingStatusRepository` in [`apps/backend/src/domain/reading-status.ts`](../../../apps/backend/src/domain/reading-status.ts), supporting status types (`not-started`, `in-progress`, `finished`, `did-not-finish`), page progress, and user library aggregation.
+- Implemented `DrizzleReadingStatusRepository` in [`apps/backend/src/infrastructure/repositories/drizzle-reading-status-repository.ts`](../../../apps/backend/src/infrastructure/repositories/drizzle-reading-status-repository.ts) with upsert handling on conflict (`user_id`, `book_id`) and user library retrieval joining `reading_status` and `books`.
+- Added Express endpoints in [`apps/backend/src/app.ts`](../../../apps/backend/src/app.ts):
+  - `PUT /reading-status`: creates or updates user reading status and page progress (`200 OK`).
+  - `GET /user/:userId/library`: returns list of user library items with book metadata and status, supporting optional `?status=` filter (`200 OK`).
+- Added database seed script [`apps/backend/src/infrastructure/database/seed.ts`](../../../apps/backend/src/infrastructure/database/seed.ts) (`pnpm db:seed`): seeds demo reader user (`demo_reader`), 6 books with high-resolution Open Library cover URLs, and initial `not-started` reading status entries linking the demo user to all seeded books so the library is immediately populated for vertical prototype testing.
+- Updated [`apps/backend/README.md`](../../../apps/backend/README.md) with reading status endpoints and seed documentation.
 
 ## Next steps
 
