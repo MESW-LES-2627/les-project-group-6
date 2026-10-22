@@ -21,7 +21,7 @@ pnpm dev:backend
 
 `make install` and `make dev` do the same (see the root README).
 
-Then open <http://localhost:3000/health>, which returns `{ "status": "ok" }`.
+Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db": "ok" }`.
 
 ## Scripts
 
@@ -34,7 +34,7 @@ Run them inside `apps/backend`, or from the root with `pnpm --filter @bookmarked
 | `start` | Runs the compiled server (`pnpm build` first) |
 | `lint` | Runs ESLint |
 | `typecheck` | Type-checks without emitting files |
-| `test` | Runs `src/**/*.test.ts` with the Node.js test runner (through `tsx`); passes when there are no test files yet |
+| `test` | Runs `tests/**/*.test.ts` with the Node.js test runner (through `tsx`) |
 | `db:generate` | Generates SQL migrations from schema using `drizzle-kit` |
 | `db:migrate` | Applies pending migrations to the database |
 | `db:studio` | Opens Drizzle Studio local database viewer |
@@ -59,11 +59,20 @@ apps/backend/
 │   ├── migrations/  # Drizzle SQL migrations and journal metadata
 │   └── schema.sql   # PostgreSQL database schema matching UML specification
 ├── src/
+│   ├── domain/      # Domain entities and repository interfaces
 │   ├── infrastructure/
-│   │   └── database/
-│   │       └── schema.ts # Drizzle ORM schema definitions
+│   │   ├── database/
+│   │   │   ├── health-check.ts
+│   │   │   ├── migrate.ts
+│   │   │   ├── pool.ts
+│   │   │   ├── relations.ts
+│   │   │   └── schema.ts
+│   │   └── repositories/ # Concrete database repository implementations
 │   ├── app.ts       # createApp(): builds the Express app and its routes
 │   └── server.ts    # entry point: starts the HTTP server
+├── tests/
+│   ├── helpers/     # Shared test utilities (http, test-db)
+│   └── integration/ # Integration tests against the database and HTTP API
 ├── drizzle.config.ts
 ├── eslint.config.js
 ├── tsconfig.json        # used by the editor and typecheck
