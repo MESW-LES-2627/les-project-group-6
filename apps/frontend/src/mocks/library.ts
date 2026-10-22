@@ -1,10 +1,11 @@
 import aRoomOfOnesOwnCover from '@/assets/covers/a-room-of-ones-own.png';
 import circeCover from '@/assets/covers/circe.png';
+import emmaDetailCover from '@/assets/covers/emma-detail.png';
 import emmaCover from '@/assets/covers/emma.png';
 import piranesiCover from '@/assets/covers/piranesi.png';
 import theMidnightLibraryCover from '@/assets/covers/the-midnight-library.png';
 import theSecretHistoryCover from '@/assets/covers/the-secret-history.png';
-import type { Library } from '@/types/library';
+import type { BookDetail, Library, LibraryBook } from '@/types/library';
 
 // Mock data for the library prototype, matching the design reference.
 // Replace it with the library API once those endpoints exist.
@@ -17,12 +18,13 @@ export const mockLibrary: Library = {
       title: 'Emma',
       author: 'Jane Austen',
       cover: emmaCover,
+      detailCover: emmaDetailCover,
       status: 'in-progress',
       pages: 474,
       currentPage: 294,
       genre: 'Classics',
       summary: '294 / 474 pages • next chapter awaits',
-      folderIds: ['autumn'],
+      folderIds: ['autumn', 'club'],
       tagIds: ['borrowed'],
       chip: 'borrowed',
       updatedAt: '2026-10-21T18:40:00Z',
@@ -127,3 +129,88 @@ export const mockLibrary: Library = {
     { id: 'reread', name: 'reread', count: 4 },
   ],
 };
+
+const emmaDetail: BookDetail = {
+  tagline: 'Jane Austen • A comedy of manners, matchmaking, and learning to see clearly.',
+  synopsis:
+    "Beautiful, clever, and rich, Emma Woodhouse has very little to distress or vex her. Convinced that she understands the hearts of those around her, she takes up matchmaking with disastrous consequences. Austen's sparkling portrait of self-deception and affection finds its heroine learning that love rarely follows a plan.",
+  readThroughLabel: 'First read-through',
+  edition: {
+    publishedYear: 1815,
+    publisher: 'Penguin Classics',
+    isbn: '9780141439587',
+    genres: ['Classics', 'Romance'],
+  },
+  friends: [
+    {
+      id: 'maya',
+      initials: 'ML',
+      name: 'Maya Laurent',
+      rating: 5,
+      finishedLabel: 'Finished • 4 October',
+      quote: 'The wit is wonderful, but the kindness underneath it is what stayed with me.',
+    },
+    {
+      id: 'priya',
+      initials: 'PS',
+      name: 'Priya Shah',
+      rating: 5,
+      finishedLabel: 'Finished • 8 October',
+      quote: "Emma's slow change of heart feels so beautifully human.",
+    },
+  ],
+  friendCount: 3,
+  publicRating: 4.2,
+  publicRatingCount: 18426,
+  publicReviews: [
+    {
+      id: 'amelia',
+      initials: 'AR',
+      name: 'Amelia R.',
+      rating: 5,
+      helpfulCount: 128,
+      quote: 'A sharp, tender novel. Every reread reveals another perfectly observed detail.',
+    },
+  ],
+  club: {
+    name: 'Classics',
+    monthLabel: 'October',
+    memberCount: 6,
+    deadlineLabel: '31 October',
+  },
+  thoughts: {
+    rating: 4,
+    comment: "Austen's observations feel as alive as ever. I'm loving the dialogue.",
+    audience: 'friends',
+  },
+};
+
+const mockBookDetails: Record<string, BookDetail> = {
+  emma: emmaDetail,
+};
+
+/** Detail content for a book. Other books get a sensible fallback from the card data. */
+export function getBookDetail(book: LibraryBook): BookDetail {
+  return (
+    mockBookDetails[book.id] ?? {
+      tagline: `${book.author} • ${book.genre}`,
+      synopsis: book.summary,
+      readThroughLabel: 'First read-through',
+      edition: {
+        publishedYear: 2024,
+        publisher: `${book.genre} edition`,
+        isbn: 'Not recorded',
+        genres: [book.genre],
+      },
+      friends: [],
+      publicRating: book.rating ?? 0,
+      publicRatingCount: 0,
+      publicReviews: [],
+      thoughts: {
+        rating: book.rating ?? 0,
+        comment: '',
+        audience: 'friends',
+      },
+    }
+  );
+}

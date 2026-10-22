@@ -1,11 +1,12 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 
+import router from '@/router';
 import LibraryView from '../LibraryView.vue';
 
 describe('LibraryView', () => {
   it('shows the library heading, filters and all six cards', () => {
-    const wrapper = mount(LibraryView);
+    const wrapper = mount(LibraryView, { global: { plugins: [router] } });
 
     expect(wrapper.get('h1').text()).toBe('A life between the covers.');
     expect(wrapper.findAll('article')).toHaveLength(6);
@@ -14,7 +15,7 @@ describe('LibraryView', () => {
   });
 
   it('filters by reading status', async () => {
-    const wrapper = mount(LibraryView);
+    const wrapper = mount(LibraryView, { global: { plugins: [router] } });
     const finished = wrapper.findAll('.tab').find((tab) => tab.text() === 'Finished');
 
     await finished!.trigger('click');
@@ -24,7 +25,7 @@ describe('LibraryView', () => {
   });
 
   it('searches by title and clears the filters', async () => {
-    const wrapper = mount(LibraryView);
+    const wrapper = mount(LibraryView, { global: { plugins: [router] } });
 
     await wrapper.get('input[type="search"]').setValue('piranesi');
 

@@ -26,6 +26,18 @@ const router = createRouter({
       component: () => import('../views/LibraryView.vue'),
     },
     {
+      path: '/library/:bookId',
+      name: 'book-detail',
+      component: () => import('../views/BookDetailView.vue'),
+      props: true,
+    },
+    {
+      path: '/session/:bookId',
+      name: 'active-session',
+      component: () => import('../views/ActiveSessionView.vue'),
+      props: true,
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: NotFoundView,

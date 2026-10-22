@@ -10,6 +10,8 @@ export interface LibraryBook {
   author: string;
   /** Imported cover image URL. */
   cover: string;
+  /** Portrait cover for the detail page; falls back to `cover`. */
+  detailCover?: string;
   status: ReadingStatus;
   pages: number;
   /** Page the reader stopped at; 0 for a book that is not started. */
@@ -59,3 +61,55 @@ export interface Library {
 }
 
 export type LibrarySort = 'recent' | 'title' | 'author';
+
+export type ReviewAudience = 'friends' | 'public';
+
+export interface BookEdition {
+  publishedYear: number;
+  publisher: string;
+  isbn: string;
+  genres: string[];
+}
+
+export interface FriendReview {
+  id: string;
+  initials: string;
+  name: string;
+  rating: number;
+  finishedLabel: string;
+  quote: string;
+}
+
+export interface PublicReview {
+  id: string;
+  initials: string;
+  name: string;
+  rating: number;
+  helpfulCount: number;
+  quote: string;
+}
+
+export interface ReadingClubSummary {
+  name: string;
+  monthLabel: string;
+  memberCount: number;
+  deadlineLabel: string;
+}
+
+export interface BookDetail {
+  tagline: string;
+  synopsis: string;
+  readThroughLabel: string;
+  edition: BookEdition;
+  friends: FriendReview[];
+  friendCount?: number;
+  publicRating: number;
+  publicRatingCount: number;
+  publicReviews: PublicReview[];
+  club?: ReadingClubSummary;
+  thoughts: {
+    rating: number;
+    comment: string;
+    audience: ReviewAudience;
+  };
+}

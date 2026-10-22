@@ -15,6 +15,8 @@ Open the Vite URL (normally http://localhost:5173), then visit `/home`. The plac
 
 The library prototype is at `/library`. It currently uses mock data in `src/mocks/library.ts`; the layout, filters, cards and shelves are already in place, and the API wiring comes when the library endpoints exist.
 
+Opening a book goes to `/library/:bookId`. The detail page covers your reading progress, edition, thoughts, friends' reviews and reading-club activity; “Start session” opens `/session/:bookId`. The active-session page runs the mock Emma session, including the separate `ReadingTimer` component, page/percentage progress editing and the eligible-group rail. Both pages fall back to a friendly message for an unknown book id and use mock data until the book and session APIs exist.
+
 The default API base is `/api`. Vite proxies `/api/health` to `http://localhost:3000/health`, avoiding browser CORS errors. If your backend uses a different local port, change the proxy target in `vite.config.ts`. Copy `.env.example` to `.env.local` only if overriding the API base. Requests time out after ten seconds.
 
 If a local `.env` or `.env.local` still sets `VITE_API_BASE_URL=http://localhost:3000`, change it to `/api` and restart Vite. An absolute backend URL bypasses the development proxy and requires backend CORS headers. Environment files are read when Vite starts.
@@ -45,10 +47,12 @@ Lint uses Oxlint and ESLint with `eslint-plugin-vue`. Formatting uses the root P
 
 - `src/assets/styles/tokens.css`: the five brand colors, semantic aliases, typography, spacing and radii. Brand hex values are defined once here.
 - `src/assets/styles/main.css`: global styles consuming tokens.
-- `src/views/`: Login, Home and not-found placeholders, the responsive [library page](src/views/LibraryView.vue), and component tests in `__tests__/`.
-- `src/components/library/`: the reusable [book card](src/components/library/LibraryBookCard.vue) and the [“Your shelves” side menu](src/components/library/LibrarySidebar.vue).
-- `src/mocks/library.ts`, `src/types/library.ts`, `src/utils/library.ts`: mock library data, domain types and filtering, progress and sorting helpers. Replace the mock with API data once the backend endpoints exist.
-- `src/assets/covers/`: the six book cover crops used by the library prototype.
+- `src/views/`: Login, Home and not-found placeholders, the responsive [library page](src/views/LibraryView.vue), [book detail](src/views/BookDetailView.vue), [active session](src/views/ActiveSessionView.vue), and view tests in `__tests__/`.
+- `src/components/library/`: the reusable [book card](src/components/library/LibraryBookCard.vue), the [“Your shelves” side menu](src/components/library/LibrarySidebar.vue), and the book-detail reading, edition, thoughts, review and reading-club panels.
+- `src/components/session/`: the separate [reading timer](src/components/session/ReadingTimer.vue) with pause, resume and stop events.
+- `src/mocks/library.ts`, `src/types/library.ts`, `src/utils/library.ts`: mock library and book-detail data, domain types and filtering, progress and sorting helpers. Replace the mock with API data once the backend endpoints exist.
+- `src/mocks/session.ts`, `src/types/session.ts`: the mock active session (including eligible groups and rules) and its types. Replace them when the session API exists.
+- `src/assets/covers/`: the book cover crops used by the library and detail prototypes, including the portrait Emma detail cover.
 - `src/router/`: routes and router tests.
 - `src/services/api.ts`: configurable health request and response validation.
 

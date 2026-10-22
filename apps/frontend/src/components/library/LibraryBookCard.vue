@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { RouterLink, useRouter } from 'vue-router';
 
 import type { LibraryBook } from '@/types/library';
 import { progressPercent, readingStatusLabels } from '@/utils/library';
@@ -8,24 +9,35 @@ const props = defineProps<{ book: LibraryBook }>();
 
 defineEmits<{ menu: [book: LibraryBook] }>();
 
+const router = useRouter();
+
 const statusLabel = computed(() => readingStatusLabels[props.book.status]);
 const percent = computed(() => progressPercent(props.book));
+const bookRoute = computed(() => ({
+  name: 'book-detail',
+  params: { bookId: props.book.id },
+}));
+
+function openBook(event: MouseEvent) {
+  const target = event.target as HTMLElement | null;
+  if (target?.closest('a, button')) return;
+  void router.push(bookRoute.value);
+}
 </script>
 
 <template>
-  <article class="card">
-    <a
+  <article class="card" @click="openBook">
+    <RouterLink
       class="cover-link"
-      href="#"
+      :to="bookRoute"
       :aria-label="`Open ${book.title} by ${book.author}`"
-      @click.prevent
     >
       <img class="cover" :src="book.cover" :alt="`Cover of ${book.title}`" loading="lazy" />
-    </a>
+    </RouterLink>
 
     <div class="body">
       <h3 class="title">
-        <a href="#" @click.prevent>{{ book.title }}</a>
+        <RouterLink :to="bookRoute">{{ book.title }}</RouterLink>
       </h3>
       <p class="author">{{ book.author }}</p>
 
@@ -71,6 +83,7 @@ const percent = computed(() => progressPercent(props.book));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
+  cursor: pointer;
 }
 
 .cover-link {

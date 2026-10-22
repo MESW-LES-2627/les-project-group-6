@@ -21,6 +21,20 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('library');
   });
 
+  it('routes to a book detail page with the book id', async () => {
+    await router.push('/library/emma');
+
+    expect(router.currentRoute.value.name).toBe('book-detail');
+    expect(router.currentRoute.value.params.bookId).toBe('emma');
+  });
+
+  it('routes to the active session for a book id', async () => {
+    await router.push('/session/emma');
+
+    expect(router.currentRoute.value.name).toBe('active-session');
+    expect(router.currentRoute.value.params.bookId).toBe('emma');
+  });
+
   it('routes unknown paths to the not-found page', async () => {
     await router.push('/unknown');
 

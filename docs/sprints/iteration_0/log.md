@@ -22,6 +22,8 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Frontend routes (#64) | Initial routes implemented |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
 | Library page prototype (#76) | Responsive `/library` UI with mock data, reusable card and shelves components, filters and tests; API wiring and menu actions still to do |
+| Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels; API wiring still to do |
+| Active reading session | Responsive `/session/:bookId` with a separate timer, progress editor, session notes and group-counting rail; save wiring still to do |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
 | Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
 | MVP, vertical prototype, CLAIM, release notes | Empty, to be written |
@@ -176,11 +178,23 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Reused the shared tokens and global styles from the [frontend foundations](#2026-10-22-frontend-tokens-health-status-and-checks-64) and added the small surface, divider and progress pieces the page needs. No new ADR: this is the agreed Vue/TypeScript stack and the existing palette, with the library-specific layout kept in the view and components.
 - Added component and view tests, the `/library` route and route test, and documented the route and source layout in [`apps/frontend/README.md`](../../../apps/frontend/README.md). Verified formatting, lint, `vue-tsc`, 16 tests, the production build and screenshots at 1264 px, 800 px and 390 px.
 
+### 2026-10-22: Book detail page
+
+- Added the responsive [`/library/:bookId` page](../../../apps/frontend/src/views/BookDetailView.vue) from the [book-detail design](../../design/screens/07-book-detail.png). Library cards now open the page from the cover, title or body, while the card itself keeps its existing menu and status controls.
+- Split the page into [reading](../../../apps/frontend/src/components/library/BookReadingPanel.vue), [edition](../../../apps/frontend/src/components/library/BookEditionPanel.vue), [thoughts](../../../apps/frontend/src/components/library/BookThoughtsPanel.vue), [review](../../../apps/frontend/src/components/library/ReviewItem.vue) and [reading-club](../../../apps/frontend/src/components/library/ReadingClubPanel.vue) components. The Emma mock reproduces the design content, with a portrait [detail cover](../../../apps/frontend/src/assets/covers/emma-detail.png) and a generic fallback for other books.
+- Added the detail route and tests for the view, library-card navigation and router. Unknown ids show a friendly message and a link back to the library. Verified the responsive layout at desktop and mobile widths; the backend book endpoint and real review/club data are still placeholders.
+
+### 2026-10-22: Active reading session
+
+- Added the responsive [`/session/:bookId` page](../../../apps/frontend/src/views/ActiveSessionView.vue) from the [active-session design](../../design/screens/10-active-session.png), opened by the “Start session” button on the [book reading panel](../../../apps/frontend/src/components/library/BookReadingPanel.vue).
+- Built the [timer as a separate component](../../../apps/frontend/src/components/session/ReadingTimer.vue) with running and paused states, pause/resume/stop events and autoplay. The page keeps the page and percentage fields in sync, shows the session note and saves-back count, and brings the eligible groups, profile-total explanation and locked rules into a responsive right rail.
+- Added [session types](../../../apps/frontend/src/types/session.ts), [mock session data](../../../apps/frontend/src/mocks/session.ts), the session route and timer/view/router tests. “Stop & save” returns to the book detail page for now; persisting the session is deferred until the backend endpoints exist. The layout was checked against the 1266×886 reference and at 390 px without horizontal overflow.
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
 - Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands, (frontend CI is now enabled).
-- Wire the library page to the library API when the backend endpoints exist; replace the mock data and implement the folder and card menu actions.
+- Wire the library, book-detail and active-session pages to the backend when those endpoints exist; replace the mock data, implement the folder and card menu actions, and persist a stopped session.
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
 - Create the issues for Extras once Core is under way.
