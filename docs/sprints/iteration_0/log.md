@@ -163,6 +163,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Set up backend test structure under `apps/backend/tests/` (`helpers/`, `integration/`) with integration tests for health check and user repository.
 - Documented [ADR-0004: Database Host, Access Library and Migrations](../../ADRs/0004-database-access-and-migrations.md) (PostgreSQL 17, Drizzle ORM and Drizzle Kit).
 - Added PostgreSQL 17 service container and migration step to GitHub Actions ([`.github/workflows/backend-ci.yml`](../../../.github/workflows/backend-ci.yml)) for CI test execution.
+- Added production migration job `migrate-production` to [`.github/workflows/backend-ci.yml`](../../../.github/workflows/backend-ci.yml) targeting Supabase using `PROD_DATABASE_URL` upon merge to `main`.
 - Updated [`apps/backend/README.md`](../../../apps/backend/README.md) and [`docs/README.md`](../../README.md).
 
 ## Next steps
