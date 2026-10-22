@@ -63,7 +63,7 @@ Deliverables for the Software Engineering Lab (LES) classes, one folder per iter
 | `iteration_N/release_notes.md` | Summary of the iteration, written at the end from the log and the closed issues. | ⬜ |
 | `iteration_N/CLAIM.md` | The team's claim document for the iteration, delivered to the LES class. | ⬜ |
 | [`iteration_0/vision.md`](sprints/iteration_0/vision.md) | Product vision. | ✅ |
-| `iteration_0/mvp.md` | Definition of the MVP. | ⬜ |
+| `iteration_0/mvp.md` | Definition of the MVP. | ✅ |
 | `iteration_0/vertical_prototype.md` | Plan for the vertical prototype (a thin slice through every layer). | ⬜ |
 
 ## `OOP_documents/`
