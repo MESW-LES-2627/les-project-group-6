@@ -112,6 +112,13 @@ Settings for both services (stg gets its own environment values, never the prod 
 - Health check path: `/health`. Render sets `PORT` itself.
 - Environment: `NODE_OPTIONS=--max-old-space-size=384` (free instance has 512 MB), and `DATABASE_URL` (Supabase pooler connection string) once the database is set up.
 
+The frontend runs on Render as a static site (no Dockerfile; Vite builds plain files). Staging is deployed only by `frontend-cd-stg.yml`, the same way as the backend: run "Frontend CD (stg)" by hand and pick the branch in "Use workflow from". It needs the secret `RENDER_API_KEY`, the variable `RENDER_FRONTEND_STG_SERVICE_ID` and Auto-Deploy turned off on the stg site. Settings for the static site:
+
+- Root Directory empty (the pnpm lockfile lives at the repository root).
+- Build command: `pnpm install --frozen-lockfile --filter @bookmarked/frontend... && pnpm --filter @bookmarked/frontend build` (no `corepack enable`: `/usr/bin` is read-only on Render and `pnpm` is already there).
+- Publish directory: `apps/frontend/dist`.
+- Redirects/Rewrites, in this order: `/api/*` rewrite to `https://<backend-service>.onrender.com/*` (so `VITE_API_BASE_URL=/api` works and no CORS is needed), then `/*` rewrite to `/index.html` (the router uses history mode).
+
 To try the image locally: `docker build -f apps/backend/Dockerfile -t bookmarked-backend .` then `docker run -p 3000:3000 bookmarked-backend`.
 
 A pull request must be green before review. Run `make check` locally to run the same checks before pushing.
