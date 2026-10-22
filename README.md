@@ -41,6 +41,7 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 ├── tsconfig.base.json
 ├── .nvmrc
 ├── .npmrc
+├── .dockerignore
 ├── .editorconfig
 ├── .prettierrc.json
 └── .prettierignore
@@ -66,7 +67,7 @@ Shared by every app, so a change is made in one place:
 - `.nvmrc`: the Node.js version, 24 LTS (run `nvm use`). `engines` in `package.json` requires the same version, and `.npmrc` sets `engine-strict=true` so `pnpm install` fails on an older Node.
 - `.editorconfig`, `.prettierrc.json` and `.prettierignore`: the same formatting everywhere.
 
-Per-app files stay in each app: `package.json`, `tsconfig.json`, ESLint config and `.env.example`. Each app still has its own CI workflow and deploy.
+Per-app files stay in each app: `package.json`, `tsconfig.json`, ESLint config, `.env.example` and, for deployed apps, a `Dockerfile` (built from the repository root, see `.dockerignore`). Each app still has its own CI workflow and deploy.
 
 ### `docs/`
 
@@ -93,10 +94,20 @@ GitHub configuration: the pull request template, the issue templates (`ISSUE_TEM
 
 #### Continuous integration
 
-Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks and `<app>-cd.yml` for deploys (CD is not set up yet), so each app's CI and CD stay separate. A change to one app does not run the other app's checks:
+Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks (and `<app>-cd.yml` if a deploy workflow is ever needed), so each app's CI stays separate. A change to one app does not run the other app's checks:
 
 - `backend-ci.yml`: runs on every pull request to `main` and on push to `main` when `apps/backend/`, the shared root config or the workflow itself changes. It installs with the locked dependencies, then runs lint, format check, typecheck, tests and build.
 - `frontend-ci.yml`: the same steps for `apps/frontend/`. It is fully commented out until the frontend exists; uncomment it when `apps/frontend/package.json` is added.
+
+#### Deploy (Render)
+
+The backend is deployed on Render as a Docker web service linked to this repository, so Render builds and deploys on every push to the selected branch. There is no CD workflow in GitHub Actions. Service settings:
+
+- Runtime: Docker, Root Directory empty, Dockerfile Path `apps/backend/Dockerfile`, Docker Build Context `.`
+- Health check path: `/health`. Render sets `PORT` itself.
+- Environment: `NODE_OPTIONS=--max-old-space-size=384` (free instance has 512 MB), and `DATABASE_URL` (Supabase pooler connection string) once the database is set up.
+
+To try the image locally: `docker build -f apps/backend/Dockerfile -t bookmarked-backend .` then `docker run -p 3000:3000 bookmarked-backend`.
 
 A pull request must be green before review. Run `make check` locally to run the same checks before pushing.
 

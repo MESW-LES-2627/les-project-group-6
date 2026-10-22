@@ -150,9 +150,15 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added a backend `test` script (`tsx --test "src/**/*.test.ts"`, the Node.js test runner) and a root `test` script. It passes while there are no tests, so CI is green now and starts checking as soon as the first `*.test.ts` lands. The test runner can still be replaced (for example by Vitest) in its own ADR.
 - Still open from #65: the Postgres service container and `db:migrate` (no database yet), `packages/shared` (does not exist yet) and the branch protection rule on `main` (needs an admin).
 
+### 2026-10-22: Backend deploy to Render
+
+- Added a backend [`Dockerfile`](../../../apps/backend/Dockerfile) and a root [`.dockerignore`](../../../.dockerignore). The Dockerfile is multi-stage on `node:24-alpine`: it builds with the workspace lockfile from the repository root, keeps only production dependencies (`pnpm deploy --prod`) and runs as the `node` user. Tested locally: the image builds and `/health` answers. Render settings are in the [README](../../../README.md).
+- **Decision: host the backend on Render (free tier) as a Docker web service linked to the repository.** *Why:* the repo owner approved the Render GitHub app, so Render builds and deploys on push with no CD workflow or registry; Docker keeps the local and deployed runtime the same. *Rejected:* pushing a prebuilt image to GHCR from Actions (only needed while Render had no repo access), a personal mirror of the repo (forking is disabled), AWS EC2 and Oracle VMs (we would manage OS, HTTPS and billing), Vercel serverless for the API (no long-lived process). *Trade-off:* the free instance has 0.1 vCPU and 512 MB and sleeps after 15 minutes idle, so the first request after a pause is slow. Chat realtime is planned on Supabase Realtime so the backend does not hold WebSockets.
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
+- Point the Render backend service at `main` once this branch is merged, and add `DATABASE_URL` when Supabase is set up.
 - Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands, and uncomment `frontend-ci.yml` when `apps/frontend` exists.
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
