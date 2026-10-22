@@ -1,64 +1,60 @@
-# Frontend CI, disabled until apps/frontend exists.
-# To enable it: uncomment everything below, check that apps/frontend/package.json
-# is named @bookmarked/frontend and defines lint, typecheck, test and build.
-#
-# name: Frontend CI
-#
-# on:
-#   pull_request:
-#     branches: [main]
-#     paths: &paths
-#       - apps/frontend/**
-#       - package.json
-#       - pnpm-lock.yaml
-#       - pnpm-workspace.yaml
-#       - tsconfig.base.json
-#       - .nvmrc
-#       - .npmrc
-#       - .prettierrc.json
-#       - .prettierignore
-#       - .github/workflows/frontend-ci.yml
-#   push:
-#     branches: [main]
-#     paths: *paths
-#
-# permissions:
-#   contents: read
-#
-# concurrency:
-#   group: frontend-ci-${{ github.ref }}
-#   cancel-in-progress: true
-#
-# jobs:
-#   frontend:
-#     name: frontend
-#     runs-on: ubuntu-latest
-#     timeout-minutes: 10
-#     steps:
-#       - uses: actions/checkout@v5
-#
-#       # Uses the pnpm version pinned in packageManager (root package.json)
-#       - uses: pnpm/action-setup@v4
-#
-#       - uses: actions/setup-node@v5
-#         with:
-#           node-version-file: .nvmrc
-#           cache: pnpm
-#
-#       - name: Install
-#         run: pnpm install --frozen-lockfile
-#
-#       - name: Lint
-#         run: pnpm --filter @bookmarked/frontend lint
-#
-#       - name: Format check
-#         run: pnpm exec prettier --check apps/frontend
-#
-#       - name: Typecheck
-#         run: pnpm --filter @bookmarked/frontend typecheck
-#
-#       - name: Test
-#         run: pnpm --filter @bookmarked/frontend test
-#
-#       - name: Build
-#         run: pnpm --filter @bookmarked/frontend build
+name: Frontend CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths: &paths
+      - apps/frontend/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - tsconfig.base.json
+      - .nvmrc
+      - .npmrc
+      - .prettierrc.json
+      - .prettierignore
+      - .github/workflows/frontend-ci.yml
+  push:
+    branches: [main]
+    paths: *paths
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      # Uses the pnpm version pinned in packageManager (root package.json)
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter @bookmarked/frontend lint
+
+      - name: Format check
+        run: pnpm exec prettier --check apps/frontend
+
+      - name: Typecheck
+        run: pnpm --filter @bookmarked/frontend typecheck
+
+      - name: Test
+        run: pnpm --filter @bookmarked/frontend test
+
+      - name: Build
+        run: pnpm --filter @bookmarked/frontend build

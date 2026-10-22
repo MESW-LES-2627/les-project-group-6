@@ -20,6 +20,8 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
 | Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done |
 | Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
+| Frontend routes (#64) | Initial routes implemented |
+| Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
 | Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
 | MVP, vertical prototype, CLAIM, release notes | Empty, to be written |
@@ -166,6 +168,38 @@ A running record of what the team did and decided in iteration 0. The [release n
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
 - Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands, and uncomment `frontend-ci.yml` when `apps/frontend` exists.
+
+### 2026-10-22: Frontend routes (#64)
+
+- Added the initial Vue Router routes: `/` redirects to `/login` (the requirements say the authentication page appears when the app opens), `/login` and `/home` show placeholders, and unknown paths show the not-found page.
+- Added router tests for the root redirect, home route and unknown-path fallback.
+
+### 2026-10-22: Frontend tokens, health status and checks (#64)
+
+- Extended [CSS tokens](../../../apps/frontend/src/assets/styles/tokens.css) with semantic aliases, typography and spacing. Based on the [Home](../../design/screens/05-home.png) and [authentication](../../design/screens/01-authentication.png) screenshots, use Lora for headings and Inter for body/controls, with warm neutral surfaces alongside the unchanged brand palette.
+- Added a [Home health status](../../../apps/frontend/src/views/HomeView.vue) using the [API service](../../../apps/frontend/src/services/api.ts), including loading, backend response and error states. Use a same-origin `/api` proxy locally rather than adding backend CORS for development; production needs equivalent host routing or an explicit API URL with CORS. See the [frontend guide](../../../apps/frontend/README.md).
+- Made lint and tests suitable for CI (no automatic edits or watch mode), added Prettier commands and [component coverage](../../../apps/frontend/src/views/__tests__/HomeView.spec.ts) for successful and failed health calls, and enabled [frontend CI](../../../.github/workflows/frontend-ci.yml). Verified lint, formatting, vue-tsc, 7 tests and production build; the running Vite proxy returned `{ "status": "ok" }` from `/api/health`. Production smoke verification awaits deployment.
+
+### 2026-10-22: Fix local health request CORS error
+
+- The ignored frontend `.env` still pointed directly to `http://localhost:3000`, bypassing the configured Vite proxy. Changed its API base to `/api`; no backend change is needed for the same-origin development setup. Added [troubleshooting instructions](../../../apps/frontend/README.md) for stale environment overrides and restarting Vite.
+
+### 2026-10-22: Backend deploy to Render
+
+- Added a backend [`Dockerfile`](../../../apps/backend/Dockerfile) and a root [`.dockerignore`](../../../.dockerignore). The Dockerfile is multi-stage on `node:24-alpine`: it builds with the workspace lockfile from the repository root, keeps only production dependencies (`pnpm deploy --prod`) and runs as the `node` user. Tested locally: the image builds and `/health` answers. Render settings are in the [README](../../../README.md).
+- **Decision: host the backend on Render (free tier) as a Docker web service linked to the repository.** *Why:* the repo owner approved the Render GitHub app, so Render builds and deploys on push with no CD workflow or registry; Docker keeps the local and deployed runtime the same. *Rejected:* pushing a prebuilt image to GHCR from Actions (only needed while Render had no repo access), a personal mirror of the repo (forking is disabled), AWS EC2 and Oracle VMs (we would manage OS, HTTPS and billing), Vercel serverless for the API (no long-lived process). *Trade-off:* the free instance has 0.1 vCPU and 512 MB and sleeps after 15 minutes idle, so the first request after a pause is slow. Chat realtime is planned on Supabase Realtime so the backend does not hold WebSockets.
+
+### 2026-10-22: Backend staging deploy
+
+- Added [`backend-cd-stg.yml`](../../../.github/workflows/backend-cd-stg.yml): a manual workflow that deploys the branch picked in "Use workflow from" to a separate Render stg service, through the Render API (switch the service branch, deploy that commit, wait for `live`, check `/health`). Prod keeps Render auto-deploy from `main`.
+- **Decision: drive stg with the Render API from a workflow.** *Why:* the team wants to choose which branch goes to stg; a Render deploy hook always deploys the service's configured branch, so it cannot. *Rejected:* Render auto-deploy for stg (fixed branch), deploy hooks (fixed branch), Render preview environments (paid plan), building images in GHCR (more moving parts and a registry credential). *Trade-off:* needs a Render API key as a repository secret, which only the repo admin can add, and the key has access to the whole Render workspace.
+
+## Next steps
+
+- Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
+- Point the Render backend service at `main` once this branch is merged, and add `DATABASE_URL` when Supabase is set up.
+- Create the Render stg service (Auto-Deploy off), add the `RENDER_API_KEY` secret and the `RENDER_BACKEND_STG_SERVICE_ID` variable (repo admin), and use a separate Supabase project for stg.
+- Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands. Frontend CI is now enabled.
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
 - Create the issues for Extras once Core is under way.

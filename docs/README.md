@@ -29,7 +29,7 @@ Tasks and bugs are not documented here: they live in GitHub Issues and on the Pr
 
 | File | Purpose | Status |
 |---|---|---|
-| [`README.md`](design/README.md) | Link to the Figma file (source of truth), the color palette, and the screen snapshots with how to re-export them. | ✅ |
+| [`README.md`](design/README.md) | Link to the Figma file (source of truth), the color palette, Lora/Inter typography and frontend token links, and the screen snapshots with how to re-export them. | ✅ |
 | `screens/*.png` | 18 desktop screen snapshots exported from Figma, numbered by flow (`01-authentication.png` to `18-retrospective.png`). They can be out of date: check Figma. | ✅ |
 
 ## `ADRs/`
@@ -58,7 +58,7 @@ Deliverables for the Software Engineering Lab (LES) classes, one folder per iter
 
 | File | Purpose | Status |
 |---|---|---|
-| `iteration_N/log.md` | Running record of what the team did and decided in the iteration, with links to commits and assets. Kept up to date as required by [`AGENTS.md`](../AGENTS.md). | ✅ for [iteration 0](sprints/iteration_0/log.md), ⬜ for 1 to 4 |
+| `iteration_N/log.md` | Running record of what the team did and decided in the iteration, including frontend foundations, checks and local API environment troubleshooting, with links to commits and assets. Kept up to date as required by [`AGENTS.md`](../AGENTS.md). | ✅ for [iteration 0](sprints/iteration_0/log.md), ⬜ for 1 to 4 |
 | `iteration_N/LLM_LOG.md` | Log of LLM interactions and prompts used by the team during the iteration. | ✅ for [iteration 0](sprints/iteration_0/LLM_LOG.md) to 4 (templates set) |
 | `iteration_N/release_notes.md` | Summary of the iteration, written at the end from the log and the closed issues. | ⬜ |
 | `iteration_N/CLAIM.md` | The team's claim document for the iteration, delivered to the LES class. | ⬜ |
