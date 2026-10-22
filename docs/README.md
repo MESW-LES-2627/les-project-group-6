@@ -41,6 +41,7 @@ Architecture Decision Records. One file per decision, numbered `NNNN-short-title
 | [`0001-choose-tech-stack.md`](ADRs/0001-choose-tech-stack.md) | TypeScript with Vue on the frontend and TypeScript on Node on the backend, and why other options were rejected. | ✅ |
 | [`0002-external-dependencies.md`](ADRs/0002-external-dependencies.md) | Supabase Auth, Open Library API and Resend, and the rule of hiding each behind an interface we own. | ✅ |
 | [`0003-backend-http-framework.md`](ADRs/0003-backend-http-framework.md) | Express 5 as the backend HTTP layer, chosen over Hono and Fastify for team familiarity and ecosystem. | ✅ |
+| [`0004-database-access-and-migrations.md`](ADRs/0004-database-access-and-migrations.md) | PostgreSQL 17 on Docker Compose, Supabase in production, Drizzle Kit for migrations and Drizzle ORM for querying. | ✅ |
 
 ## `architecture/`
 

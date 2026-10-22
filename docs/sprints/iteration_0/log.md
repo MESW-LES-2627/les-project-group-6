@@ -150,6 +150,14 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added a backend `test` script (`tsx --test "src/**/*.test.ts"`, the Node.js test runner) and a root `test` script. It passes while there are no tests, so CI is green now and starts checking as soon as the first `*.test.ts` lands. The test runner can still be replaced (for example by Vitest) in its own ADR.
 - Still open from #65: the Postgres service container and `db:migrate` (no database yet), `packages/shared` (does not exist yet) and the branch protection rule on `main` (needs an admin).
 
+### 2026-10-22: Database connection and migrations setup (#63)
+
+- Added [`docker-compose.yml`](../../../docker-compose.yml) running PostgreSQL 17 on port `5432` for isolated local development.
+- Created [`schema.sql`](../../../apps/backend/database/schema.sql) under `apps/backend/database/` defining the full relational table specification from `table_UML.md`.
+- Configured Drizzle Kit via [`apps/backend/drizzle.config.ts`](../../../apps/backend/drizzle.config.ts) with migrations stored in `apps/backend/database/migrations/`.
+- Documented [ADR-0004: Database Host, Access Library and Migrations](../../ADRs/0004-database-access-and-migrations.md) (PostgreSQL 17, Drizzle ORM and Drizzle Kit).
+- Updated [`apps/backend/README.md`](../../../apps/backend/README.md) and [`docs/README.md`](../../README.md).
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
