@@ -101,7 +101,12 @@ Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks (
 
 #### Deploy (Render)
 
-The backend is deployed on Render as a Docker web service linked to this repository, so Render builds and deploys on every push to the selected branch. There is no CD workflow in GitHub Actions. Service settings:
+The backend runs on Render as two Docker web services linked to this repository:
+
+- **prod**: Render auto-deploys on every push to its branch (`main`).
+- **stg**: deployed only by `backend-cd-stg.yml`. Run it by hand (Actions, "Backend CD (stg)", "Run workflow") and pick any branch in "Use workflow from". It points the stg service at that branch through the Render API, deploys that commit, waits until it is live and checks `/health`. It needs the secret `RENDER_API_KEY` and the variable `RENDER_BACKEND_STG_SERVICE_ID` (the `srv-...` id), and Auto-Deploy turned off on the stg service.
+
+Settings for both services (stg gets its own environment values, never the prod database):
 
 - Runtime: Docker, Root Directory empty, Dockerfile Path `apps/backend/Dockerfile`, Docker Build Context `.`
 - Health check path: `/health`. Render sets `PORT` itself.
