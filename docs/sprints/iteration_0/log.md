@@ -166,6 +166,10 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added production migration job `migrate-production` to [`.github/workflows/backend-ci.yml`](../../../.github/workflows/backend-ci.yml) targeting Supabase using `PROD_DATABASE_URL` upon merge to `main`.
 - Updated [`apps/backend/README.md`](../../../apps/backend/README.md) and [`docs/README.md`](../../README.md).
 
+### 2026-10-22: CLAIM with deployed environments
+
+- Started the [iteration 0 CLAIM](CLAIM.md) with the production and staging links for the frontend and backend (the `api-` links, which also serve `/health`) and a short summary: both apps deployed in prod and stg on Render, database on Supabase.
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
@@ -211,7 +215,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
 - Create the issues for Extras once Core is under way.
 - Resolve the open questions in the requirements.
-- Write the MVP definition, the vertical prototype plan and the CLAIM.
+- Write the MVP definition, the vertical prototype plan and the rest of the CLAIM.
 - Decide whether Supabase also serves as the database (new ADR), and close the other open decisions in [`infra.md`](../../architecture/infra.md).
 - Update `table_UML.md` for Supabase Auth: remove `USER.password_hash` and `PASSWORD_RESET_TOKEN`, add `USER.timezone`.
 - Write the release notes at the end of the iteration.

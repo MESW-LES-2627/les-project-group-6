@@ -349,3 +349,20 @@ now, I would like to create another github workflow to deploy frontend branch to
 
 #### Explanation of Changes
 Added `.github/workflows/frontend-cd-stg.yml`, a manual workflow that deploys the chosen branch to a Render static site through the Render API. Documented the static site settings (pnpm build command without `corepack enable`, publish directory, `/api/*` and SPA rewrites) in the README and the decision in the iteration log.
+
+### 2026-10-22: CLAIM deployed environments
+
+- **Date:** 2026-10-22
+- **Author:** Robert Gleison
+- **Model:** Claude Sonnet 5.5
+- **Tool:** Claude Code
+- **Domain:** docs
+
+#### Prompt
+```text
+add these links to CLAIM.md, the ones with stg is staging env, the ones with api. prefix is the backend link. Also the /health routes to be accessible to backend link. Add a tiny description of what we have until now: front and back deployed in prod and stg, database in supabase
+```
+
+#### Explanation of Changes
+Filled the iteration 0 `CLAIM.md` with a table of the production and staging frontend and backend links, the backend `/health` links, and a two-line summary of what is deployed.
+
