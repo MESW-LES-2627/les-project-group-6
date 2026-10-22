@@ -1,13 +1,9 @@
 import process from 'node:process';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import pg from 'pg';
+import { createPool } from './pool.js';
 
-const pool = new pg.Pool({
-  connectionString:
-    process.env.DATABASE_URL ?? 'postgresql://postgres:password123@localhost:5432/bookmarked_dev',
-});
-
+const pool = createPool();
 const db = drizzle(pool);
 
 async function runMigrations(): Promise<void> {
