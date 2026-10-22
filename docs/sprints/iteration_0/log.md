@@ -18,7 +18,8 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Kanban board (GitHub Project) | Created |
 | Database tables model | v1.0 drafted |
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
-| Infrastructure | Draft v0.1, database host and local setup still open |
+| Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done |
+| Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
 | Frontend routes (#64) | Initial routes implemented |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
 | Library page prototype (#76) | Responsive `/library` UI with mock data, reusable card and shelves components, filters and tests; API wiring and menu actions still to do |
@@ -155,6 +156,24 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added a backend `test` script (`tsx --test "src/**/*.test.ts"`, the Node.js test runner) and a root `test` script. It passes while there are no tests, so CI is green now and starts checking as soon as the first `*.test.ts` lands. The test runner can still be replaced (for example by Vitest) in its own ADR.
 - Still open from #65: the Postgres service container and `db:migrate` (no database yet), `packages/shared` (does not exist yet) and the branch protection rule on `main` (needs an admin).
 
+### 2026-10-22: Database connection and migrations setup (#63)
+
+- Added [`docker-compose.yml`](../../../docker-compose.yml) running PostgreSQL 17 on port `5432` for isolated local development.
+- Created [`schema.sql`](../../../apps/backend/database/schema.sql) under `apps/backend/database/` defining the full relational table specification from `table_UML.md`.
+- Configured Drizzle Kit via [`apps/backend/drizzle.config.ts`](../../../apps/backend/drizzle.config.ts) with migrations stored in `apps/backend/database/migrations/`.
+- Implemented database connection pooling with `pg.Pool` (`createPool`, `createDb`) and wired health check endpoint `GET /health` (`status: 'ok', db: 'ok'`).
+- Added example clean architecture domain entity and repository interface (`User`, `IUserRepository` in `src/domain/user.ts`) and Drizzle implementation (`DrizzleUserRepository` in `src/infrastructure/repositories/drizzle-user-repository.ts`).
+- Set up backend test structure under `apps/backend/tests/` (`helpers/`, `integration/`) with integration tests for health check and user repository.
+- Documented [ADR-0004: Database Host, Access Library and Migrations](../../ADRs/0004-database-access-and-migrations.md) (PostgreSQL 17, Drizzle ORM and Drizzle Kit).
+- Added PostgreSQL 17 service container and migration step to GitHub Actions ([`.github/workflows/backend-ci.yml`](../../../.github/workflows/backend-ci.yml)) for CI test execution.
+- Added production migration job `migrate-production` to [`.github/workflows/backend-ci.yml`](../../../.github/workflows/backend-ci.yml) targeting Supabase using `PROD_DATABASE_URL` upon merge to `main`.
+- Updated [`apps/backend/README.md`](../../../apps/backend/README.md) and [`docs/README.md`](../../README.md).
+
+## Next steps
+
+- Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
+- Turn on branch protection on `main` (required `backend` check and one approval), and uncomment `frontend-ci.yml` when `apps/frontend` exists.
+
 ### 2026-10-22: Frontend routes (#64)
 
 - Added the initial Vue Router routes: `/` redirects to `/login` (the requirements say the authentication page appears when the app opens), `/login` and `/home` show placeholders, and unknown paths show the not-found page.
@@ -169,6 +188,21 @@ A running record of what the team did and decided in iteration 0. The [release n
 ### 2026-10-22: Fix local health request CORS error
 
 - The ignored frontend `.env` still pointed directly to `http://localhost:3000`, bypassing the configured Vite proxy. Changed its API base to `/api`; no backend change is needed for the same-origin development setup. Added [troubleshooting instructions](../../../apps/frontend/README.md) for stale environment overrides and restarting Vite.
+
+### 2026-10-22: Backend deploy to Render
+
+- Added a backend [`Dockerfile`](../../../apps/backend/Dockerfile) and a root [`.dockerignore`](../../../.dockerignore). The Dockerfile is multi-stage on `node:24-alpine`: it builds with the workspace lockfile from the repository root, keeps only production dependencies (`pnpm deploy --prod`) and runs as the `node` user. Tested locally: the image builds and `/health` answers. Render settings are in the [README](../../../README.md).
+- **Decision: host the backend on Render (free tier) as a Docker web service linked to the repository.** *Why:* the repo owner approved the Render GitHub app, so Render builds and deploys on push with no CD workflow or registry; Docker keeps the local and deployed runtime the same. *Rejected:* pushing a prebuilt image to GHCR from Actions (only needed while Render had no repo access), a personal mirror of the repo (forking is disabled), AWS EC2 and Oracle VMs (we would manage OS, HTTPS and billing), Vercel serverless for the API (no long-lived process). *Trade-off:* the free instance has 0.1 vCPU and 512 MB and sleeps after 15 minutes idle, so the first request after a pause is slow. Chat realtime is planned on Supabase Realtime so the backend does not hold WebSockets.
+
+### 2026-10-22: Backend staging deploy
+
+- Added [`backend-cd-stg.yml`](../../../.github/workflows/backend-cd-stg.yml): a manual workflow that deploys the branch picked in "Use workflow from" to a separate Render stg service, through the Render API (switch the service branch, deploy that commit, wait for `live`, check `/health`). Prod keeps Render auto-deploy from `main`.
+- **Decision: drive stg with the Render API from a workflow.** *Why:* the team wants to choose which branch goes to stg; a Render deploy hook always deploys the service's configured branch, so it cannot. *Rejected:* Render auto-deploy for stg (fixed branch), deploy hooks (fixed branch), Render preview environments (paid plan), building images in GHCR (more moving parts and a registry credential). *Trade-off:* needs a Render API key as a repository secret, which only the repo admin can add, and the key has access to the whole Render workspace.
+
+### 2026-10-22: Frontend staging deploy
+
+- Added [`frontend-cd-stg.yml`](../../../.github/workflows/frontend-cd-stg.yml), the frontend twin of the backend stg workflow: it deploys the branch picked in "Use workflow from" to a Render static site through the Render API and checks that the site answers. Needs the variable `RENDER_FRONTEND_STG_SERVICE_ID`. Render settings are in the [README](../../../README.md).
+- **Decision: the frontend is a Render static site, not a Docker service.** *Why:* `vite build` produces plain files, a static site is served from Render's CDN and has no instance to sleep, and it needs no image. *Rejected:* an nginx Dockerfile (extra build time for no benefit on Render). *Trade-off:* a static site has no proxy, so `/api/*` is a Render rewrite to the backend, and the free workspace bandwidth (about 5 GB/month) is shared with the backend. The build command must not run `corepack enable` (read-only `/usr/bin` on Render).
 
 ### 2026-10-22: Library page prototype (#76)
 
@@ -193,7 +227,9 @@ A running record of what the team did and decided in iteration 0. The [release n
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
-- Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands, (frontend CI is now enabled).
+- Point the Render backend service at `main` once this branch is merged, and add `DATABASE_URL` when Supabase is set up.
+- Create the Render stg service (Auto-Deploy off), create the Render stg static site for the frontend, add the `RENDER_API_KEY` secret and the `RENDER_BACKEND_STG_SERVICE_ID` and `RENDER_FRONTEND_STG_SERVICE_ID` variables (repo admin), and use a separate Supabase project for stg.
+- Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands. Frontend CI is now enabled.
 - Wire the library, book-detail and active-session pages to the backend when those endpoints exist; replace the mock data, implement the folder and card menu actions, and persist a stopped session.
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
