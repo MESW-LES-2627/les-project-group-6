@@ -349,3 +349,26 @@ now, I would like to create another github workflow to deploy frontend branch to
 
 #### Explanation of Changes
 Added `.github/workflows/frontend-cd-stg.yml`, a manual workflow that deploys the chosen branch to a Render static site through the Render API. Documented the static site settings (pnpm build command without `corepack enable`, publish directory, `/api/*` and SPA rewrites) in the README and the decision in the iteration log.
+
+### 2026-10-22: Book domain entity, Drizzle repository, and CRUD endpoints (#78)
+
+- **Date:** 2026-10-22
+- **Author:** Vasco
+- **Model:** Gemini 3.8 Flash
+- **Tool:** Antigravity
+- **Domain:** backend, architecture, database, testing
+
+#### Prompt
+```text
+Take inspiration from the already implemented user files and define the structure for the book class and drizzle repository books as it was with the users, generate the spaces in app.ts for each endpoint with the expected response status results so the tests can be implemented right away.
+```
+
+#### Explanation of Changes
+Created the book domain and drizzle repository files from the user files, opened endpoints in `app.ts` for base book operations and created integration tests for said API calls and repository functions:
+- Created domain entity `Book` and repository interface `IBookRepository` in `apps/backend/src/domain/book.ts` using the `BookProps` constructor pattern.
+- Implemented `DrizzleBookRepository` in `apps/backend/src/infrastructure/repositories/drizzle-book-repository.ts` with methods for saving, finding by ID, searching by title substring (`ilike`), and deleting books.
+- Wired endpoints in `apps/backend/src/app.ts` (`POST /book`, `GET /book?title=...`, `GET /book/:id`, `DELETE /book/:id`) with proper HTTP status codes (`201`, `200`, `204`, `400`, `404`).
+- Implemented integration test suites in `apps/backend/tests/integration/book-repository.test.ts` and `apps/backend/tests/integration/book-api.test.ts`.
+- Set `--test-concurrency=1` in `apps/backend/package.json` to prevent database table truncation race conditions during test runs.
+- Documented the book API endpoints in `apps/backend/README.md` and updated the iteration 0 log.
+

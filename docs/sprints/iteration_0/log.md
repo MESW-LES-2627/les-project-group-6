@@ -20,6 +20,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
 | Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done |
 | Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
+| Vertical prototype book CRUD (#78) | Backend CRUD implemented: domain model, Drizzle repository, Express endpoints, and integration tests |
 | Frontend routes (#64) | Initial routes implemented |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
@@ -200,6 +201,21 @@ A running record of what the team did and decided in iteration 0. The [release n
 
 - Added [`frontend-cd-stg.yml`](../../../.github/workflows/frontend-cd-stg.yml), the frontend twin of the backend stg workflow: it deploys the branch picked in "Use workflow from" to a Render static site through the Render API and checks that the site answers. Needs the variable `RENDER_FRONTEND_STG_SERVICE_ID`. Render settings are in the [README](../../../README.md).
 - **Decision: the frontend is a Render static site, not a Docker service.** *Why:* `vite build` produces plain files, a static site is served from Render's CDN and has no instance to sleep, and it needs no image. *Rejected:* an nginx Dockerfile (extra build time for no benefit on Render). *Trade-off:* a static site has no proxy, so `/api/*` is a Render rewrite to the backend, and the free workspace bandwidth (about 5 GB/month) is shared with the backend. The build command must not run `corepack enable` (read-only `/usr/bin` on Render).
+
+### 2026-10-22: Vertical prototype book CRUD (#78)
+
+- Created domain entity `Book` and repository interface `IBookRepository` in [`apps/backend/src/domain/book.ts`](../../../apps/backend/src/domain/book.ts).
+- Implemented `DrizzleBookRepository` in [`apps/backend/src/infrastructure/repositories/drizzle-book-repository.ts`](../../../apps/backend/src/infrastructure/repositories/drizzle-book-repository.ts) with operations for saving, finding by ID, finding by title substring (`ilike`), and deleting books.
+- Added Express endpoints in [`apps/backend/src/app.ts`](../../../apps/backend/src/app.ts):
+  - `POST /book`: creates a new book (`201 Created`, requires `title`).
+  - `GET /book?title=...`: lists books or filters by title substring (`200 OK`).
+  - `GET /book/:id`: returns single book by UUID (`200 OK` or `404 Not Found`).
+  - `DELETE /book/:id`: deletes book by UUID (`204 No Content` or `404 Not Found`).
+- Added integration test suites in `apps/backend/tests/integration/`:
+  - [`book-repository.test.ts`](../../../apps/backend/tests/integration/book-repository.test.ts): repository CRUD operations against PostgreSQL.
+  - [`book-api.test.ts`](../../../apps/backend/tests/integration/book-api.test.ts): HTTP endpoint verification with `withApp`.
+- Updated backend test script to `--test-concurrency=1` to prevent database table truncation race conditions.
+- Updated [`apps/backend/README.md`](../../../apps/backend/README.md) with API endpoints documentation.
 
 ## Next steps
 

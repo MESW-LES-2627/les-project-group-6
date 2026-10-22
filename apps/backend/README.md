@@ -23,6 +23,16 @@ pnpm dev:backend
 
 Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db": "ok" }`.
 
+## API Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/health` | Health check returning `{ "status": "ok", "db": "ok" }` |
+| `POST` | `/book` | Creates a new book (`201 Created`, requires `title`) |
+| `GET` | `/book?title=...` | Lists books or filters by title substring (`200 OK`) |
+| `GET` | `/book/:id` | Returns a single book by UUID (`200 OK` or `404 Not Found`) |
+| `DELETE` | `/book/:id` | Deletes a book by UUID (`204 No Content` or `404 Not Found`) |
+
 ## Scripts
 
 Run them inside `apps/backend`, or from the root with `pnpm --filter @bookmarked/backend <script>`.
