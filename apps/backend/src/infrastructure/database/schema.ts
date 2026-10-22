@@ -253,16 +253,14 @@ export const bookClubRounds = pgTable(
 export const challenges = pgTable(
   'challenges',
   {
-    id: integer()
-      .primaryKey()
-      .generatedByDefaultAsIdentity({
-        name: 'challenges_id_seq',
-        startWith: 1,
-        increment: 1,
-        minValue: 1,
-        maxValue: 2147483647,
-        cache: 1,
-      }),
+    id: integer().primaryKey().generatedByDefaultAsIdentity({
+      name: 'challenges_id_seq',
+      startWith: 1,
+      increment: 1,
+      minValue: 1,
+      maxValue: 2147483647,
+      cache: 1,
+    }),
     groupId: uuid('group_id').notNull(),
     startDate: date('start_date').notNull(),
     endDate: date('end_date').notNull(),
@@ -299,16 +297,14 @@ export const challenges = pgTable(
 export const challengeStatus = pgTable(
   'challenge_status',
   {
-    id: integer()
-      .primaryKey()
-      .generatedByDefaultAsIdentity({
-        name: 'challenge_status_id_seq',
-        startWith: 1,
-        increment: 1,
-        minValue: 1,
-        maxValue: 2147483647,
-        cache: 1,
-      }),
+    id: integer().primaryKey().generatedByDefaultAsIdentity({
+      name: 'challenge_status_id_seq',
+      startWith: 1,
+      increment: 1,
+      minValue: 1,
+      maxValue: 2147483647,
+      cache: 1,
+    }),
     userId: uuid('user_id').notNull(),
     challengeId: integer('challenge_id').notNull(),
     code: varchar({ length: 20 }).notNull(),

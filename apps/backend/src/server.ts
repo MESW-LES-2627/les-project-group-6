@@ -1,10 +1,12 @@
 import { createApp } from './app.js';
 import { createPool } from './infrastructure/database/pool.js';
+import { DatabaseHealthCheck } from './infrastructure/database/health-check.js';
 
 const pool = createPool();
 const port = Number(process.env.PORT ?? 3000);
+const healthCheck = new DatabaseHealthCheck(pool);
 
-const server = createApp().listen(port, () => {
+const server = createApp({ healthCheck }).listen(port, () => {
   console.log(`Backend listening on http://localhost:${port}`);
 });
 
