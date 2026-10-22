@@ -18,7 +18,8 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Kanban board (GitHub Project) | Created |
 | Database tables model | v1.0 drafted |
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
-| Infrastructure | Draft v0.1, database host and local setup still open |
+| Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done |
+| Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
 | Frontend routes (#64) | Initial routes implemented |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
@@ -151,6 +152,24 @@ A running record of what the team did and decided in iteration 0. The [release n
 - **Decision: one workflow per app with path filters.** *Why:* the frontend and backend are built and deployed separately, so a backend change should not wait for frontend checks. Changes to the shared root config (lockfile, `tsconfig.base.json`, Prettier, Node version) trigger both. *Rejected:* a single `ci.yml` with both jobs (as first written in #65), simpler but runs everything on every change. *Trade-off:* a path-filtered check that does not run stays "pending" if it is marked as required in branch protection, so the required checks need care.
 - Added a backend `test` script (`tsx --test "src/**/*.test.ts"`, the Node.js test runner) and a root `test` script. It passes while there are no tests, so CI is green now and starts checking as soon as the first `*.test.ts` lands. The test runner can still be replaced (for example by Vitest) in its own ADR.
 - Still open from #65: the Postgres service container and `db:migrate` (no database yet), `packages/shared` (does not exist yet) and the branch protection rule on `main` (needs an admin).
+
+### 2026-10-22: Database connection and migrations setup (#63)
+
+- Added [`docker-compose.yml`](../../../docker-compose.yml) running PostgreSQL 17 on port `5432` for isolated local development.
+- Created [`schema.sql`](../../../apps/backend/database/schema.sql) under `apps/backend/database/` defining the full relational table specification from `table_UML.md`.
+- Configured Drizzle Kit via [`apps/backend/drizzle.config.ts`](../../../apps/backend/drizzle.config.ts) with migrations stored in `apps/backend/database/migrations/`.
+- Implemented database connection pooling with `pg.Pool` (`createPool`, `createDb`) and wired health check endpoint `GET /health` (`status: 'ok', db: 'ok'`).
+- Added example clean architecture domain entity and repository interface (`User`, `IUserRepository` in `src/domain/user.ts`) and Drizzle implementation (`DrizzleUserRepository` in `src/infrastructure/repositories/drizzle-user-repository.ts`).
+- Set up backend test structure under `apps/backend/tests/` (`helpers/`, `integration/`) with integration tests for health check and user repository.
+- Documented [ADR-0004: Database Host, Access Library and Migrations](../../ADRs/0004-database-access-and-migrations.md) (PostgreSQL 17, Drizzle ORM and Drizzle Kit).
+- Added PostgreSQL 17 service container and migration step to GitHub Actions ([`.github/workflows/backend-ci.yml`](../../../.github/workflows/backend-ci.yml)) for CI test execution.
+- Added production migration job `migrate-production` to [`.github/workflows/backend-ci.yml`](../../../.github/workflows/backend-ci.yml) targeting Supabase using `PROD_DATABASE_URL` upon merge to `main`.
+- Updated [`apps/backend/README.md`](../../../apps/backend/README.md) and [`docs/README.md`](../../README.md).
+
+## Next steps
+
+- Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
+- Turn on branch protection on `main` (required `backend` check and one approval), and uncomment `frontend-ci.yml` when `apps/frontend` exists.
 
 ### 2026-10-22: Frontend routes (#64)
 
