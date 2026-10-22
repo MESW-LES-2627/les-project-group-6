@@ -177,11 +177,16 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added [`backend-cd-stg.yml`](../../../.github/workflows/backend-cd-stg.yml): a manual workflow that deploys the branch picked in "Use workflow from" to a separate Render stg service, through the Render API (switch the service branch, deploy that commit, wait for `live`, check `/health`). Prod keeps Render auto-deploy from `main`.
 - **Decision: drive stg with the Render API from a workflow.** *Why:* the team wants to choose which branch goes to stg; a Render deploy hook always deploys the service's configured branch, so it cannot. *Rejected:* Render auto-deploy for stg (fixed branch), deploy hooks (fixed branch), Render preview environments (paid plan), building images in GHCR (more moving parts and a registry credential). *Trade-off:* needs a Render API key as a repository secret, which only the repo admin can add, and the key has access to the whole Render workspace.
 
+### 2026-10-22: Frontend staging deploy
+
+- Added [`frontend-cd-stg.yml`](../../../.github/workflows/frontend-cd-stg.yml), the frontend twin of the backend stg workflow: it deploys the branch picked in "Use workflow from" to a Render static site through the Render API and checks that the site answers. Needs the variable `RENDER_FRONTEND_STG_SERVICE_ID`. Render settings are in the [README](../../../README.md).
+- **Decision: the frontend is a Render static site, not a Docker service.** *Why:* `vite build` produces plain files, a static site is served from Render's CDN and has no instance to sleep, and it needs no image. *Rejected:* an nginx Dockerfile (extra build time for no benefit on Render). *Trade-off:* a static site has no proxy, so `/api/*` is a Render rewrite to the backend, and the free workspace bandwidth (about 5 GB/month) is shared with the backend. The build command must not run `corepack enable` (read-only `/usr/bin` on Render).
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
 - Point the Render backend service at `main` once this branch is merged, and add `DATABASE_URL` when Supabase is set up.
-- Create the Render stg service (Auto-Deploy off), add the `RENDER_API_KEY` secret and the `RENDER_BACKEND_STG_SERVICE_ID` variable (repo admin), and use a separate Supabase project for stg.
+- Create the Render stg service (Auto-Deploy off), create the Render stg static site for the frontend, add the `RENDER_API_KEY` secret and the `RENDER_BACKEND_STG_SERVICE_ID` and `RENDER_FRONTEND_STG_SERVICE_ID` variables (repo admin), and use a separate Supabase project for stg.
 - Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands. Frontend CI is now enabled.
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.

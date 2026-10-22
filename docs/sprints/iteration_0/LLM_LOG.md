@@ -284,3 +284,21 @@ i prefer the workflow because this way we can controle which branch go to stg
 
 #### Explanation of Changes
 Added `.github/workflows/backend-cd-stg.yml`, a manual workflow that deploys the chosen branch to a Render stg service through the Render API and checks `/health` after the deploy. Documented the setup in the README and the decision (API over deploy hooks, which cannot choose a branch) in the iteration log.
+
+### 2026-10-22: Frontend staging deploy workflow
+
+- **Date:** 2026-10-22
+- **Author:** Robert Gleison
+- **Model:** Claude Sonnet 5.5
+- **Tool:** Claude Code
+- **Domain:** infra
+
+#### Prompt
+```text
+the front can be a static site right? do we need dockerfile?
+static site in render is free?
+now, I would like to create another github workflow to deploy frontend branch to render, like we have in backend
+```
+
+#### Explanation of Changes
+Added `.github/workflows/frontend-cd-stg.yml`, a manual workflow that deploys the chosen branch to a Render static site through the Render API. Documented the static site settings (pnpm build command without `corepack enable`, publish directory, `/api/*` and SPA rewrites) in the README and the decision in the iteration log.
