@@ -366,3 +366,61 @@ add these links to CLAIM.md, the ones with stg is staging env, the ones with api
 #### Explanation of Changes
 Filled the iteration 0 `CLAIM.md` with a table of the production and staging frontend and backend links, the backend `/health` links, and a two-line summary of what is deployed.
 
+### 2026-10-22: Vision features table refactor
+
+- **Date:** 2026-10-22
+- **Author:** Robert Gleison
+- **Model:** Claude Sonnet 5.5
+- **Tool:** Claude Code
+- **Domain:** docs
+
+#### Prompt
+```text
+in Vision.mvp, refactor the last table:
+- The book clubs and reading challenges have a real time chat that every user can send messages that will be visible by everyone in the group. The chat supports message, video and images
+- The User can read a book, add as read in their catalog, add comments, reviews, descriptions that can be private or public to other users of the app. [...]
+- The app have a recomendation system that will indicate new books to the readers based on teste of similar users [...]
+- Measure reading speed, mark the stopped page on the past reading session, kee registry of every minute you read a book [...] User also have a streak
+- club discussion you can keep
+- custom challenges to have a friendly competion on who reads more [...]
+- User can get badges and achievements for secret missions like: read 1000 minutes, read 10 books, read 3 fiction books, etc... The user also have an annual retrospective
+- Save books to folders you create, tag them as want to read, finished, in progress
+- add friends
+```
+
+#### Explanation of Changes
+Replaced the "Features beyond the MVP" table in `Vision.md` with nine rows built from the list, with typos fixed and the wording tightened.
+
+### 2026-10-22: Iteration 0 release notes
+
+- **Date:** 2026-10-22
+- **Author:** Robert Gleison
+- **Model:** Claude Sonnet 5.5
+- **Tool:** Claude Code
+- **Domain:** docs
+
+#### Prompt
+```text
+now, in release_notes: add that we created deploy to front and backend, created supabase account with db and will use supabase authentication system. We already have mocked profile page, mocked library page, basic routes to create, save and get books
+```
+
+#### Explanation of Changes
+Wrote the iteration 0 `release_notes.md` with the infrastructure (deploys, Supabase database and authentication) and the features done so far.
+
+### 2026-10-23: MVP feature list
+
+- **Date:** 2026-10-23
+- **Author:** Robert Gleison
+- **Model:** Claude Sonnet 5.5
+- **Tool:** Claude Code
+- **Domain:** docs
+
+#### Prompt
+```text
+now in the mvp, we have the user stories, but it's not so clear to understand what are the features for the mvp.
+Add please: user authentication; book clubs and reading challenges creation and participation with real time chat (images and videos out for now) and a leaderboard; library with ratings 1-5, comments and descriptions public or not; search engine for books and users by names and serial number with book metadata page; gamification (streak, achievements, badges, challenges won); friendship requests and public comments of other users.
+out: photos and videos in chat, book recommendation system, user onboarding, email notifications about the streak and leaderboard positions
+```
+
+#### Explanation of Changes
+Rewrote `mvp.md` with a short table of the 6 MVP features, user stories grouped under each feature, and an updated out-of-scope list.

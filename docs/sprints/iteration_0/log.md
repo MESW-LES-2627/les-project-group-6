@@ -170,6 +170,19 @@ A running record of what the team did and decided in iteration 0. The [release n
 
 - Started the [iteration 0 CLAIM](CLAIM.md) with the production and staging links for the frontend and backend (the `api-` links, which also serve `/health`) and a short summary: both apps deployed in prod and stg on Render, database on Supabase.
 
+### 2026-10-22: Vision features beyond the MVP
+
+- Rewrote the "Features beyond the MVP" table in [`Vision.md`](Vision.md) with the team's feature list: real-time chat, reading journal, recommendations, reading sessions and streaks, club discussions, custom challenges, badges and yearly retrospective, shelves and reading status, and friends. The previous proposals not in the list (yearly goal, activity feed, quotes and highlights, notifications, mobile app) were removed from the table.
+
+### 2026-10-22: Iteration 0 release notes
+
+- Filled [`release_notes.md`](release_notes.md): frontend and backend deployed, Supabase database with Supabase Auth as the planned authentication, mocked profile and library pages, and basic routes to create, save and get books.
+
+### 2026-10-23: MVP feature list
+
+- Rewrote [`mvp.md`](mvp.md): it now opens with the 6 MVP features (authentication, clubs and challenges with real-time text chat and leaderboard, library, search, gamification, friends) followed by 14 user stories. Out of scope: photos and videos in the chat, recommendations, onboarding and email notifications.
+- **Decision:** one-to-one messages, reading statistics and user-created challenges left the MVP list, and "reading session" was dropped as a separate story (the streak counts days with reading logged). *Why:* they were not in the feature list agreed by the team. The MoSCoW tags in the requirements may need to follow.
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
@@ -218,4 +231,3 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Write the MVP definition, the vertical prototype plan and the rest of the CLAIM.
 - Decide whether Supabase also serves as the database (new ADR), and close the other open decisions in [`infra.md`](../../architecture/infra.md).
 - Update `table_UML.md` for Supabase Auth: remove `USER.password_hash` and `PASSWORD_RESET_TOKEN`, add `USER.timezone`.
-- Write the release notes at the end of the iteration.

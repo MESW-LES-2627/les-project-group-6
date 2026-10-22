@@ -1,32 +1,43 @@
 # MVP
 
-The MVP has 13 mandatory features in 6 areas; all of them must be delivered by the end of the project.
+The MVP has 6 features. All of them must be delivered by the end of the project. Each feature is broken down into user stories in the table below.
 
-## Features
+## MVP features
 
-| ID | Area | Feature | User story | Minimum scope |
-| --- | --- | --- | --- | --- |
-| MVP-01 | Accounts | Create account | As a visitor, I want to create an account so that my reading data is saved. | Sign up with username, email and password; unique username and email. |
-| MVP-02 | Accounts | Log in | As a user, I want to log in so that I can access my profile and data. | Log in and log out with email and password; session kept between visits. |
-| MVP-03 | Library | Register a book I read | As a reader, I want to register a book I read so that my reading history is complete. | Add a book to my library with status (reading, read) and finish date. |
-| MVP-04 | Library | Review a book | As a reader, I want to review a book so that I can share my opinion. | Rating from 1 to 5 plus optional text; one review per user per book; edit and delete own review. |
-| MVP-05 | Reading habits | Start a reading session | As a reader, I want to start a reading session so that my reading time is tracked. | Start and stop a timer for a book; save duration and pages read. |
-| MVP-06 | Reading habits | Reading streaks | As a reader, I want to see my streak so that I stay motivated to read every day. | A day counts when it has at least one session; show current and longest streak. |
-| MVP-07 | Reading habits | Reading statistics | As a reader, I want statistics about my habits so that I understand how I read. | Books read, pages, total time, favourite genres, reading per week or month. |
-| MVP-08 | Social | Add a friend | As a user, I want to add a friend so that we can follow each other's reading. | Send, accept and reject friend requests; remove a friend. |
-| MVP-09 | Social | Send messages | As a user, I want to send messages to a friend so that we can talk about books. | One-to-one text messages between friends; conversation history. |
-| MVP-10 | Social | Create a club | As a user, I want to create a club so that a group can read together. | Create a club with name, description and current book; invite or let users join; list members. |
-| MVP-11 | Discovery | Search | As a user, I want to search users, books and genres so that I can find what I am looking for. | Search by username, book title or author, and genre; open the result page. |
-| MVP-12 | Gamification | Challenges and achievements | As a reader, I want challenges and achievements so that reading feels rewarding. | A fixed set of achievements (e.g. first book, 7 day streak, 10 books) unlocked automatically and shown on the profile. |
-| MVP-13 | Gamification | Leaderboard | As a reader, I want a leaderboard so that I can compare my progress with others. | Ranking by books or pages read; global view and friends only view. |
+| # | Feature | What the user gets |
+| --- | --- | --- |
+| 1 | User authentication | Create an account, log in and log out. |
+| 2 | Book clubs and reading challenges | Create and join clubs and challenges, chat in real time with text messages, and follow a leaderboard. |
+| 3 | Library | Store the books read and the books saved to read later, with a 1 to 5 rating, comments and descriptions that can be public or private. |
+| 4 | Search | Find books and users by name and by serial number (ISBN), and open a book page with its metadata, rating and public comments. |
+| 5 | Gamification | Reading day streak, achievements and badges, and the number of challenges won. |
+| 6 | Friends | Send friendship requests, and see the public comments and read books of other users. |
+
+## User stories
+
+| ID | Feature | Story | Minimum scope |
+| --- | --- | --- | --- |
+| MVP-01 | User authentication | As a visitor, I want to create an account so that my reading data is saved. | Sign up with username, email and password through Supabase Auth; unique username and email. |
+| MVP-02 | User authentication | As a user, I want to log in and out so that I can access my profile and data. | Log in and log out with email and password; session kept between visits. |
+| MVP-03 | Book clubs and reading challenges | As a user, I want to create a book club or a reading challenge so that a group can read together. | Create with name, description and dates (challenges); choose public or invite only; list members. |
+| MVP-04 | Book clubs and reading challenges | As a user, I want to join a club or a challenge so that I can take part in it. | Join an open club or challenge, or accept an invitation; leave it. |
+| MVP-05 | Book clubs and reading challenges | As a member, I want a real-time chat so that I can talk with the group. | Text messages delivered in real time to every member; message history. Images and videos are out for now. |
+| MVP-06 | Book clubs and reading challenges | As a member, I want a leaderboard so that I can compare my progress with the group. | Ranking of the members of a club or challenge by books or pages read; the winner of a challenge is recorded. |
+| MVP-07 | Library | As a reader, I want to save books to read later and to mark the ones I read so that my reading history is complete. | Add a book to my library as "want to read" or "read", with the finish date for read books. |
+| MVP-08 | Library | As a reader, I want to rate and comment on a book so that I remember and share my opinion. | Rating from 1 to 5, a comment and a description, each public or private; edit and delete my own. |
+| MVP-09 | Search | As a user, I want to search books and users by name or serial number so that I can find what I am looking for. | One search box for books (title, author, ISBN) and users (username); open the result page. |
+| MVP-10 | Search | As a user, I want to open a book to see its metadata so that I can decide if I want to read it. | Book page with publisher, author, pages and other metadata, the average rating and the public comments of other users. |
+| MVP-11 | Gamification | As a reader, I want a reading streak so that I stay motivated to read every day. | A day counts when I log reading that day; show the current and the longest streak. |
+| MVP-12 | Gamification | As a reader, I want achievements and badges so that reading feels rewarding. | A fixed set of achievements (e.g. first book, 7 day streak, 10 books) unlocked automatically; badges and the number of challenges won shown on the profile. |
+| MVP-13 | Friends | As a user, I want to send friendship requests so that I can follow other readers. | Send, accept and reject requests; remove a friend. |
+| MVP-14 | Friends | As a user, I want to see the public comments and the books read by other users so that I can see their reading. | Another user's profile shows their read books and their public comments; private ones are never shown. |
 
 ## Out of scope for the MVP
 
-These items are deliberately left out of the MVP to keep it deliverable; they can move to the vision later.
+These items are left out of the MVP because we are not sure we can deliver them in time. They can move back in if there is time.
 
-- Photos, videos or files in messages (text only).
-- Group chat inside clubs.
-- Book recommendations of any kind.
-- User created challenges (the MVP uses a fixed set).
-- Notifications by email or push.
+- Photos and videos in the chat (the chat is text only).
+- Book recommendation system.
+- User onboarding to the app.
+- Email notifications about the streak and about losing positions in the leaderboard.
 - Native mobile app (the MVP is a responsive web app).
