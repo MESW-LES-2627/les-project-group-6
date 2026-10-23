@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
-import type { BookDetail, LibraryBook } from '@/types/library';
+import { updateReadingStatus } from '@/services/api';
+import type { BookDetail, LibraryBook, ReadingStatus } from '@/types/library';
 import { progressPercent, readingStatusLabels } from '@/utils/library';
 
 const props = defineProps<{
@@ -11,6 +12,65 @@ const props = defineProps<{
   folders: string[];
   tags: string[];
 }>();
+
+const emit = defineEmits<{
+  updated: [data: { status: ReadingStatus; currentPage: number }];
+}>();
+
+const isEditing = ref(false);
+const selectedStatus = ref<ReadingStatus>(
+  props.book.status === 'not-started' ? 'in-progress' : props.book.status,
+);
+const selectedPage = ref<number>(props.book.currentPage || 10);
+const isSaving = ref(false);
+const message = ref<string | null>(null);
+
+watch(
+  () => props.book,
+  (newBook) => {
+    selectedStatus.value = newBook.status === 'not-started' ? 'in-progress' : newBook.status;
+    selectedPage.value = newBook.currentPage || 10;
+  },
+  { deep: true },
+);
+
+function toggleEdit() {
+  isEditing.value = !isEditing.value;
+  message.value = null;
+  if (isEditing.value) {
+    if (props.book.status === 'not-started') {
+      selectedStatus.value = 'in-progress';
+    } else {
+      selectedStatus.value = props.book.status;
+    }
+    selectedPage.value = props.book.currentPage || 10;
+  }
+}
+
+async function saveStatus() {
+  isSaving.value = true;
+  message.value = null;
+  try {
+    await updateReadingStatus({
+      bookId: props.book.id,
+      status: selectedStatus.value,
+      currentPage: selectedPage.value,
+    });
+    emit('updated', {
+      status: selectedStatus.value,
+      currentPage: selectedPage.value,
+    });
+    message.value = 'Status saved to backend!';
+    setTimeout(() => {
+      isEditing.value = false;
+      message.value = null;
+    }, 1500);
+  } catch (err: unknown) {
+    message.value = err instanceof Error ? err.message : 'Failed to update';
+  } finally {
+    isSaving.value = false;
+  }
+}
 
 const statusLabel = computed(() => readingStatusLabels[props.book.status]);
 const percent = computed(() => progressPercent(props.book));
@@ -49,10 +109,44 @@ const tagLabel = computed(() => props.tags.join(' • ') || 'No tags');
         </svg>
         Start session
       </RouterLink>
-      <button type="button" class="update-status">
-        Update status <span aria-hidden="true">•</span>
+      <button type="button" class="update-status" @click="toggleEdit">
+        {{ isEditing ? 'Close' : 'Update status' }} <span aria-hidden="true">•</span>
       </button>
     </div>
+
+    <form v-if="isEditing" class="status-editor" @submit.prevent="saveStatus">
+      <div class="editor-fields">
+        <label class="editor-field">
+          <span class="field-label">Status</span>
+          <select v-model="selectedStatus" class="editor-select">
+            <option value="not-started">Not started</option>
+            <option value="in-progress">In progress (Reading)</option>
+            <option value="finished">Finished</option>
+            <option value="did-not-finish">Did not finish</option>
+          </select>
+        </label>
+
+        <label class="editor-field">
+          <span class="field-label">Current page</span>
+          <input
+            v-model.number="selectedPage"
+            type="number"
+            min="0"
+            :max="book.pages"
+            class="editor-input"
+          />
+        </label>
+      </div>
+
+      <div class="editor-buttons">
+        <button type="submit" class="button-save" :disabled="isSaving">
+          {{ isSaving ? 'Saving...' : 'Save status' }}
+        </button>
+        <button type="button" class="button-cancel" @click="isEditing = false">Cancel</button>
+      </div>
+
+      <p v-if="message" class="editor-message">{{ message }}</p>
+    </form>
 
     <div class="meta-grid">
       <div class="meta-block">
@@ -181,6 +275,86 @@ const tagLabel = computed(() => props.tags.join(' • ') || 'No tags');
 .update-status:hover {
   color: var(--color-primary);
   text-decoration: underline;
+}
+
+.status-editor {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.editor-fields {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.field-label {
+  font-weight: var(--font-weight-medium);
+}
+
+.editor-select,
+.editor-input {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: #ffffff;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+}
+
+.editor-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.button-save {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: none;
+  border-radius: var(--radius-control);
+  padding: 6px 14px;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.button-save:hover {
+  background: var(--color-primary-hover);
+}
+
+.button-cancel {
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: 6px 12px;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.editor-message {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-copper);
+  font-weight: var(--font-weight-medium);
 }
 
 .meta-grid {

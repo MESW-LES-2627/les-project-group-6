@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import BookEditionPanel from '@/components/library/BookEditionPanel.vue';
@@ -8,11 +8,66 @@ import BookThoughtsPanel from '@/components/library/BookThoughtsPanel.vue';
 import ReadingClubPanel from '@/components/library/ReadingClubPanel.vue';
 import ReviewItem from '@/components/library/ReviewItem.vue';
 import { getBookDetail, mockLibrary } from '@/mocks/library';
+import {
+  getBook,
+  getUserLibrary,
+  mapApiBookToLibraryBook,
+  mapApiLibraryItemToBook,
+} from '@/services/api';
+import type { LibraryBook, ReadingStatus } from '@/types/library';
 
 const props = defineProps<{ bookId: string }>();
 
-const book = computed(() => mockLibrary.books.find((item) => item.id === props.bookId) ?? null);
+const apiBook = ref<LibraryBook | null>(null);
+
+const book = computed(() => {
+  if (apiBook.value) return apiBook.value;
+  return mockLibrary.books.find((item) => item.id === props.bookId) ?? null;
+});
+
 const detail = computed(() => (book.value ? getBookDetail(book.value) : null));
+
+async function fetchBookData() {
+  try {
+    const libraryItems = await getUserLibrary();
+    const item = libraryItems.find((i) => i.book.id === props.bookId);
+    if (item) {
+      apiBook.value = mapApiLibraryItemToBook(item);
+      return;
+    }
+
+    const fetched = await getBook(props.bookId);
+    if (fetched) {
+      apiBook.value = mapApiBookToLibraryBook(fetched);
+    }
+  } catch {
+    // Keep mock fallback
+  }
+}
+
+onMounted(() => {
+  void fetchBookData();
+});
+
+watch(
+  () => props.bookId,
+  () => {
+    void fetchBookData();
+  },
+);
+
+function onStatusUpdated(updated: { status: ReadingStatus; currentPage: number }) {
+  if (apiBook.value) {
+    apiBook.value = {
+      ...apiBook.value,
+      status: updated.status,
+      currentPage: updated.currentPage,
+    };
+  } else if (book.value) {
+    book.value.status = updated.status;
+    book.value.currentPage = updated.currentPage;
+  }
+}
 
 const folders = computed(() => {
   if (!book.value) return [];
@@ -80,7 +135,13 @@ const mailtoHref = computed(() => {
           <BookEditionPanel :book="book" :edition="detail.edition" />
 
           <div class="main-column">
-            <BookReadingPanel :book="book" :detail="detail" :folders="folders" :tags="tags" />
+            <BookReadingPanel
+              :book="book"
+              :detail="detail"
+              :folders="folders"
+              :tags="tags"
+              @updated="onStatusUpdated"
+            />
 
             <section class="about-section" aria-labelledby="about-title">
               <h2 id="about-title" class="section-title">About this book</h2>

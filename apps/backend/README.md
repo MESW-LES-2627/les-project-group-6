@@ -37,6 +37,8 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | `PATCH` | `/reading-status` | Edits an existing reading status by ID or userId + bookId (`200 OK` or `404 Not Found`) |
 | `GET` | `/user/:userId/library` | Returns user's library with progress, supports `?status=` (`200 OK`) |
 
+CORS middleware is enabled globally (`Access-Control-Allow-Origin: *`) with preflight `OPTIONS` support for cross-origin browser clients.
+
 ## Scripts
 
 Run them inside `apps/backend`, or from the root with `pnpm --filter @bookmarked/backend <script>`.

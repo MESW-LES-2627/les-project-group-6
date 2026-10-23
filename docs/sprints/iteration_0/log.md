@@ -23,8 +23,8 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
 | Frontend routes (#64) | Initial routes implemented |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
-| Library page prototype (#76) | Responsive `/library` UI with mock data, reusable card and shelves components, filters and tests; API wiring and menu actions still to do |
-| Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels; API wiring still to do |
+| Library page prototype (#76) | Responsive `/library` UI with reusable card and shelves components, filters, tests, and API integration with user library endpoint |
+| Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels, and API reading status updates |
 | Active reading session | Responsive `/session/:bookId` with a separate timer, progress editor, session notes and group-counting rail; save wiring still to do |
 | Profile page prototype | `/profile` with app header and footer, mock data and empty states, built on the #64 skeleton |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
@@ -278,13 +278,21 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added database seed script [`apps/backend/src/infrastructure/database/seed.ts`](../../../apps/backend/src/infrastructure/database/seed.ts) (`pnpm db:seed`): seeds demo reader user (`demo_reader`), 6 books with high-resolution Open Library cover URLs, and initial `not-started` reading status entries linking the demo user to all seeded books so the library is immediately populated for vertical prototype testing.
 - Updated [`apps/backend/README.md`](../../../apps/backend/README.md) with reading status endpoints and seed documentation.
 
+### 2026-10-23: Frontend and backend connection for library and reading status
+
+- Connected the responsive [`/library` view](../../../apps/frontend/src/views/LibraryView.vue) to `GET /user/:userId/library` through [`api.ts`](../../../apps/frontend/src/services/api.ts), fetching the demo user's seeded books and synchronizing shelf counts dynamically. Keeps seamless fallback to mock data when offline or in unit tests.
+- Connected [`/library/:bookId` view](../../../apps/frontend/src/views/BookDetailView.vue) to load book details and current reading status by UUID from the backend.
+- Added interactive reading status editor to [`BookReadingPanel.vue`](../../../apps/frontend/src/components/library/BookReadingPanel.vue), allowing the reader to update status (e.g. to `in-progress`) and current page (e.g. to `10`) via `PUT /reading-status`.
+- Added Express CORS middleware in [`apps/backend/src/app.ts`](../../../apps/backend/src/app.ts) with `Access-Control-Allow-Origin: *` and preflight `OPTIONS` handling to support cross-origin API calls from the deployed frontend static site.
+- Updated [`apps/frontend/README.md`](../../../apps/frontend/README.md) and [`apps/backend/README.md`](../../../apps/backend/README.md).
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
 - Point the Render backend service at `main` once this branch is merged, and add `DATABASE_URL` when Supabase is set up.
 - Create the Render stg service (Auto-Deploy off), create the Render stg static site for the frontend, add the `RENDER_API_KEY` secret and the `RENDER_BACKEND_STG_SERVICE_ID` and `RENDER_FRONTEND_STG_SERVICE_ID` variables (repo admin), and use a separate Supabase project for stg.
 - Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands. Frontend CI is now enabled.
-- Wire the library, book-detail and active-session pages to the backend when those endpoints exist; replace the mock data, implement the folder and card menu actions, and persist a stopped session.
+- Implement folder and card menu actions on the library page, wire session persistence for the active reading session, and replace remaining static review/club mock data.
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
 - Create the issues for Extras once Core is under way.
