@@ -512,3 +512,25 @@ out: photos and videos in chat, book recommendation system, user onboarding, ema
 
 #### Explanation of Changes
 Rewrote `mvp.md` with a short table of the 6 MVP features, user stories grouped under each feature, and an updated out-of-scope list.
+
+### 2026-10-23: Authentication screen and Supabase skeleton
+
+- **Date:** 2026-10-23
+- **Author:** Segun Adesanya
+- **Model:** GPT-6
+- **Tool:** Codex
+- **Domain:** frontend, authentication, testing, docs
+
+#### Prompt
+```text
+Design the login/sign up page strictly following docs/design/screens/01-authentication.png.
+Check assets/styles and teammates’ components to reuse existing styles/components.
+Prepare the Supabase integration skeleton while credentials are pending.
+Have a login route; prepare username/password and OIDC login/sign-up.
+Create tests for the changes and integration.
+```
+
+#### Explanation of Changes
+Inspected the screenshot, global styles, layout components and auth requirements. Built both forms with the reference layout/photo crop and shared styles. Added the official Supabase SDK behind our AuthProvider interface, missing-credential handling, signup confirmation handling, persistence selection, a trusted username resolver hook, and an OIDC service method without inventing provider buttons. Added adapter and page-to-adapter tests with the SDK mocked. Documented setup and explicitly pending live integration/session/profile work; updated repository/docs indexes and iteration status/log.
+
+Validation: frontend lint, formatting, vue-tsc, component/adapter/router tests and production build; browser review at 1440 px and 390 px (no horizontal overflow). Live Supabase verification awaits project credentials.

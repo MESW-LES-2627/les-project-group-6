@@ -22,6 +22,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
 | Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
 | Frontend routes (#64) | Initial routes implemented |
+| Authentication UI and Supabase skeleton | Reference-based `/login` forms and adapter/integration tests implemented; credentials, trusted username flow, provider UI and live session lifecycle pending |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
 | Library page prototype (#76) | Responsive `/library` UI with mock data, reusable card and shelves components, filters and tests; API wiring and menu actions still to do |
 | Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels; API wiring still to do |
@@ -278,7 +279,15 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added database seed script [`apps/backend/src/infrastructure/database/seed.ts`](../../../apps/backend/src/infrastructure/database/seed.ts) (`pnpm db:seed`): seeds demo reader user (`demo_reader`), 6 books with high-resolution Open Library cover URLs, and initial `not-started` reading status entries linking the demo user to all seeded books so the library is immediately populated for vertical prototype testing.
 - Updated [`apps/backend/README.md`](../../../apps/backend/README.md) with reading status endpoints and seed documentation.
 
+### 2026-10-23: Authentication page and Supabase integration skeleton
+
+- Built [LoginView](../../../apps/frontend/src/views/LoginView.vue) from the [authentication screenshot](../../design/screens/01-authentication.png), including its photo crop, copy, forms, privacy note and footer. Reused shared tokens/button styles; the existing signed-in header/footer do not match this design. Added only missing type sizes to [tokens.css](../../../apps/frontend/src/assets/styles/tokens.css).
+- Added an [AuthProvider/Supabase adapter](../../../apps/frontend/src/services/auth.ts) for password login, signup metadata and OIDC provider redirects, with missing-configuration handling and an injectable username resolver. Rejected an invented public username/email lookup and extra OIDC buttons absent from the reference. Username uniqueness/profile provisioning and live callbacks/guards remain pending; see the [frontend setup guide](../../../apps/frontend/README.md).
+- Added [adapter tests](../../../apps/frontend/src/services/__tests__/auth.spec.ts) and [page integration tests](../../../apps/frontend/src/views/__tests__/LoginView.spec.ts) using the real adapter and mocked SDK, with no credentials or live requests. Signup confirmation never masquerades as a session; username availability is not falsely asserted. Verified desktop layout at 1440 px and mobile at 390 px with no horizontal overflow; lint, formatting, typechecking, tests and build pass.
+
 ## Next steps
+
+- Finish Supabase project configuration, trusted username authentication/uniqueness, OIDC UI approval, session callbacks/guards, logout, password recovery and onboarding (see frontend guide).
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
 - Point the Render backend service at `main` once this branch is merged, and add `DATABASE_URL` when Supabase is set up.
