@@ -23,6 +23,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
 | Frontend routes (#64) | Initial routes implemented |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
+| Profile page prototype | `/profile` with app header and footer, mock data and empty states, built on the #64 skeleton |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
 | Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
 | MVP, vertical prototype, CLAIM, release notes | Empty, to be written |
@@ -219,6 +220,16 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added [`frontend-cd-stg.yml`](../../../.github/workflows/frontend-cd-stg.yml), the frontend twin of the backend stg workflow: it deploys the branch picked in "Use workflow from" to a Render static site through the Render API and checks that the site answers. Needs the variable `RENDER_FRONTEND_STG_SERVICE_ID`. Render settings are in the [README](../../../README.md).
 - **Decision: the frontend is a Render static site, not a Docker service.** *Why:* `vite build` produces plain files, a static site is served from Render's CDN and has no instance to sleep, and it needs no image. *Rejected:* an nginx Dockerfile (extra build time for no benefit on Render). *Trade-off:* a static site has no proxy, so `/api/*` is a Render rewrite to the backend, and the free workspace bandwidth (about 5 GB/month) is shared with the backend. The build command must not run `corepack enable` (read-only `/usr/bin` on Render).
 
+### 2026-10-22: Profile page prototype on the #64 skeleton
+
+- Built the profile page at `/profile` from the "Bookmarked profile" HTML design reference, as Vue components in [`src/components/profile/`](../../../apps/frontend/src/components/profile/) (bookplate, currently reading, shelf, recently added, chapter level, streak, reading time, challenges, folders, monthly recap). Each section has its own empty state; `/profile?state=new` shows them all. Data comes from typed mocks until the API exists. Added a shared `AppHeader` (nav, search, notifications, account menu) and `AppFooter` in `App.vue`, hidden on `/login` through `meta.hideAppChrome`.
+- The prototype was first built on a separate frontend skeleton made in parallel with #64. **Decision: drop that skeleton and keep the #64 one.** *Why:* #64 has the fuller setup (Oxlint, Prettier, API proxy, health check, router tests) and is the one the team reviews. Only the profile code was moved over: its tokens were renamed to the #64 names where the meaning matched (for example `--color-primary`, `--color-border`, `--color-text-muted`, and spacing on the `--space-N` = N × 0.25rem scale), and the tokens #64 does not have were added to [`tokens.css`](../../../apps/frontend/src/assets/styles/tokens.css). Pinia was dropped because no store exists yet. `Bookplate` and `Shelf` were renamed `ProfileBookplate` and `BookShelf` for the multi-word component-name lint rule. Added a router test for `/profile`. Lint, format, typecheck, tests (8) and build pass.
+- **Decision: warm neutrals from our palette, not the reference's grey-greens.** *Why:* AGENTS.md says UI uses the five palette colors. *Rejected:* adding the reference's `#EEF0EC` and `#1B1F1C` as palette colors.
+- **Decision: profile headings follow the #64 typography (Lora headings, Inter body).** *Why:* one heading style across the app, as set in the [design README](../../design/README.md). Headings get Lora from the global `h1`–`h6` rule only; the per-component heading font override was removed. Book titles on the shelf spines also use Lora. *Rejected:* the earlier prototype choice of sans for the profile name and section titles.
+- **Decision: one type scale.** Replaced the profile's `--text-*` sizes and its hard-coded pixel sizes with the `--font-size-*` scale, extended from 5 to 10 steps (`2xs` 11px, `xs` 13px, `sm` 14px, `base` 16px, `md` 18px, `lg` 24px, `xl` 32px, `2xl` 40px, `3xl` 48px, `display` 56px). The #64 values did not change. Profile sizes moved to the nearest step (for example 15px to 16px, 26px to 24px).
+- Fixed a sideways scroll on phones: the hidden hover tooltips of the covers near the right edge made the page wider than the screen. They are now off on touch screens (`hover: none`), where they could not be shown anyway.
+- **Open:** Caveat, used for the handwritten reading-time note, is not loaded yet and falls back to the system cursive.
+
 ### 2026-10-22: Vertical prototype book CRUD (#78)
 
 - Created domain entity `Book` and repository interface `IBookRepository` in [`apps/backend/src/domain/book.ts`](../../../apps/backend/src/domain/book.ts).
@@ -257,3 +268,5 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Write the MVP definition, the vertical prototype plan and the rest of the CLAIM.
 - Decide whether Supabase also serves as the database (new ADR), and close the other open decisions in [`infra.md`](../../architecture/infra.md).
 - Update `table_UML.md` for Supabase Auth: remove `USER.password_hash` and `PASSWORD_RESET_TOKEN`, add `USER.timezone`.
+- Decide whether to load Caveat for the handwritten notes.
+- Write the release notes at the end of the iteration.

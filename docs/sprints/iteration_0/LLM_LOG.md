@@ -350,6 +350,24 @@ now, I would like to create another github workflow to deploy frontend branch to
 #### Explanation of Changes
 Added `.github/workflows/frontend-cd-stg.yml`, a manual workflow that deploys the chosen branch to a Render static site through the Render API. Documented the static site settings (pnpm build command without `corepack enable`, publish directory, `/api/*` and SPA rewrites) in the README and the decision in the iteration log.
 
+### 2026-10-22: Profile page prototype
+
+- **Date:** 2026-10-22
+- **Author:** João Taveira
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend
+
+#### Prompt
+```text
+Read Bookmarkedprofilepage.html . These are design references, not code to copy. First, look at how our app is structured and add the design tokens to our existing styling setup. Then build the profile page as components (Bookplate, CurrentlyReading, Shelf, CoverGrid, ChapterLevel, StreakCalendar, ReadingTime, FolderList, MonthRecap) using mock data that matches the design. Each component should handle its own empty state. Show me the plan before writing code. Use, as suported by the project, Vue with typescript
+[...]
+Account dropdown, search and notifications. all on the header, include them.
+```
+
+#### Explanation of Changes
+Built the profile section components with empty states, typed mock data (full and new user), a shared `AppHeader` and `AppFooter`, design tokens and shared classes, and a `/profile` route. Neutrals were taken from the project palette instead of the reference.
+
 ### 2026-10-22: Book domain entity, Drizzle repository, and CRUD endpoints (#78)
 
 - **Date:** 2026-10-22
