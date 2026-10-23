@@ -25,7 +25,6 @@ The full vision adds richer social features and smart discovery on top of the MV
 | Feature | Description |
 | --- | --- |
 | Real-time chat | Book clubs and reading challenges have a real-time chat where every member can send messages visible to the whole group. The chat supports text, images and videos. |
-| Reading journal | Users read a book, mark it as read in their catalog and add comments, reviews and descriptions, private or public to other users. This keeps a record of their reaction to every book they have read. |
 | Recommendations | The app suggests new books based on the taste of similar users who read similar books, friends' reading, the user's ratings, genres and more. |
 | Reading sessions and streaks | Measure reading speed, mark the page where the last session stopped and keep a record of every minute read, to see how much time goes into reading. A streak counts the consecutive days the user has read. |
 | Club discussions | Discussion threads inside a club that members can keep and come back to. |

@@ -25,12 +25,15 @@ The MVP has 6 features. All of them must be delivered by the end of the project.
 | MVP-06 | Book clubs and reading challenges | As a member, I want a leaderboard so that I can compare my progress with the group. | Ranking of the members of a club or challenge by books or pages read; the winner of a challenge is recorded. |
 | MVP-07 | Library | As a reader, I want to save books to read later and to mark the ones I read so that my reading history is complete. | Add a book to my library as "want to read" or "read", with the finish date for read books. |
 | MVP-08 | Library | As a reader, I want to rate and comment on a book so that I remember and share my opinion. | Rating from 1 to 5, a comment and a description, each public or private; edit and delete my own. |
-| MVP-09 | Search | As a user, I want to search books and users by name or serial number so that I can find what I am looking for. | One search box for books (title, author, ISBN) and users (username); open the result page. |
-| MVP-10 | Search | As a user, I want to open a book to see its metadata so that I can decide if I want to read it. | Book page with publisher, author, pages and other metadata, the average rating and the public comments of other users. |
-| MVP-11 | Gamification | As a reader, I want a reading streak so that I stay motivated to read every day. | A day counts when I log reading that day; show the current and the longest streak. |
-| MVP-12 | Gamification | As a reader, I want achievements and badges so that reading feels rewarding. | A fixed set of achievements (e.g. first book, 7 day streak, 10 books) unlocked automatically; badges and the number of challenges won shown on the profile. |
-| MVP-13 | Friends | As a user, I want to send friendship requests so that I can follow other readers. | Send, accept and reject requests; remove a friend. |
-| MVP-14 | Friends | As a user, I want to see the public comments and the books read by other users so that I can see their reading. | Another user's profile shows their read books and their public comments; private ones are never shown. |
+| MVP-09 | Library | As a reader, I want to organise my library into shelves so that I can group my books by type. | Create, rename and delete my own shelves (e.g. "Fantasy", "Favourites"); add and remove books from a shelf; a book can be in more than one shelf; each shelf public or private. |
+| MVP-10 | Search | As a user, I want to search books and users by name or serial number so that I can find what I am looking for. | One search box for books (title, author, ISBN) and users (username); open the result page. |
+| MVP-11 | Search | As a user, I want to open a book to see its metadata so that I can decide if I want to read it. | Book page with publisher, author, pages and other metadata, the average rating and the public comments of other users. |
+| MVP-12 | Gamification | As a reader, I want a reading streak so that I stay motivated to read every day. | A day counts when I log reading that day; show the current and the longest streak. |
+| MVP-13 | Gamification | As a reader, I want achievements and badges so that reading feels rewarding. | A fixed set of achievements (e.g. first book, 7 day streak, 10 books) unlocked automatically; badges and the number of challenges won shown on the profile. |
+| MVP-14 | Gamification | As a reader, I want a monthly recap of my reading so that I can see how my month went. | At the end of each month, a recap with books and pages read, average rating given, days with reading and longest streak of the month, and achievements unlocked; past recaps stay available on my profile. |
+| MVP-15 | Friends | As a user, I want to send friendship requests so that I can follow other readers. | Send, accept and reject requests; remove a friend. |
+| MVP-16 | Friends | As a user, I want to see the public comments and the books read by other users so that I can see their reading. | Another user's profile shows their read books, their public shelves and their public comments; private ones are never shown. |
+ 
 
 ## Out of scope for the MVP
 
