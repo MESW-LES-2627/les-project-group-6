@@ -512,3 +512,23 @@ out: photos and videos in chat, book recommendation system, user onboarding, ema
 
 #### Explanation of Changes
 Rewrote `mvp.md` with a short table of the 6 MVP features, user stories grouped under each feature, and an updated out-of-scope list.
+
+### 2026-10-23: Frontend and backend connection for library and reading status
+
+- **Date:** 2026-10-23
+- **Author:** Vasco Gonçalves
+- **Model:** Antigravity
+- **Tool:** Antigravity CLI
+- **Domain:** frontend, backend, docs
+
+#### Prompt
+```text
+Hey, let's connect the frontend to the backend for the vertical prototype:
+1. On /library, fetch and show the books with reading status from the backend API for our test user.
+2. Clicking a book should open the book detail page (/library/:bookId) using its ID from the backend.
+3. On that book page, add an option to update the reading status to "in-progress" and set the current page (e.g. to 10), saving it back to the database.
+4. Also make sure CORS is enabled on the backend so our deployed frontend on Render can talk to the API without getting blocked.
+```
+
+#### Explanation of Changes
+Connected the Vue frontend (`/library` and `/library/:bookId`) to the Express backend API. Added API service functions (`getUserLibrary`, `getBook`, `updateReadingStatus`) in `apps/frontend/src/services/api.ts` with demo reader mappings. Updated `LibraryView.vue` to fetch real seeded books and dynamically synchronize shelf counts. Added an interactive reading status and current page editor in `BookReadingPanel.vue` with `PUT /reading-status` updates. Added Express CORS middleware in `apps/backend/src/app.ts` to support cross-origin API calls on deployed environments. Updated backend and frontend READMEs and iteration logs.
