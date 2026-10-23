@@ -22,6 +22,23 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: '/library',
+      name: 'library',
+      component: () => import('../views/LibraryView.vue'),
+    },
+    {
+      path: '/library/:bookId',
+      name: 'book-detail',
+      component: () => import('../views/BookDetailView.vue'),
+      props: true,
+    },
+    {
+      path: '/session/:bookId',
+      name: 'active-session',
+      component: () => import('../views/ActiveSessionView.vue'),
+      props: true,
+    },
+    {
       path: '/profile',
       name: 'profile',
       component: () => import('../views/ProfileView.vue'),

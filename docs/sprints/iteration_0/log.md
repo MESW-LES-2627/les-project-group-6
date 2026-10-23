@@ -23,6 +23,9 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
 | Frontend routes (#64) | Initial routes implemented |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
+| Library page prototype (#76) | Responsive `/library` UI with mock data, reusable card and shelves components, filters and tests; API wiring and menu actions still to do |
+| Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels; API wiring still to do |
+| Active reading session | Responsive `/session/:bookId` with a separate timer, progress editor, session notes and group-counting rail; save wiring still to do |
 | Profile page prototype | `/profile` with app header and footer, mock data and empty states, built on the #64 skeleton |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
 | Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
@@ -220,6 +223,26 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added [`frontend-cd-stg.yml`](../../../.github/workflows/frontend-cd-stg.yml), the frontend twin of the backend stg workflow: it deploys the branch picked in "Use workflow from" to a Render static site through the Render API and checks that the site answers. Needs the variable `RENDER_FRONTEND_STG_SERVICE_ID`. Render settings are in the [README](../../../README.md).
 - **Decision: the frontend is a Render static site, not a Docker service.** *Why:* `vite build` produces plain files, a static site is served from Render's CDN and has no instance to sleep, and it needs no image. *Rejected:* an nginx Dockerfile (extra build time for no benefit on Render). *Trade-off:* a static site has no proxy, so `/api/*` is a Render rewrite to the backend, and the free workspace bandwidth (about 5 GB/month) is shared with the backend. The build command must not run `corepack enable` (read-only `/usr/bin` on Render).
 
+### 2026-10-22: Library page prototype (#76)
+
+- Added the responsive [`/library` page](../../../apps/frontend/src/views/LibraryView.vue) from the [library design](../../design/screens/06-library.png), with the hero, search and filter bar, status tabs, three-column book grid and footer note. The layout collapses to two columns and then one, the filters stack and the status tabs scroll on small screens.
+- Split the UI into a reusable [book card](../../../apps/frontend/src/components/library/LibraryBookCard.vue) and a separate [“Your shelves” side menu](../../../apps/frontend/src/components/library/LibrarySidebar.vue), as requested. The card covers the cover, title, author, status, progress, page count, summary, folder/tag chip and menu; the side menu covers shelves, folders, tags and the “Shelves, not duplicates” tip.
+- Added the library domain types, filter/progress/sort helpers and mock data in [`types/library.ts`](../../../apps/frontend/src/types/library.ts), [`utils/library.ts`](../../../apps/frontend/src/utils/library.ts) and [`mocks/library.ts`](../../../apps/frontend/src/mocks/library.ts), plus six [cover crops](../../../apps/frontend/src/assets/covers). Search, status, folder, tag, genre and sort controls work against the mock data; the default “Autumn reading” folder reproduces the design content. API wiring, folder management and the card menu come later.
+- Reused the shared tokens and global styles from the [frontend foundations](#2026-10-22-frontend-tokens-health-status-and-checks-64) and added the small surface, divider and progress pieces the page needs. No new ADR: this is the agreed Vue/TypeScript stack and the existing palette, with the library-specific layout kept in the view and components.
+- Added component and view tests, the `/library` route and route test, and documented the route and source layout in [`apps/frontend/README.md`](../../../apps/frontend/README.md). Verified formatting, lint, `vue-tsc`, 16 tests, the production build and screenshots at 1264 px, 800 px and 390 px.
+
+### 2026-10-22: Book detail page
+
+- Added the responsive [`/library/:bookId` page](../../../apps/frontend/src/views/BookDetailView.vue) from the [book-detail design](../../design/screens/07-book-detail.png) (`9b6e8d3`). Library cards now open the page from the cover, title or body, while the card itself keeps its existing menu and status controls.
+- Split the page into [reading](../../../apps/frontend/src/components/library/BookReadingPanel.vue), [edition](../../../apps/frontend/src/components/library/BookEditionPanel.vue), [thoughts](../../../apps/frontend/src/components/library/BookThoughtsPanel.vue), [review](../../../apps/frontend/src/components/library/ReviewItem.vue) and [reading-club](../../../apps/frontend/src/components/library/ReadingClubPanel.vue) components. The Emma mock reproduces the design content, with a portrait [detail cover](../../../apps/frontend/src/assets/covers/emma-detail.png) and a generic fallback for other books.
+- Added the detail route and tests for the view, library-card navigation and router. Unknown ids show a friendly message and a link back to the library. Verified the responsive layout at desktop and mobile widths; the backend book endpoint and real review/club data are still placeholders.
+
+### 2026-10-22: Active reading session
+
+- Added the responsive [`/session/:bookId` page](../../../apps/frontend/src/views/ActiveSessionView.vue) from the [active-session design](../../design/screens/10-active-session.png) (`9b6e8d3`), opened by the “Start session” button on the [book reading panel](../../../apps/frontend/src/components/library/BookReadingPanel.vue).
+- Built the [timer as a separate component](../../../apps/frontend/src/components/session/ReadingTimer.vue) with running and paused states, pause/resume/stop events and autoplay. The page keeps the page and percentage fields in sync, shows the session note and saves-back count, and brings the eligible groups, profile-total explanation and locked rules into a responsive right rail.
+- Added [session types](../../../apps/frontend/src/types/session.ts), [mock session data](../../../apps/frontend/src/mocks/session.ts), the session route and timer/view/router tests. “Stop & save” returns to the book detail page for now; persisting the session is deferred until the backend endpoints exist. The layout was checked against the 1266×886 reference and at 390 px without horizontal overflow.
+
 ### 2026-10-22: Profile page prototype on the #64 skeleton
 
 - Built the profile page at `/profile` from the "Bookmarked profile" HTML design reference, as Vue components in [`src/components/profile/`](../../../apps/frontend/src/components/profile/) (bookplate, currently reading, shelf, recently added, chapter level, streak, reading time, challenges, folders, monthly recap). Each section has its own empty state; `/profile?state=new` shows them all. Data comes from typed mocks until the API exists. Added a shared `AppHeader` (nav, search, notifications, account menu) and `AppFooter` in `App.vue`, hidden on `/login` through `meta.hideAppChrome`.
@@ -261,6 +284,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Point the Render backend service at `main` once this branch is merged, and add `DATABASE_URL` when Supabase is set up.
 - Create the Render stg service (Auto-Deploy off), create the Render stg static site for the frontend, add the `RENDER_API_KEY` secret and the `RENDER_BACKEND_STG_SERVICE_ID` and `RENDER_FRONTEND_STG_SERVICE_ID` variables (repo admin), and use a separate Supabase project for stg.
 - Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands. Frontend CI is now enabled.
+- Wire the library, book-detail and active-session pages to the backend when those endpoints exist; replace the mock data, implement the folder and card menu actions, and persist a stopped session.
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
 - Create the issues for Extras once Core is under way.

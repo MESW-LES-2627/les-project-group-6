@@ -49,6 +49,7 @@
   --color-primary-hover: #8a2c28;
   --color-on-primary-strong: #ffffff;
   --color-surface-hover: #efe4cd;
+  --color-surface-muted: #efe7da; /* chips, tags and the shelf tip */
   --color-avatar: #8e3a35;
   --color-track: #eadfc9;
   --color-streak-read: #f1dfcf;

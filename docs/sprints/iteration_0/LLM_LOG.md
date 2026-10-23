@@ -350,6 +350,54 @@ now, I would like to create another github workflow to deploy frontend branch to
 #### Explanation of Changes
 Added `.github/workflows/frontend-cd-stg.yml`, a manual workflow that deploys the chosen branch to a Render static site through the Render API. Documented the static site settings (pnpm build command without `corepack enable`, publish directory, `/api/*` and SPA rewrites) in the README and the decision in the iteration log.
 
+### 2026-10-22: Library page prototype
+
+- **Date:** 2026-10-22
+- **Author:** Segun Adesanya
+- **Model:** Big Pickle
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+I want to Implement a library page, use the color theme available in the project, implement this in a standard structure, book compnent for the cards, side menu component(Your Shelves). make it look exactly like the image and follow the project setup, also make it mobile responsive
+```
+
+#### Explanation of Changes
+Built the responsive `/library` page from the attached design and the existing project tokens. Added the reusable `LibraryBookCard` and `LibrarySidebar` components, library types, filter/progress/sort helpers and mock data with six cover crops. Search, status, folder, tag, genre and sort filters work; the default Autumn reading view reproduces the target content. Added the `/library` route, component/view/router tests and frontend README notes. Verified formatting, lint, typecheck, 16 tests, production build and screenshots at 1264, 800 and 390 px. Backend wiring, folder actions and the card menu are placeholders for the next API pass.
+
+### 2026-10-22: Book detail page
+
+- **Date:** 2026-10-22
+- **Author:** Segun Adesanya
+- **Model:** Big Pickle
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+Implement the book detail page. When I click a book in the library it should open the detail page, and it must look exactly like the image and follow the project setup. Keep it mobile responsive.
+```
+
+#### Explanation of Changes
+Added the responsive `/library/:bookId` book-detail page from the supplied design and `docs/design/screens/07-book-detail.png`, reusing the shared tokens and frontend structure. Split the page into reading, edition, thoughts, favourite-review and reading-club components, added the Emma portrait detail cover and mock/fallback data, and linked library cards to the new route from the cover, title and body. Added the route and view/navigation/router tests, documented the route and source layout, and verified formatting, lint, typecheck, tests, the production build and desktop/mobile screenshots.
+
+### 2026-10-22: Active reading session
+
+- **Date:** 2026-10-22
+- **Author:** Segun Adesanya
+- **Model:** Big Pickle
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+When I click Start session it should open the active session timer page. Create the timer component separately. Make it look exactly like the image and follow the project setup, and keep it mobile responsive.
+```
+
+#### Explanation of Changes
+Added the responsive `/session/:bookId` active-session page and turned the book-detail “Start session” action into a router link. Built `ReadingTimer` as a separate component with running/paused states, autoplay, pause/resume/stop events and a stop-and-save handler. Added session types and mock data, a page/percentage progress editor, the resume note, eligible groups, profile-total explanation and locked-rules rail. Added timer, view and router tests, documented the route and source layout, and pixel-tuned the layout against the 1266×886 reference, including a 390 px check with no horizontal overflow. Persisting the stopped session is left for the backend pass.
+
 ### 2026-10-22: Profile page prototype
 
 - **Date:** 2026-10-22
