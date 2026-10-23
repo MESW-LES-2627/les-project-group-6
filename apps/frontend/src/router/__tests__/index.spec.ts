@@ -34,6 +34,12 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('active-session');
     expect(router.currentRoute.value.params.bookId).toBe('emma');
   });
+    
+  it('routes to the profile page', async () => {
+    await router.push('/profile');
+
+    expect(router.currentRoute.value.name).toBe('profile');
+  });
 
   it('routes unknown paths to the not-found page', async () => {
     await router.push('/unknown');

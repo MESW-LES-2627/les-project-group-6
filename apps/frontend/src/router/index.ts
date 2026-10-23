@@ -14,6 +14,7 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView,
+      meta: { hideAppChrome: true },
     },
     {
       path: '/home',
@@ -36,6 +37,11 @@ const router = createRouter({
       name: 'active-session',
       component: () => import('../views/ActiveSessionView.vue'),
       props: true,
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('../views/ProfileView.vue'),
     },
     {
       path: '/:pathMatch(.*)*',

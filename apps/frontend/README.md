@@ -11,7 +11,7 @@ pnpm dev:backend
 pnpm --filter @bookmarked/frontend dev
 ```
 
-Open the Vite URL (normally http://localhost:5173), then visit `/home`. The placeholder initially shows “Checking backend…” and then the backend result (normally “Backend status: ok”) or an error. It remains available in production as a connection smoke check.
+Open the Vite URL (normally http://localhost:5173), then visit `/home`. The profile prototype is at `/profile` (mock data); `/profile?state=new` shows every section's empty state. The placeholder initially shows “Checking backend…” and then the backend result (normally “Backend status: ok”) or an error. It remains available in production as a connection smoke check.
 
 The library prototype is at `/library`. It currently uses mock data in `src/mocks/library.ts`; the layout, filters, cards and shelves are already in place, and the API wiring comes when the library endpoints exist.
 
@@ -45,13 +45,25 @@ Lint uses Oxlint and ESLint with `eslint-plugin-vue`. Formatting uses the root P
 
 ## Source layout and design
 
-- `src/assets/styles/tokens.css`: the five brand colors, semantic aliases, typography, spacing and radii. Brand hex values are defined once here.
-- `src/assets/styles/main.css`: global styles consuming tokens.
-- `src/views/`: Login, Home and not-found placeholders, the responsive [library page](src/views/LibraryView.vue), [book detail](src/views/BookDetailView.vue), [active session](src/views/ActiveSessionView.vue), and view tests in `__tests__/`.
-- `src/components/library/`: the reusable [book card](src/components/library/LibraryBookCard.vue), the [“Your shelves” side menu](src/components/library/LibrarySidebar.vue), and the book-detail reading, edition, thoughts, review and reading-club panels.
-- `src/components/session/`: the separate [reading timer](src/components/session/ReadingTimer.vue) with pause, resume and stop events.
-- `src/mocks/library.ts`, `src/types/library.ts`, `src/utils/library.ts`: mock library and book-detail data, domain types and filtering, progress and sorting helpers. Replace the mock with API data once the backend endpoints exist.
-- `src/mocks/session.ts`, `src/types/session.ts`: the mock active session (including eligible groups and rules) and its types. Replace them when the session API exists.
+- `src/assets/styles/tokens.css`: the five brand colors, semantic aliases, typography, spacing and radii. Brand hex values are  
+defined once here. Use the `--font-size-*` scale (`2xs` 11px to `display` 56px) for every font size. A second block holds the     
+tokens added for the profile page and app layout (hover and on-primary colors, page width, cover and menu shadows, motion).       
+- `src/assets/styles/main.css`: global styles consuming tokens, plus shared classes (`.page-column`, `.button`, `.text-link`, `.
+book-link`, `.progress-bar`, `.section-title`, `.sr-only`).
+- `src/views/`: Login, Home and not-found placeholders, the profile page prototype (`ProfileView`), the responsive [library     
+page](src/views/LibraryView.vue), [book detail](src/views/BookDetailView.vue), [active session](src/views/ActiveSessionView.vue), 
+and view tests in `__tests__/`.
+- `src/components/layout/`: `AppHeader` (nav, search, notifications, account menu) and `AppFooter`, shown on every route except 
+those with `meta.hideAppChrome` (Login).
+- `src/components/library/`: the reusable [book card](src/components/library/LibraryBookCard.vue), the [“Your shelves” side     
+menu](src/components/library/LibrarySidebar.vue), and the book-detail reading, edition, thoughts, review and reading-club panels. 
+- `src/components/profile/`: the profile sections (`ProfileBookplate`, `CurrentlyReading`, `BookShelf`, `CoverGrid`,            
+`ChapterLevel`, `StreakCalendar`, `ReadingTime`, `ChallengesSummary`, `FolderList`, `MonthRecap`, `BookCover`). Each one handles  
+its own empty state.
+- `src/components/session/`: the separate [reading timer](src/components/session/ReadingTimer.vue) with pause, resume and stop  
+events.
+- `src/mocks/`, `src/types/`, `src/utils/`: domain types, helpers, and typed mock data for the profile, library, and active     
+session, used until the backend APIs exist.
 - `src/assets/covers/`: the book cover crops used by the library and detail prototypes, including the portrait Emma detail cover.
 - `src/router/`: routes and router tests.
 - `src/services/api.ts`: configurable health request and response validation.

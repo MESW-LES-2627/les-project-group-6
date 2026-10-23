@@ -20,11 +20,13 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
 | Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done |
 | Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
+| Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
 | Frontend routes (#64) | Initial routes implemented |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
 | Library page prototype (#76) | Responsive `/library` UI with mock data, reusable card and shelves components, filters and tests; API wiring and menu actions still to do |
 | Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels; API wiring still to do |
 | Active reading session | Responsive `/session/:bookId` with a separate timer, progress editor, session notes and group-counting rail; save wiring still to do |
+| Profile page prototype | `/profile` with app header and footer, mock data and empty states, built on the #64 skeleton |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
 | Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
 | MVP, vertical prototype, CLAIM, release notes | Empty, to be written |
@@ -169,6 +171,23 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added production migration job `migrate-production` to [`.github/workflows/backend-ci.yml`](../../../.github/workflows/backend-ci.yml) targeting Supabase using `PROD_DATABASE_URL` upon merge to `main`.
 - Updated [`apps/backend/README.md`](../../../apps/backend/README.md) and [`docs/README.md`](../../README.md).
 
+### 2026-10-22: CLAIM with deployed environments
+
+- Started the [iteration 0 CLAIM](CLAIM.md) with the production and staging links for the frontend and backend (the `api-` links, which also serve `/health`) and a short summary: both apps deployed in prod and stg on Render, database on Supabase.
+
+### 2026-10-22: Vision features beyond the MVP
+
+- Rewrote the "Features beyond the MVP" table in [`Vision.md`](Vision.md) with the team's feature list: real-time chat, reading journal, recommendations, reading sessions and streaks, club discussions, custom challenges, badges and yearly retrospective, shelves and reading status, and friends. The previous proposals not in the list (yearly goal, activity feed, quotes and highlights, notifications, mobile app) were removed from the table.
+
+### 2026-10-22: Iteration 0 release notes
+
+- Filled [`release_notes.md`](release_notes.md): frontend and backend deployed, Supabase database with Supabase Auth as the planned authentication, mocked profile and library pages, and basic routes to create, save and get books.
+
+### 2026-10-23: MVP feature list
+
+- Rewrote [`mvp.md`](mvp.md): it now opens with the 6 MVP features (authentication, clubs and challenges with real-time text chat and leaderboard, library, search, gamification, friends) followed by 14 user stories. Out of scope: photos and videos in the chat, recommendations, onboarding and email notifications.
+- **Decision:** one-to-one messages, reading statistics and user-created challenges left the MVP list, and "reading session" was dropped as a separate story (the streak counts days with reading logged). *Why:* they were not in the feature list agreed by the team. The MoSCoW tags in the requirements may need to follow.
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
@@ -224,6 +243,41 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Built the [timer as a separate component](../../../apps/frontend/src/components/session/ReadingTimer.vue) with running and paused states, pause/resume/stop events and autoplay. The page keeps the page and percentage fields in sync, shows the session note and saves-back count, and brings the eligible groups, profile-total explanation and locked rules into a responsive right rail.
 - Added [session types](../../../apps/frontend/src/types/session.ts), [mock session data](../../../apps/frontend/src/mocks/session.ts), the session route and timer/view/router tests. “Stop & save” returns to the book detail page for now; persisting the session is deferred until the backend endpoints exist. The layout was checked against the 1266×886 reference and at 390 px without horizontal overflow.
 
+### 2026-10-22: Profile page prototype on the #64 skeleton
+
+- Built the profile page at `/profile` from the "Bookmarked profile" HTML design reference, as Vue components in [`src/components/profile/`](../../../apps/frontend/src/components/profile/) (bookplate, currently reading, shelf, recently added, chapter level, streak, reading time, challenges, folders, monthly recap). Each section has its own empty state; `/profile?state=new` shows them all. Data comes from typed mocks until the API exists. Added a shared `AppHeader` (nav, search, notifications, account menu) and `AppFooter` in `App.vue`, hidden on `/login` through `meta.hideAppChrome`.
+- The prototype was first built on a separate frontend skeleton made in parallel with #64. **Decision: drop that skeleton and keep the #64 one.** *Why:* #64 has the fuller setup (Oxlint, Prettier, API proxy, health check, router tests) and is the one the team reviews. Only the profile code was moved over: its tokens were renamed to the #64 names where the meaning matched (for example `--color-primary`, `--color-border`, `--color-text-muted`, and spacing on the `--space-N` = N × 0.25rem scale), and the tokens #64 does not have were added to [`tokens.css`](../../../apps/frontend/src/assets/styles/tokens.css). Pinia was dropped because no store exists yet. `Bookplate` and `Shelf` were renamed `ProfileBookplate` and `BookShelf` for the multi-word component-name lint rule. Added a router test for `/profile`. Lint, format, typecheck, tests (8) and build pass.
+- **Decision: warm neutrals from our palette, not the reference's grey-greens.** *Why:* AGENTS.md says UI uses the five palette colors. *Rejected:* adding the reference's `#EEF0EC` and `#1B1F1C` as palette colors.
+- **Decision: profile headings follow the #64 typography (Lora headings, Inter body).** *Why:* one heading style across the app, as set in the [design README](../../design/README.md). Headings get Lora from the global `h1`–`h6` rule only; the per-component heading font override was removed. Book titles on the shelf spines also use Lora. *Rejected:* the earlier prototype choice of sans for the profile name and section titles.
+- **Decision: one type scale.** Replaced the profile's `--text-*` sizes and its hard-coded pixel sizes with the `--font-size-*` scale, extended from 5 to 10 steps (`2xs` 11px, `xs` 13px, `sm` 14px, `base` 16px, `md` 18px, `lg` 24px, `xl` 32px, `2xl` 40px, `3xl` 48px, `display` 56px). The #64 values did not change. Profile sizes moved to the nearest step (for example 15px to 16px, 26px to 24px).
+- Fixed a sideways scroll on phones: the hidden hover tooltips of the covers near the right edge made the page wider than the screen. They are now off on touch screens (`hover: none`), where they could not be shown anyway.
+- **Open:** Caveat, used for the handwritten reading-time note, is not loaded yet and falls back to the system cursive.
+
+### 2026-10-22: Vertical prototype book CRUD (#78)
+
+- Created domain entity `Book` and repository interface `IBookRepository` in [`apps/backend/src/domain/book.ts`](../../../apps/backend/src/domain/book.ts).
+- Implemented `DrizzleBookRepository` in [`apps/backend/src/infrastructure/repositories/drizzle-book-repository.ts`](../../../apps/backend/src/infrastructure/repositories/drizzle-book-repository.ts) with operations for saving, finding by ID, finding by title substring (`ilike`), and deleting books.
+- Added Express endpoints in [`apps/backend/src/app.ts`](../../../apps/backend/src/app.ts):
+  - `POST /book`: creates a new book (`201 Created`, requires `title`).
+  - `GET /book?title=...`: lists books or filters by title substring (`200 OK`).
+  - `GET /book/:id`: returns single book by UUID (`200 OK` or `404 Not Found`).
+  - `DELETE /book/:id`: deletes book by UUID (`204 No Content` or `404 Not Found`).
+- Added integration test suites in `apps/backend/tests/integration/`:
+  - [`book-repository.test.ts`](../../../apps/backend/tests/integration/book-repository.test.ts): repository CRUD operations against PostgreSQL.
+  - [`book-api.test.ts`](../../../apps/backend/tests/integration/book-api.test.ts): HTTP endpoint verification with `withApp`.
+- Updated backend test script to `--test-concurrency=1` to prevent database table truncation race conditions.
+- Updated [`apps/backend/README.md`](../../../apps/backend/README.md) with API endpoints documentation.
+
+### 2026-10-23: Reading status, user library, and seed script (#78)
+
+- Implemented `ReadingStatus` entity and `IReadingStatusRepository` in [`apps/backend/src/domain/reading-status.ts`](../../../apps/backend/src/domain/reading-status.ts), supporting status types (`not-started`, `in-progress`, `finished`, `did-not-finish`), page progress, and user library aggregation.
+- Implemented `DrizzleReadingStatusRepository` in [`apps/backend/src/infrastructure/repositories/drizzle-reading-status-repository.ts`](../../../apps/backend/src/infrastructure/repositories/drizzle-reading-status-repository.ts) with upsert handling on conflict (`user_id`, `book_id`) and user library retrieval joining `reading_status` and `books`.
+- Added Express endpoints in [`apps/backend/src/app.ts`](../../../apps/backend/src/app.ts):
+  - `PUT /reading-status`: creates or updates user reading status and page progress (`200 OK`).
+  - `GET /user/:userId/library`: returns list of user library items with book metadata and status, supporting optional `?status=` filter (`200 OK`).
+- Added database seed script [`apps/backend/src/infrastructure/database/seed.ts`](../../../apps/backend/src/infrastructure/database/seed.ts) (`pnpm db:seed`): seeds demo reader user (`demo_reader`), 6 books with high-resolution Open Library cover URLs, and initial `not-started` reading status entries linking the demo user to all seeded books so the library is immediately populated for vertical prototype testing.
+- Updated [`apps/backend/README.md`](../../../apps/backend/README.md) with reading status endpoints and seed documentation.
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
@@ -235,7 +289,8 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
 - Create the issues for Extras once Core is under way.
 - Resolve the open questions in the requirements.
-- Write the MVP definition, the vertical prototype plan and the CLAIM.
+- Write the MVP definition, the vertical prototype plan and the rest of the CLAIM.
 - Decide whether Supabase also serves as the database (new ADR), and close the other open decisions in [`infra.md`](../../architecture/infra.md).
 - Update `table_UML.md` for Supabase Auth: remove `USER.password_hash` and `PASSWORD_RESET_TOKEN`, add `USER.timezone`.
+- Decide whether to load Caveat for the handwritten notes.
 - Write the release notes at the end of the iteration.
