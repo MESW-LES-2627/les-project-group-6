@@ -23,6 +23,20 @@ pnpm dev:backend
 
 Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db": "ok" }`.
 
+## API Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/health` | Health check returning `{ "status": "ok", "db": "ok" }` |
+| `POST` | `/book` | Creates a new book (`201 Created`, requires `title`) |
+| `GET` | `/book?title=...` | Lists books or filters by title substring (`200 OK`) |
+| `GET` | `/book/:id` | Returns a single book by UUID (`200 OK` or `404 Not Found`) |
+| `DELETE` | `/book/:id` | Deletes a book by UUID (`204 No Content` or `404 Not Found`) |
+| `PUT` | `/reading-status` | Sets reading status and page progress for a book (`200 OK`) |
+| `PATCH` | `/reading-status/:id` | Edits an existing reading status by ID (`200 OK` or `404 Not Found`) |
+| `PATCH` | `/reading-status` | Edits an existing reading status by ID or userId + bookId (`200 OK` or `404 Not Found`) |
+| `GET` | `/user/:userId/library` | Returns user's library with progress, supports `?status=` (`200 OK`) |
+
 ## Scripts
 
 Run them inside `apps/backend`, or from the root with `pnpm --filter @bookmarked/backend <script>`.
@@ -37,6 +51,7 @@ Run them inside `apps/backend`, or from the root with `pnpm --filter @bookmarked
 | `test` | Runs `tests/**/*.test.ts` with the Node.js test runner (through `tsx`) |
 | `db:generate` | Generates SQL migrations from schema using `drizzle-kit` |
 | `db:migrate` | Applies pending migrations to the database |
+| `db:seed` | Populates database with demo user, books, and reading statuses |
 | `db:studio` | Opens Drizzle Studio local database viewer |
 
 CI runs lint, format check, typecheck, test and build on every pull request (see [`.github/workflows/backend-ci.yml`](../../.github/workflows/backend-ci.yml)).
@@ -59,15 +74,16 @@ apps/backend/
 │   ├── migrations/  # Drizzle SQL migrations and journal metadata
 │   └── schema.sql   # PostgreSQL database schema matching UML specification
 ├── src/
-│   ├── domain/      # Domain entities and repository interfaces
+│   ├── domain/      # Domain entities and repository interfaces (User, Book, ReadingStatus)
 │   ├── infrastructure/
 │   │   ├── database/
 │   │   │   ├── health-check.ts
 │   │   │   ├── migrate.ts
 │   │   │   ├── pool.ts
 │   │   │   ├── relations.ts
-│   │   │   └── schema.ts
-│   │   └── repositories/ # Concrete database repository implementations
+│   │   │   ├── schema.ts
+│   │   │   └── seed.ts
+│   │   └── repositories/ # Concrete Drizzle repositories (User, Book, ReadingStatus)
 │   ├── app.ts       # createApp(): builds the Express app and its routes
 │   └── server.ts    # entry point: starts the HTTP server
 ├── tests/

@@ -10,9 +10,10 @@
     "start": "node --env-file-if-exists=.env dist/server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test \"tests/**/*.test.ts\"",
+    "test": "tsx --test --test-concurrency=1 \"tests/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=.env src/infrastructure/database/migrate.ts",
+    "db:seed": "tsx --env-file-if-exists=.env src/infrastructure/database/seed.ts",
     "db:studio": "drizzle-kit studio",
     "db:init": "docker exec -i bookmarked-db psql -U postgres -d bookmarked_dev < database/schema.sql"
   },
