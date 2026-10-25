@@ -320,6 +320,12 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - Added Express CORS middleware in [`apps/backend/src/app.ts`](../../../apps/backend/src/app.ts) with `Access-Control-Allow-Origin: *` and preflight `OPTIONS` handling to support cross-origin API calls from the deployed frontend static site.
 - Updated [`apps/frontend/README.md`](../../../apps/frontend/README.md) and [`apps/backend/README.md`](../../../apps/backend/README.md).
 
+### 2026-10-25: DTOs in their own files and the reading-status folder
+
+- Moved each feature's DTO and its mapper out of the routes file into `<name>-dto.ts`: [`book-dto.ts`](../../../apps/backend/src/features/book/book-dto.ts) (`BookDto`, `toBookDto`) and [`reading-status-dto.ts`](../../../apps/backend/src/features/reading-status/reading-status-dto.ts) (`ReadingStatusDto`, `toReadingStatusDto`). The routes files now only translate HTTP to service calls. `library` already returns the plain views of its query, and `user` has no routes, so neither got a DTO file.
+- Updated the [backend README](../../../apps/backend/README.md#folder-layout) and the [`oop-ddd-review`](../../../.claude/skills/oop-ddd-review/SKILL.md) skill layout. No behaviour change: the JSON contract is the same and the 58 tests pass.
+- **Decision: rename the `features/reading/` folder to `features/reading-status/`.** *Why:* every file inside, the `ReadingStatus` class, the `reading_status` table, the `/reading-status` endpoint and the docs already use "reading status"; a bare `reading` could be confused with the active reading session. *Rejected:* `book-status`, because the aggregate belongs to a user and a book together (each reader has their own status for the same book), and it would clash with any future catalogue status of a book itself.
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).

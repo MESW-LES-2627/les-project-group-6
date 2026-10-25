@@ -583,3 +583,23 @@ yes, lets follow this, however, inside src/ we can have: features/book,user,etc.
 
 #### Explanation of Changes
 Restructured `apps/backend/src` from layer folders (`domain/`, `application/`, `infrastructure/`, `http/`) into `features/<name>/` plus `api/`, `config/`, `middleware/`, `utils/` and `database/`. Merged each feature's value objects into its entity file, the mappers into the repository files, the DTOs into the routes, and the use case classes into one service per feature (`BookService`, `ReadingStatusService`). Moved the SQL migrations into `src/database/migrations`, added `config/env.ts`, and added an ESLint `no-restricted-imports` rule so entities and services cannot import Drizzle, `pg` or Express. Updated the tests' imports, the backend README, ADR-0004 and the `oop-ddd-review` skill. Typecheck, lint, format, build and the 58 tests pass. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-25: DTOs split from the routes and reading-status folder
+
+- **Date:** 2026-10-25
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend
+
+#### Prompt
+```text
+Can we split the DTOs from routes? Create a book-dto.ts
+same for the other features, split the dtos from routes
+what is the reading feature? reading is the best name we can have here?
+maybe book-status?
+lets keep reading-status, commit and push
+```
+
+#### Explanation of Changes
+Moved `BookDto`/`toBookDto` into `features/book/book-dto.ts` and `ReadingStatusDto`/`toReadingStatusDto` into `features/reading/reading-status-dto.ts`; the routes files import them. Renamed `features/reading/` to `features/reading-status/` to match the class, table, endpoint and docs (`book-status` was rejected because the status belongs to a user and a book, not to the book). Updated the backend README and the `oop-ddd-review` skill layout. Typecheck, lint, format and the 58 tests pass. See the [iteration log](log.md) entry of the same date.
