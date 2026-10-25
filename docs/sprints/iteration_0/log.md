@@ -235,6 +235,10 @@ Reviewed the v1.0 tables (the `schema.ts` generated from PR #75) and cut them do
   - `genre` is a nullable `book.genre_id` (one main genre) instead of `book_genre`. The library is `reading_status`, and lists are folders on top of it.
 - **Implementation:** rewrote [`schema.ts`](../../../apps/backend/src/database/schema.ts). The hand-written [migration `0002_core_model.sql`](../../../apps/backend/src/database/migrations/0002_core_model.sql) renames the tables that hold data instead of dropping them. *Why hand-written:* `drizzle-kit generate` asks interactive rename questions. It was checked against a from-scratch Drizzle migration (identical columns, constraints, indexes and enums) and on a database with existing rows. `User` lost its streak fields and gained `profileDescription` and `updatedAt`. Removed `src/database/schema.sql` and the `db:init` script, so the migrations are the only source of the schema. Tests: 58 passing.
 
+### 2026-10-25: Removed the empty `infra/` and `scripts/` folders
+
+- Deleted the root `infra/` and `scripts/` folders, which only held a `.gitkeep`, and their entries in the [README](../../../README.md). *Why:* deployment is configured in `.github/workflows/` and on Render, and the helper commands live in the `Makefile` and the `package.json` scripts. A folder can come back when it has real content.
+
 ## Next steps
 
 - Write an ADR restricting Drizzle to a query builder (decided in the OOP/DDD review entry above).
