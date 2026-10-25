@@ -95,7 +95,8 @@ CREATE TABLE reading_status (
     book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     status VARCHAR(20) NOT NULL,
     current_page INTEGER NOT NULL DEFAULT 0,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, book_id)
 );
 
 -- Stores star ratings and optional written reviews left by users for books.

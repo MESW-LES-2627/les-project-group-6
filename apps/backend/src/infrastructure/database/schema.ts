@@ -119,6 +119,7 @@ export const readingStatus = pgTable(
       foreignColumns: [books.id],
       name: 'reading_status_book_id_fkey',
     }).onDelete('cascade'),
+    unique('reading_status_user_id_book_id_key').on(table.userId, table.bookId),
   ],
 );
 

@@ -37,27 +37,25 @@ export class DrizzleReadingStatusRepository implements IReadingStatusRepository 
   }
 
   async save(entry: ReadingStatus): Promise<void> {
-    const existing = await this.findByUserAndBook(entry.userId, entry.bookId);
-
-    if (existing) {
-      await this.db
-        .update(readingStatus)
-        .set({
-          status: entry.status,
-          currentPage: entry.currentPage,
-          updatedAt: entry.updatedAt.toISOString(),
-        })
-        .where(eq(readingStatus.id, existing.id));
-    } else {
-      await this.db.insert(readingStatus).values({
+    // Single atomic upsert: the (user_id, book_id) unique constraint keeps one row per pair.
+    await this.db
+      .insert(readingStatus)
+      .values({
         id: entry.id,
         userId: entry.userId,
         bookId: entry.bookId,
         status: entry.status,
         currentPage: entry.currentPage,
         updatedAt: entry.updatedAt.toISOString(),
+      })
+      .onConflictDoUpdate({
+        target: [readingStatus.userId, readingStatus.bookId],
+        set: {
+          status: entry.status,
+          currentPage: entry.currentPage,
+          updatedAt: entry.updatedAt.toISOString(),
+        },
       });
-    }
   }
 
   async update(
