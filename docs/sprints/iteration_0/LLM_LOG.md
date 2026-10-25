@@ -583,3 +583,23 @@ yes, lets follow this, however, inside src/ we can have: features/book,user,etc.
 
 #### Explanation of Changes
 Restructured `apps/backend/src` from layer folders (`domain/`, `application/`, `infrastructure/`, `http/`) into `features/<name>/` plus `api/`, `config/`, `middleware/`, `utils/` and `database/`. Merged each feature's value objects into its entity file, the mappers into the repository files, the DTOs into the routes, and the use case classes into one service per feature (`BookService`, `ReadingStatusService`). Moved the SQL migrations into `src/database/migrations`, added `config/env.ts`, and added an ESLint `no-restricted-imports` rule so entities and services cannot import Drizzle, `pg` or Express. Updated the tests' imports, the backend README, ADR-0004 and the `oop-ddd-review` skill. Typecheck, lint, format, build and the 58 tests pass. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-25: Core database model and domain class diagram
+
+- **Date:** 2026-10-25
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** database, architecture, backend, docs
+
+#### Prompt
+```text
+[Review list of problems in the UML and the Drizzle schema: singular table names, users.bio -> profile_description, timezone, profile_visibility enum, missing updated_at/deleted_at, streak columns out of users, group vs group_session, one user_id name, leaderboard shape, win_metric, metric_goal, challenge genre/category/author filters.] what is your thoughts?
+for now we can disable the tables related to book clubs. this first iteration will have just challenge groups
+we still need the conversation table [...] Also, the lists because we want users to save books into their libraries
+genre can be a book column, right?
+create a new PR with the new UML. Change the schema, add an updated table_UML. [...] Also create a mermaid diagram with all tables UML relationships in UML notation (inheritances, relationships, associations, methods of behavior etc)
+```
+
+#### Explanation of Changes
+Discussed each point against the requirements and `features_priority.md` (agreed with most; kept `timezone`, used a final-standings `leaderboard_entry`, kept `challenge_group` without a stored status to respect the no-background-jobs decision). Rewrote `table_UML.md` as v2.0 for Core, added `docs/architecture/class_diagram.md` (Mermaid UML class diagram with stereotypes, inheritance, composition, aggregation, associations and methods), rewrote the Drizzle `schema.ts`, and wrote migration `0002_core_model.sql` by hand (renames keep data), verified against a from-scratch Drizzle migration. Updated the `User` entity, mappers, repositories, seed and tests, removed `src/database/schema.sql`, and updated `infra.md`, the READMEs and the iteration log.

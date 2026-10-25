@@ -16,7 +16,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | External dependencies decision (ADR-0002) | Accepted |
 | Issue templates | Done |
 | Kanban board (GitHub Project) | Created |
-| Database tables model | v1.0 drafted |
+| Database tables model | v2.0 (Core, challenge groups only) in `table_UML.md`, implemented in `schema.ts` with migration `0002`, plus a domain class diagram |
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
 | Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done |
 | Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
@@ -219,6 +219,20 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - The DDD rule that entities and services do not know Drizzle, `pg` or Express is now enforced by ESLint (`no-restricted-imports` in [`eslint.config.js`](../../../apps/backend/eslint.config.js)) instead of by the folder tree. The [`oop-ddd-review`](../../../.claude/skills/oop-ddd-review/SKILL.md) skill was updated to the new paths.
 - No behaviour change: the API and its JSON contract are the same, and the 58 tests pass.
 
+### 2026-10-25: Core database model (v2.0) and domain class diagram
+
+Reviewed the v1.0 tables (the `schema.ts` generated from PR #75) and cut them down to Core. Details and reasons per table are in [`table_UML.md`](../../architecture/table_UML.md); the behaviour is in the new [domain class diagram](../../architecture/class_diagram.md).
+
+- **Scope:** Core has challenge groups only. Book clubs, live group sessions, goals, notifications, badges and categories are dropped and listed in the "Deferred to Extras" section with the shape they come back in. Chat (`conversation`, `message`) and lists (`list`, `list_book`) stay.
+- **Rules:** singular table names; one `user_id` name for every user foreign key (`<role>_user_id` when there are two); enums for every fixed set of values; `updated_at` on changing rows and `deleted_at` where history matters (`challenge_group`, `conversation`, `message`, `review`, `list`).
+- **Decisions:**
+  - `groups` + `challenges` merged into `challenge_group`, with no `admin_id` (the admin is the `group_member` with role `admin`), `win_metric`, `metric_goal` or genre/category/author filters. *Why:* one group type in Core, minutes is the only metric, and a challenge has no target.
+  - One `reading_session` per timer run, with no group column, replaces `group_sessions` + `member_sessions`. A session counts in every challenge whose period contains it.
+  - Streak columns removed from `user`. No `user_stats` yet: streaks, minutes and challenges won are computed ([infra.md](../../architecture/infra.md) "computed on read"). *Rejected:* a `user_stats` table now; it comes back with streak freezes. `bio` renamed `profile_description`. `timezone` kept: it sets the local day for streaks.
+  - `leaderboard_entry` (`challenge_group_id`, `user_id`, `total_minutes`, `rank`) stores the final standings, written the first time a finished challenge is read. Challenge status is computed from its dates, so no scheduler is needed.
+  - `genre` is a nullable `book.genre_id` (one main genre) instead of `book_genre`. The library is `reading_status`, and lists are folders on top of it.
+- **Implementation:** rewrote [`schema.ts`](../../../apps/backend/src/database/schema.ts). The hand-written [migration `0002_core_model.sql`](../../../apps/backend/src/database/migrations/0002_core_model.sql) renames the tables that hold data instead of dropping them. *Why hand-written:* `drizzle-kit generate` asks interactive rename questions. It was checked against a from-scratch Drizzle migration (identical columns, constraints, indexes and enums) and on a database with existing rows. `User` lost its streak fields and gained `profileDescription` and `updatedAt`. Removed `src/database/schema.sql` and the `db:init` script, so the migrations are the only source of the schema. Tests: 58 passing.
+
 ## Next steps
 
 - Write an ADR restricting Drizzle to a query builder (decided in the OOP/DDD review entry above).
@@ -333,6 +347,7 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - Resolve the open questions in the requirements.
 - Write the MVP definition, the vertical prototype plan and the rest of the CLAIM.
 - Decide whether Supabase also serves as the database (new ADR), and close the other open decisions in [`infra.md`](../../architecture/infra.md).
-- Update `table_UML.md` for Supabase Auth: remove `USER.password_hash` and `PASSWORD_RESET_TOKEN`, add `USER.timezone`.
+- Implement the planned classes of the [domain class diagram](../../architecture/class_diagram.md) with their Core issues (reading session, friendship, challenge group, review, list, chat), and seed the `genre` list.
+- Decide what to do with PR #75, which the v2.0 model supersedes.
 - Decide whether to load Caveat for the handwritten notes.
 - Write the release notes at the end of the iteration.
