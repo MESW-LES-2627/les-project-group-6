@@ -221,6 +221,8 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 
 ### 2026-10-25: Core database model (v2.0) and domain class diagram
 
+PR #91 (`e411c5d` schema and migration, `284a7fc` docs).
+
 Reviewed the v1.0 tables (the `schema.ts` generated from PR #75) and cut them down to Core. Details and reasons per table are in [`table_UML.md`](../../architecture/table_UML.md); the behaviour is in the new [domain class diagram](../../architecture/class_diagram.md).
 
 - **Scope:** Core has challenge groups only. Book clubs, live group sessions, goals, notifications, badges and categories are dropped and listed in the "Deferred to Extras" section with the shape they come back in. Chat (`conversation`, `message`) and lists (`list`, `list_book`) stay.
