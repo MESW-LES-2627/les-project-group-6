@@ -532,3 +532,19 @@ Hey, let's connect the frontend to the backend for the vertical prototype:
 
 #### Explanation of Changes
 Connected the Vue frontend (`/library` and `/library/:bookId`) to the Express backend API. Added API service functions (`getUserLibrary`, `getBook`, `updateReadingStatus`) in `apps/frontend/src/services/api.ts` with demo reader mappings. Updated `LibraryView.vue` to fetch real seeded books and dynamically synchronize shelf counts. Added an interactive reading status and current page editor in `BookReadingPanel.vue` with `PUT /reading-status` updates. Added Express CORS middleware in `apps/backend/src/app.ts` to support cross-origin API calls on deployed environments. Updated backend and frontend READMEs and iteration logs.
+
+### 2026-10-25: OOP/DDD review skill
+
+- **Date:** 2026-10-25
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** architecture, backend, docs
+
+#### Prompt
+```text
+I want to create a SKILL.md that is responsible to analyze the backend code and ensure that we are using OOP, DDD concepts raw and not letting the abstractions do this for us. [...] Add this into a SKILL.md inside this repo. Also, in this skill you must review these patterns but also ensure that we can add or replace the code with any OOP pattern or DDD pattern. The skill must recommend.
+```
+
+#### Explanation of Changes
+Discussed why ORMs condition the domain model and reviewed the current backend (Drizzle used as a query builder behind hand-written repositories, but with anemic entities and an enabled relational API). Created `.claude/skills/oop-ddd-review/SKILL.md` with mechanical checks, rules R1–R6 (persistence ignorance, rich domain model, value objects, aggregates, layering, SOLID), a DDD/PoEAA/GoF pattern catalog with substitution guidance, and a report format. Updated README and the iteration log.

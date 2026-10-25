@@ -188,7 +188,15 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Rewrote [`mvp.md`](mvp.md): it now opens with the 6 MVP features (authentication, clubs and challenges with real-time text chat and leaderboard, library, search, gamification, friends) followed by 14 user stories. Out of scope: photos and videos in the chat, recommendations, onboarding and email notifications.
 - **Decision:** one-to-one messages, reading statistics and user-created challenges left the MVP list, and "reading session" was dropped as a separate story (the streak counts days with reading logged). *Why:* they were not in the feature list agreed by the team. The MoSCoW tags in the requirements may need to follow.
 
+### 2026-10-25: OOP/DDD review skill
+
+- Added the project skill [`oop-ddd-review`](../../../.claude/skills/oop-ddd-review/SKILL.md) to review `apps/backend` for raw OOP, DDD and design patterns, following the teacher's advice to avoid ORMs and frameworks that make design decisions for us.
+- Decided: keep Drizzle **only as a query builder** inside `infrastructure/`. Repositories and Data Mappers stay hand-written, the relational API (`relations.ts`, `db.query`, `with:`) is forbidden, and related data is loaded with explicit SQL joins. Rejected: full ORMs (Prisma, TypeORM, Sequelize, MikroORM) because they shape the domain model. Switching to raw `pg` is still open.
+- The skill flags anemic entities, primitive obsession, aggregate boundary and layering violations, and recommends DDD, PoEAA and GoF patterns (State, Strategy, Observer, Specification and others) to add or substitute.
+
 ## Next steps
+
+- Refactor `Book`, `User` and `ReadingStatus` into rich entities with value objects, remove `relations.ts`, and write an ADR restricting Drizzle to a query builder.
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
 - Turn on branch protection on `main` (required `backend` check and one approval), and uncomment `frontend-ci.yml` when `apps/frontend` exists.
