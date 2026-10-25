@@ -1,11 +1,10 @@
 import { eq, ilike } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Book, type IBookRepository } from '../../domain/book.js';
-import * as schema from '../database/schema.js';
 import { books } from '../database/schema.js';
 
 export class DrizzleBookRepository implements IBookRepository {
-  constructor(private readonly db: NodePgDatabase<typeof schema>) {}
+  constructor(private readonly db: NodePgDatabase) {}
 
   async findById(id: string): Promise<Book | null> {
     const rows = await this.db.select().from(books).where(eq(books.id, id)).limit(1);

@@ -7,11 +7,10 @@ import {
   type UserLibraryItem,
 } from '../../domain/reading-status.js';
 import { Book } from '../../domain/book.js';
-import * as schema from '../database/schema.js';
 import { readingStatus, books } from '../database/schema.js';
 
 export class DrizzleReadingStatusRepository implements IReadingStatusRepository {
-  constructor(private readonly db: NodePgDatabase<typeof schema>) {}
+  constructor(private readonly db: NodePgDatabase) {}
 
   async findById(id: string): Promise<ReadingStatus | null> {
     const rows = await this.db

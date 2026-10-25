@@ -1,11 +1,10 @@
 import { eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { User, type IUserRepository } from '../../domain/user.js';
-import * as schema from '../database/schema.js';
 import { users } from '../database/schema.js';
 
 export class DrizzleUserRepository implements IUserRepository {
-  constructor(private readonly db: NodePgDatabase<typeof schema>) {}
+  constructor(private readonly db: NodePgDatabase) {}
 
   async findById(id: string): Promise<User | null> {
     const rows = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
