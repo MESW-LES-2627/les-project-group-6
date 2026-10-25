@@ -1,16 +1,13 @@
 import { test, describe, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from '../../src/app.js';
-import { createDb } from '../../src/infrastructure/database/pool.js';
-import { DrizzleBookRepository } from '../../src/infrastructure/repositories/drizzle-book-repository.js';
-import { DrizzleReadingStatusRepository } from '../../src/infrastructure/repositories/drizzle-reading-status-repository.js';
-import { DrizzleLibraryQuery } from '../../src/infrastructure/queries/drizzle-library-query.js';
-import { DrizzleUserRepository } from '../../src/infrastructure/repositories/drizzle-user-repository.js';
-import { Book } from '../../src/domain/book/book.js';
-import { Email } from '../../src/domain/user/email.js';
-import { User } from '../../src/domain/user/user.js';
-import { UserId } from '../../src/domain/user/user-id.js';
-import { Username } from '../../src/domain/user/username.js';
+import { createDb } from '../../src/database/pool.js';
+import { DrizzleBookRepository } from '../../src/features/book/book-repository.js';
+import { DrizzleReadingStatusRepository } from '../../src/features/reading/reading-status-repository.js';
+import { DrizzleLibraryQuery } from '../../src/features/library/library-query.js';
+import { DrizzleUserRepository } from '../../src/features/user/user-repository.js';
+import { Book } from '../../src/features/book/book.js';
+import { Email, User, UserId, Username } from '../../src/features/user/user.js';
 import { createTestPool, truncateTables } from '../helpers/test-db.js';
 import { withApp } from '../helpers/http.js';
 

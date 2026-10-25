@@ -1,10 +1,9 @@
 import { test, describe, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from '../../src/app.js';
-import { createDb } from '../../src/infrastructure/database/pool.js';
-import { DrizzleBookRepository } from '../../src/infrastructure/repositories/drizzle-book-repository.js';
-import { Book } from '../../src/domain/book/book.js';
-import { BookId } from '../../src/domain/book/book-id.js';
+import { createDb } from '../../src/database/pool.js';
+import { DrizzleBookRepository } from '../../src/features/book/book-repository.js';
+import { Book, BookId } from '../../src/features/book/book.js';
 import { createTestPool, truncateTables } from '../helpers/test-db.js';
 import { withApp } from '../helpers/http.js';
 

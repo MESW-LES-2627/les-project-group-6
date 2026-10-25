@@ -1,8 +1,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from '../../src/app.js';
-import { DatabaseHealthCheck } from '../../src/infrastructure/database/health-check.js';
-import { createPool } from '../../src/infrastructure/database/pool.js';
+import { DatabaseHealthCheck } from '../../src/database/health-check.js';
+import { createPool } from '../../src/database/pool.js';
 import { withApp } from '../helpers/http.js';
 
 describe('GET /health', () => {

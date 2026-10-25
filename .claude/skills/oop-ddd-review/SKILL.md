@@ -15,12 +15,14 @@ Your job has two parts:
 ## Project context
 
 - Stack: Node.js + TypeScript + Express 5, PostgreSQL via `pg`, Drizzle used **only as a typed query builder**.
-- Layout under `apps/backend/src/`:
-  - `domain/`: entities, value objects, aggregates, repository interfaces, domain events, domain services. **Pure TypeScript.**
-  - `application/`: use cases / application services that orchestrate the domain. (Create it if missing.)
-  - `infrastructure/`: database schema, Drizzle repositories, mappers, external services.
-  - `app.ts` / HTTP layer: controllers only translate HTTP ⇄ use case calls.
-- Dependency direction: `HTTP → application → domain ← infrastructure`. The domain depends on nothing.
+- Layout under `apps/backend/src/` (feature folders; the DDD layers are files, not folders):
+  - `features/<name>/<name>.ts`: entity or aggregate plus its value objects, typed id and errors. **Pure TypeScript.**
+  - `features/<name>/<name>-service.ts`: application service, one method per use case, receives repository interfaces. **Pure TypeScript.**
+  - `features/<name>/<name>-repository.ts`: repository interface, Drizzle implementation and the Data Mapper functions.
+  - `features/<name>/<name>-routes.ts`: Express routes and the DTO; controllers only translate HTTP ⇄ service calls.
+  - `features/library/library-query.ts`: read-side query (CQRS).
+  - `api/` mounts the features, `middleware/` holds CORS and the error handler, `utils/` the DomainError families and the Uuid base, `database/` the schema, pool and migrations, `config/` the environment.
+- Dependency direction: routes → service → entity ← repository. The entity depends on nothing; ESLint `no-restricted-imports` blocks Drizzle, `pg`, Express and `database/` in entity and service files.
 
 ## How to run a review
 
@@ -35,20 +37,20 @@ Your job has two parts:
 Run from the repo root:
 
 ```bash
-# Drizzle / pg / express must not leak into domain or application
-grep -rnE "from ['\"](drizzle-orm|pg|express)" apps/backend/src/domain apps/backend/src/application
+# Drizzle / pg / express must not leak into entities or services (ESLint also checks this)
+grep -rnE "from ['\"](drizzle-orm|pg|express)" apps/backend/src/features --include='*.ts' | grep -vE -- '-(repository|query|routes)\.ts:'
 
 # Relational (ORM-mode) Drizzle API is forbidden
 grep -rnE "db\.query\.|with: *\{|relations\(" apps/backend/src
 
 # Generated row types must stay inside mappers/repositories
-grep -rnE "\\\$infer(Select|Insert)" apps/backend/src | grep -v infrastructure/
+grep -rnE "\\\$infer(Select|Insert)" apps/backend/src | grep -vE -- '-(repository|query)\.ts:'
 
 # Forbidden dependencies
 grep -nE "\"(prisma|@prisma/client|typeorm|sequelize|mikro-orm|@mikro-orm/[a-z-]+|@nestjs/[a-z-]+|class-transformer|typedi|inversify|tsyringe)\"" apps/backend/package.json
 
 # Decorators in the domain (annotation-driven design)
-grep -rn "^\s*@[A-Za-z]" apps/backend/src/domain
+grep -rn "^\s*@[A-Za-z]" apps/backend/src/features
 ```
 
 Any hit is a **Blocker** unless the user justifies it.
@@ -58,7 +60,7 @@ Any hit is a **Blocker** unless the user justifies it.
 ### R1. Persistence ignorance (anti-ORM)
 
 - No ORM or framework that owns entities: Prisma, TypeORM, Sequelize, MikroORM, NestJS, DI containers with decorators. Express is allowed only as the HTTP transport.
-- Drizzle is allowed **only** inside `infrastructure/`, **only** as a query builder (`select/insert/update/delete`, `innerJoin`, `sql\`\``).
+- Drizzle is allowed **only** in `database/` and in `*-repository.ts` / `*-query.ts` files, **only** as a query builder (`select/insert/update/delete`, `innerJoin`, `sql\`\``).
 - **Forbidden:** `relations.ts`, `db.query.*`, `with: {...}`. Load related data with explicit SQL joins inside the repository, and only what the aggregate needs.
 - Rows (`typeof table.$inferSelect`) never leave the repository. Conversion happens in a **Data Mapper** written by us (`toDomain(row)` / `toPersistence(entity)`).
 - Migrations are plain SQL or drizzle-kit output. They are schema only and never generate domain classes.
@@ -91,9 +93,9 @@ A Value Object is immutable, validated at creation, has no identity and compares
 
 ### R5. Layering and dependency inversion
 
-- Repository **interfaces** live in `domain/`. Implementations (`Drizzle*Repository`, `InMemory*Repository`) live in `infrastructure/`.
-- Use cases receive dependencies through the **constructor** (manual DI). Wire them in a composition root (`server.ts` / `app.ts`), not with a container.
-- Controllers contain no business rules. They parse input, call a use case and map the result or error to HTTP.
+- Repository **interfaces** sit at the top of `features/<name>/<name>-repository.ts`, next to the `Drizzle*Repository` that implements them. Services import only the interface type; `InMemory*Repository` lives in `tests/helpers/`.
+- Services receive dependencies through the **constructor** (manual DI). Wire them in a composition root (`api/router.ts`, with repositories built in `server.ts`), not with a container.
+- Controllers contain no business rules. They parse input, call a service method and map the result or error to HTTP.
 - Domain errors are domain classes (`InvalidIsbnError extends DomainError`), mapped to HTTP status codes in the HTTP layer.
 
 ### R6. SOLID and general OOP
@@ -173,7 +175,7 @@ For each substitution, state the trade-off (extra classes vs clarity and extensi
 ## Example: what a good entity looks like
 
 ```ts
-// domain/book/isbn13.ts
+// features/book/book.ts (value object)
 export class Isbn13 {
   private constructor(readonly value: string) {}
   static of(raw: string): Isbn13 {
@@ -184,7 +186,7 @@ export class Isbn13 {
   equals(other: Isbn13): boolean { return this.value === other.value; }
 }
 
-// domain/book/book.ts
+// features/book/book.ts (entity)
 export class Book {
   private constructor(
     readonly id: BookId,
@@ -204,7 +206,7 @@ export class Book {
   get title(): BookTitle { return this._title; }
 }
 
-// infrastructure/persistence/book-mapper.ts: the only place that knows both worlds
+// features/book/book-repository.ts: the mapper functions are the only place that knows both worlds
 export const BookMapper = {
   toDomain: (row: typeof books.$inferSelect) =>
     Book.reconstitute(BookId.of(row.id), BookTitle.of(row.title), row.isbn13 ? Isbn13.of(row.isbn13) : null),

@@ -72,27 +72,27 @@ Read from `apps/backend/.env` when it exists. See [`.env.example`](.env.example)
 
 ```
 apps/backend/
-├── database/
-│   ├── migrations/  # Drizzle SQL migrations and journal metadata
-│   └── schema.sql   # PostgreSQL database schema matching UML specification
 ├── src/
-│   ├── domain/           # Pure TypeScript: no Drizzle, pg or Express imports
-│   │   ├── shared/       # DomainError families and the typed Uuid base
-│   │   ├── book/         # Book entity, value objects (BookId, BookTitle, Isbn13, PageCount), repository interface
-│   │   ├── user/         # User entity, value objects (UserId, Email, Username), repository interface
-│   │   └── reading/      # ReadingStatus aggregate, ReadingState (State pattern), PageProgress, repository interface
-│   ├── application/      # Use cases that orchestrate the domain (book, reading) and read-side queries (library)
-│   ├── http/             # Express routers, DTOs, CORS and the domain-error to HTTP status mapping
-│   ├── infrastructure/
-│   │   ├── database/     # pool, schema (query builder only), migrate, seed, health check
-│   │   ├── persistence/  # Data Mappers between rows and domain objects
-│   │   ├── queries/      # Read-side query objects (DrizzleLibraryQuery)
-│   │   └── repositories/ # Drizzle repositories implementing the domain interfaces
-│   ├── app.ts            # createApp(): composition root, wires use cases and routes by hand
-│   └── server.ts         # entry point: builds the dependencies and starts the HTTP server
+│   ├── features/          # One folder per feature, with everything about it
+│   │   ├── book/          # book.ts (Book + value objects), book-repository.ts (interface + Drizzle + mapper),
+│   │   │                  # book-service.ts (get/register/search/remove), book-routes.ts (routes + DTO)
+│   │   ├── reading/       # ReadingStatus aggregate, ReadingState (State pattern) + PageProgress, repository, service, routes
+│   │   ├── user/          # User entity + value objects (UserId, Email, Username), repository
+│   │   └── library/       # Read-side query (CQRS) and the library route
+│   ├── api/               # router.ts wires each feature's service and mounts its routes; health route
+│   ├── config/            # env.ts: every setting read from the environment
+│   ├── middleware/        # CORS and the domain-error to HTTP status mapping
+│   ├── utils/             # DomainError families and the typed Uuid base
+│   ├── database/
+│   │   ├── migrations/    # Drizzle SQL migrations and journal metadata
+│   │   ├── schema.ts      # Tables for the query builder (source of the migrations)
+│   │   ├── schema.sql     # PostgreSQL database schema matching UML specification
+│   │   └── pool.ts, migrate.ts, seed.ts, health-check.ts
+│   ├── app.ts             # createApp(): middleware, the API router and the error handler
+│   └── server.ts          # entry point: builds the repositories and starts the HTTP server
 ├── tests/
 │   ├── helpers/     # Shared test utilities (http, test-db, in-memory repositories)
-│   ├── unit/        # Domain and use case tests, no database needed
+│   ├── unit/        # Entity, value object and service tests, no database needed
 │   └── integration/ # Integration tests against the database and HTTP API
 ├── drizzle.config.ts
 ├── eslint.config.js
@@ -100,4 +100,4 @@ apps/backend/
 └── tsconfig.build.json  # used by the build (excludes tests)
 ```
 
-`createApp()` is separate from `server.ts` so tests can call the app without opening a port. Dependencies point inwards: `http → application → domain ← infrastructure`. Drizzle is used only as a typed query builder inside `infrastructure/`; the relational API (`relations()`, `db.query`, `with:`) is not used. Domain errors map to HTTP status codes in [`src/http/error-handler.ts`](src/http/error-handler.ts): invalid values give 400, missing aggregates 404 and forbidden state changes 409.
+`createApp()` is separate from `server.ts` so tests can call the app without opening a port. Each feature keeps the DDD layers as files rather than folders: the entity file (`book.ts`) and the service (`book-service.ts`) are plain TypeScript, and only `*-repository.ts`, `*-query.ts` and `*-routes.ts` may import Drizzle, `pg` or Express. ESLint enforces this with `no-restricted-imports` (see [`eslint.config.js`](eslint.config.js)). A service has one method per use case and receives the repository interfaces, so unit tests use in-memory repositories. Drizzle is used only as a typed query builder; the relational API (`relations()`, `db.query`, `with:`) is not used. Domain errors map to HTTP status codes in [`src/middleware/error-handler.ts`](src/middleware/error-handler.ts): invalid values give 400, missing aggregates 404 and forbidden state changes 409.

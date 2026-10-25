@@ -1,10 +1,8 @@
-import type { Book } from '../../src/domain/book/book.js';
-import type { BookId } from '../../src/domain/book/book-id.js';
-import type { IBookRepository } from '../../src/domain/book/book-repository.js';
-import type { ReadingStatus } from '../../src/domain/reading/reading-status.js';
-import type { ReadingStatusId } from '../../src/domain/reading/reading-status-id.js';
-import type { IReadingStatusRepository } from '../../src/domain/reading/reading-status-repository.js';
-import type { UserId } from '../../src/domain/user/user-id.js';
+import type { Book, BookId } from '../../src/features/book/book.js';
+import type { IBookRepository } from '../../src/features/book/book-repository.js';
+import type { ReadingStatus, ReadingStatusId } from '../../src/features/reading/reading-status.js';
+import type { IReadingStatusRepository } from '../../src/features/reading/reading-status-repository.js';
+import type { UserId } from '../../src/features/user/user.js';
 
 // Test doubles that honour the repository contracts without a database.
 export class InMemoryBookRepository implements IBookRepository {

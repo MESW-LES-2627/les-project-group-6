@@ -200,7 +200,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 Applied the fixes found by the first `oop-ddd-review` run, one commit each. The [backend README](../../../apps/backend/README.md#folder-layout) has the new folder layout.
 
 - `d4f4601` Removed `relations.ts` and stopped passing the schema to `drizzle()`, so the relational API can no longer be used.
-- `7c991a5` Added a `UNIQUE (user_id, book_id)` constraint to `reading_status` ([migration 0001](../../../apps/backend/database/migrations/0001_reading_status_user_book_unique.sql) removes older duplicates first) and made `save()` a single atomic upsert. *Why:* find-then-insert could create duplicate rows under concurrent requests.
+- `7c991a5` Added a `UNIQUE (user_id, book_id)` constraint to `reading_status` ([migration 0001](../../../apps/backend/src/database/migrations/0001_reading_status_user_book_unique.sql) removes older duplicates first) and made `save()` a single atomic upsert. *Why:* find-then-insert could create duplicate rows under concurrent requests.
 - `c7c39f5` Added `DomainError` families and value objects (`BookId`, `UserId`, `ReadingStatusId`, `BookTitle`, `Isbn13` with check digit, `PageCount`, `PageProgress`, `Email`, `Username`).
 - `94d74b0`, `9ba953f` Made `Book` and `User` rich entities with a private constructor, `create`/`register` and `reconstitute` factories, plus `BookMapper` and `UserMapper` Data Mappers. The API returns DTOs, so the JSON contract used by the frontend is unchanged. Clients can no longer choose a book's id.
 - `d314f0b` Modelled the reading lifecycle with the **State** pattern (`NotStarted`, `InProgress`, `Finished`, `DidNotFinish`). Each state owns its transitions and its effect on page progress: finishing jumps to the last page, re-reading a finished book restarts at page 0, abandoning keeps the page, and pages cannot exceed the book's page count. The rules moved from `app.ts` into the `SetReadingStatus` and `UpdateReadingStatus` use cases, and the overloaded repository `update()` was removed. *Rejected:* a plain transition table, because progress handling already depends on the state.
@@ -208,6 +208,14 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - `b5425a3` Split `app.ts` into routers per resource backed by book use cases. `createApp()` is the composition root (manual DI, no container), and one error handler maps domain errors to 400/404/409.
 - Tests went from 18 to 58: new unit tests for value objects, entities, the reading lifecycle and the use cases (with in-memory repositories), plus integration tests for the reading status repository and API.
 - Frontend impact: `PUT /reading-status` now answers 409 for forbidden moves (e.g. `not-started` → `did-not-finish`) and 400 for pages beyond the book's page count. When the target status is `finished` or `not-started`, the page is ignored.
+
+### 2026-10-25: Backend folders by feature
+
+- **Decision: group the backend by feature, not by layer.** `src/` now has `features/` (`book`, `reading`, `user`, `library`), `api/`, `config/`, `middleware/`, `utils/` and `database/`. Each feature folder holds the entity file (entity plus its value objects), the repository file (interface, Drizzle implementation and mapper), one service and the routes with their DTO. *Why:* changing books meant opening `domain/`, `application/`, `infrastructure/` and `http/`, and the 46 files were mostly 10–25 line wrappers. `src/` now has 27 TypeScript files. The [backend README](../../../apps/backend/README.md#folder-layout) has the layout.
+- **Decision: one application service per feature instead of one class per use case.** `BookService` has `register`, `get`, `search` and `remove`; `ReadingStatusService` has `set` and `update`. *Why:* the use case classes had the same constructor and a single `execute`. One can be split out again if it grows its own dependencies.
+- **Decision: the database lives in `src/database/`** (schema, pool, migrate, seed and the SQL migrations), replacing the separate `apps/backend/database/` folder. *Rejected:* a root-level `database/` package, because only the backend talks to Postgres.
+- The DDD rule that entities and services do not know Drizzle, `pg` or Express is now enforced by ESLint (`no-restricted-imports` in [`eslint.config.js`](../../../apps/backend/eslint.config.js)) instead of by the folder tree. The [`oop-ddd-review`](../../../.claude/skills/oop-ddd-review/SKILL.md) skill was updated to the new paths.
+- No behaviour change: the API and its JSON contract are the same, and the 58 tests pass.
 
 ## Next steps
 

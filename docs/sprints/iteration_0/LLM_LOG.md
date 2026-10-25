@@ -565,3 +565,21 @@ create an commit for each fix
 
 #### Explanation of Changes
 Ran the `oop-ddd-review` skill on `apps/backend` (13 findings: unused Drizzle relations, anemic entities, primitive obsession, business rules in `app.ts`, a non-atomic reading status save, a read model in the write repository, no domain errors) and then applied the fixes, one commit each: removed the relational API, added a unique constraint with an atomic upsert, introduced value objects and domain errors, made `Book`/`User` rich entities with Data Mappers, modelled `ReadingStatus` with the State pattern behind use cases, moved the library join into a query object, and split the HTTP layer into routers with a single error handler. Added unit and integration tests (18 → 58). See the [iteration log](log.md) entry of the same date for the commit list.
+
+### 2026-10-25: Backend folders by feature
+
+- **Date:** 2026-10-25
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, architecture
+
+#### Prompt
+```text
+in the stacked PR, I have some opinions about the oop/dd patterns: - I think maybe we are with a lot of files without the need. Example: why we have a backend/database and backend/src/application/infrastructure/database? why we have src/application/book and serc/domain/book? can't we have just a single folder book with everything about books? we also have: get-book.ts, register-book.ts, remove-book.ts and search-book.ts. These files can't be in the same file?
+
+yes, lets follow this, however, inside src/ we can have: features/book,user,etc... , api/, config/, middleware/, utils/. the database can't be outisde the backend folder?
+```
+
+#### Explanation of Changes
+Restructured `apps/backend/src` from layer folders (`domain/`, `application/`, `infrastructure/`, `http/`) into `features/<name>/` plus `api/`, `config/`, `middleware/`, `utils/` and `database/`. Merged each feature's value objects into its entity file, the mappers into the repository files, the DTOs into the routes, and the use case classes into one service per feature (`BookService`, `ReadingStatusService`). Moved the SQL migrations into `src/database/migrations`, added `config/env.ts`, and added an ESLint `no-restricted-imports` rule so entities and services cannot import Drizzle, `pg` or Express. Updated the tests' imports, the backend README, ADR-0004 and the `oop-ddd-review` skill. Typecheck, lint, format, build and the 58 tests pass. See the [iteration log](log.md) entry of the same date.

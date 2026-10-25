@@ -1,11 +1,8 @@
 import { test, describe, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDb } from '../../src/infrastructure/database/pool.js';
-import { DrizzleUserRepository } from '../../src/infrastructure/repositories/drizzle-user-repository.js';
-import { Email } from '../../src/domain/user/email.js';
-import { User } from '../../src/domain/user/user.js';
-import { UserId } from '../../src/domain/user/user-id.js';
-import { Username } from '../../src/domain/user/username.js';
+import { createDb } from '../../src/database/pool.js';
+import { DrizzleUserRepository } from '../../src/features/user/user-repository.js';
+import { Email, User, UserId, Username } from '../../src/features/user/user.js';
 import { createTestPool, truncateTables } from '../helpers/test-db.js';
 
 describe('DrizzleUserRepository Integration', () => {
