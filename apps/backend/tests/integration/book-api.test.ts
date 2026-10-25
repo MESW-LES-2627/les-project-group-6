@@ -63,6 +63,39 @@ describe('Book API Endpoints', () => {
     });
   });
 
+  test('POST /book returns 400 for an invalid ISBN', async () => {
+    await withApp(app, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/book`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Dune', isbn13: '9780441172710' }),
+      });
+
+      assert.strictEqual(response.status, 400);
+      const data = (await response.json()) as { error: string };
+      assert.match(data.error, /ISBN-13/);
+    });
+  });
+
+  test('POST /book returns 400 for a malformed JSON body', async () => {
+    await withApp(app, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/book`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{"title": ',
+      });
+
+      assert.strictEqual(response.status, 400);
+    });
+  });
+
+  test('DELETE /book/:id returns 400 when ID is not a valid UUID', async () => {
+    await withApp(app, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/book/not-a-valid-uuid`, { method: 'DELETE' });
+      assert.strictEqual(response.status, 400);
+    });
+  });
+
   test('GET /book/:id returns 200 with book when found', async () => {
     const book = Book.create({
       title: 'Brave New World',
