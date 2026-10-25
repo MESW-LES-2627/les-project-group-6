@@ -211,6 +211,8 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 
 ### 2026-10-25: Backend folders by feature
 
+`1634e8f` (PR #90).
+
 - **Decision: group the backend by feature, not by layer.** `src/` now has `features/` (`book`, `reading`, `user`, `library`), `api/`, `config/`, `middleware/`, `utils/` and `database/`. Each feature folder holds the entity file (entity plus its value objects), the repository file (interface, Drizzle implementation and mapper), one service and the routes with their DTO. *Why:* changing books meant opening `domain/`, `application/`, `infrastructure/` and `http/`, and the 46 files were mostly 10–25 line wrappers. `src/` now has 27 TypeScript files. The [backend README](../../../apps/backend/README.md#folder-layout) has the layout.
 - **Decision: one application service per feature instead of one class per use case.** `BookService` has `register`, `get`, `search` and `remove`; `ReadingStatusService` has `set` and `update`. *Why:* the use case classes had the same constructor and a single `execute`. One can be split out again if it grows its own dependencies.
 - **Decision: the database lives in `src/database/`** (schema, pool, migrate, seed and the SQL migrations), replacing the separate `apps/backend/database/` folder. *Rejected:* a root-level `database/` package, because only the backend talks to Postgres.
