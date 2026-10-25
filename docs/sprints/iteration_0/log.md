@@ -322,6 +322,8 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 
 ### 2026-10-25: DTOs in their own files and the reading-status folder
 
+`dc75f99` (DTOs), `a44c823` (folder rename).
+
 - Moved each feature's DTO and its mapper out of the routes file into `<name>-dto.ts`: [`book-dto.ts`](../../../apps/backend/src/features/book/book-dto.ts) (`BookDto`, `toBookDto`) and [`reading-status-dto.ts`](../../../apps/backend/src/features/reading-status/reading-status-dto.ts) (`ReadingStatusDto`, `toReadingStatusDto`). The routes files now only translate HTTP to service calls. `library` already returns the plain views of its query, and `user` has no routes, so neither got a DTO file.
 - Updated the [backend README](../../../apps/backend/README.md#folder-layout) and the [`oop-ddd-review`](../../../.claude/skills/oop-ddd-review/SKILL.md) skill layout. No behaviour change: the JSON contract is the same and the 58 tests pass.
 - **Decision: rename the `features/reading/` folder to `features/reading-status/`.** *Why:* every file inside, the `ReadingStatus` class, the `reading_status` table, the `/reading-status` endpoint and the docs already use "reading status"; a bare `reading` could be confused with the active reading session. *Rejected:* `book-status`, because the aggregate belongs to a user and a book together (each reader has their own status for the same book), and it would clash with any future catalogue status of a book itself.
