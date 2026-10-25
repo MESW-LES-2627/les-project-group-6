@@ -2,10 +2,10 @@ import { test, describe, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createDb } from '../../src/database/pool.js';
 import { DrizzleBookRepository } from '../../src/features/book/book-repository.js';
-import { DrizzleReadingStatusRepository } from '../../src/features/reading/reading-status-repository.js';
+import { DrizzleReadingStatusRepository } from '../../src/features/reading-status/reading-status-repository.js';
 import { DrizzleUserRepository } from '../../src/features/user/user-repository.js';
 import { Book } from '../../src/features/book/book.js';
-import { ReadingStatus } from '../../src/features/reading/reading-status.js';
+import { ReadingStatus } from '../../src/features/reading-status/reading-status.js';
 import { Email, User, UserId, Username } from '../../src/features/user/user.js';
 import { createTestPool, truncateTables } from '../helpers/test-db.js';
 

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createApp } from '../../src/app.js';
 import { createDb } from '../../src/database/pool.js';
 import { DrizzleBookRepository } from '../../src/features/book/book-repository.js';
-import { DrizzleReadingStatusRepository } from '../../src/features/reading/reading-status-repository.js';
+import { DrizzleReadingStatusRepository } from '../../src/features/reading-status/reading-status-repository.js';
 import { DrizzleLibraryQuery } from '../../src/features/library/library-query.js';
 import { DrizzleUserRepository } from '../../src/features/user/user-repository.js';
 import { Book } from '../../src/features/book/book.js';

@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { books, readingStatus } from '../../database/schema.js';
-import type { ReadingStatusType } from '../reading/reading-state.js';
+import type { ReadingStatusType } from '../reading-status/reading-state.js';
 import type { UserId } from '../user/user.js';
 
 // Read side (CQRS): the library screen joins reading statuses with books, which

@@ -6,11 +6,11 @@ import {
   InvalidReadingStatusError,
   InvalidReadingTransitionError,
   ReadingState,
-} from '../../src/features/reading/reading-state.js';
+} from '../../src/features/reading-status/reading-state.js';
 import {
   ProgressNotAllowedError,
   ReadingStatus,
-} from '../../src/features/reading/reading-status.js';
+} from '../../src/features/reading-status/reading-status.js';
 import { UserId } from '../../src/features/user/user.js';
 
 const PAGES = PageCount.of(300);

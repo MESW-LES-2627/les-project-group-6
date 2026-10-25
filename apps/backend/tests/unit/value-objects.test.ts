@@ -12,7 +12,7 @@ import {
 import {
   InvalidPageProgressError,
   PageProgress,
-} from '../../src/features/reading/reading-state.js';
+} from '../../src/features/reading-status/reading-state.js';
 import {
   Email,
   InvalidEmailError,

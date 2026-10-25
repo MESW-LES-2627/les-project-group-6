@@ -5,9 +5,9 @@ import { bookRoutes } from '../features/book/book-routes.js';
 import { BookService } from '../features/book/book-service.js';
 import type { LibraryQuery } from '../features/library/library-query.js';
 import { libraryRoutes } from '../features/library/library-routes.js';
-import type { IReadingStatusRepository } from '../features/reading/reading-status-repository.js';
-import { readingStatusRoutes } from '../features/reading/reading-status-routes.js';
-import { ReadingStatusService } from '../features/reading/reading-status-service.js';
+import type { IReadingStatusRepository } from '../features/reading-status/reading-status-repository.js';
+import { readingStatusRoutes } from '../features/reading-status/reading-status-routes.js';
+import { ReadingStatusService } from '../features/reading-status/reading-status-service.js';
 import { healthRoutes } from './health-routes.js';
 
 export interface ApiDependencies {

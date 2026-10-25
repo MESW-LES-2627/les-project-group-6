@@ -1,7 +1,10 @@
 import type { Book, BookId } from '../../src/features/book/book.js';
 import type { IBookRepository } from '../../src/features/book/book-repository.js';
-import type { ReadingStatus, ReadingStatusId } from '../../src/features/reading/reading-status.js';
-import type { IReadingStatusRepository } from '../../src/features/reading/reading-status-repository.js';
+import type {
+  ReadingStatus,
+  ReadingStatusId,
+} from '../../src/features/reading-status/reading-status.js';
+import type { IReadingStatusRepository } from '../../src/features/reading-status/reading-status-repository.js';
 import type { UserId } from '../../src/features/user/user.js';
 
 // Test doubles that honour the repository contracts without a database.

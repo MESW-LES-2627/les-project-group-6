@@ -76,7 +76,7 @@ apps/backend/
 │   ├── features/          # One folder per feature, with everything about it
 │   │   ├── book/          # book.ts (Book + value objects), book-repository.ts (interface + Drizzle + mapper),
 │   │   │                  # book-service.ts (get/register/search/remove), book-routes.ts (routes + DTO)
-│   │   ├── reading/       # ReadingStatus aggregate, ReadingState (State pattern) + PageProgress, repository, service, routes
+│   │   ├── reading-status/ # ReadingStatus aggregate, ReadingState (State pattern) + PageProgress, repository, service, routes
 │   │   ├── user/          # User entity + value objects (UserId, Email, Username), repository
 │   │   └── library/       # Read-side query (CQRS) and the library route
 │   ├── api/               # router.ts wires each feature's service and mounts its routes; health route

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { READING_STATUS_TYPES, type ReadingStatusType } from '../reading/reading-state.js';
+import { READING_STATUS_TYPES, type ReadingStatusType } from '../reading-status/reading-state.js';
 import { UserId } from '../user/user.js';
 import type { LibraryQuery } from './library-query.js';
 

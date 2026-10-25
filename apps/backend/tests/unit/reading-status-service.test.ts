@@ -1,12 +1,12 @@
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { ReadingStatusService } from '../../src/features/reading/reading-status-service.js';
+import { ReadingStatusService } from '../../src/features/reading-status/reading-status-service.js';
 import { Book } from '../../src/features/book/book.js';
 import {
   InvalidPageProgressError,
   InvalidReadingTransitionError,
-} from '../../src/features/reading/reading-state.js';
-import { ProgressNotAllowedError } from '../../src/features/reading/reading-status.js';
+} from '../../src/features/reading-status/reading-state.js';
+import { ProgressNotAllowedError } from '../../src/features/reading-status/reading-status.js';
 import { NotFoundError } from '../../src/utils/errors.js';
 import {
   InMemoryBookRepository,

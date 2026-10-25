@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { Book, InvalidBookTitleError, InvalidIsbnError } from '../../src/features/book/book.js';
-import { InvalidPageProgressError } from '../../src/features/reading/reading-state.js';
+import { InvalidPageProgressError } from '../../src/features/reading-status/reading-state.js';
 
 describe('Book', () => {
   test('create generates an identity and wraps fields in value objects', () => {

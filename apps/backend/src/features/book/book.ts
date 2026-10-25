@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { InvalidValueError } from '../../utils/errors.js';
 import { Uuid } from '../../utils/uuid.js';
-import { PageProgress } from '../reading/reading-state.js';
+import { PageProgress } from '../reading-status/reading-state.js';
 
 export class InvalidBookTitleError extends InvalidValueError {
   constructor() {

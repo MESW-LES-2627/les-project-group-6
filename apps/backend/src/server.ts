@@ -4,7 +4,7 @@ import { DatabaseHealthCheck } from './database/health-check.js';
 import { createPool, createDb } from './database/pool.js';
 import { DrizzleBookRepository } from './features/book/book-repository.js';
 import { DrizzleLibraryQuery } from './features/library/library-query.js';
-import { DrizzleReadingStatusRepository } from './features/reading/reading-status-repository.js';
+import { DrizzleReadingStatusRepository } from './features/reading-status/reading-status-repository.js';
 
 const pool = createPool();
 const db = createDb(pool);
