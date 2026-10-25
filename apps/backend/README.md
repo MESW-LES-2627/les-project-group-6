@@ -76,20 +76,23 @@ apps/backend/
 │   ├── migrations/  # Drizzle SQL migrations and journal metadata
 │   └── schema.sql   # PostgreSQL database schema matching UML specification
 ├── src/
-│   ├── domain/      # Domain entities and repository interfaces (User, Book, ReadingStatus)
+│   ├── domain/           # Pure TypeScript: no Drizzle, pg or Express imports
+│   │   ├── shared/       # DomainError families and the typed Uuid base
+│   │   ├── book/         # Book entity, value objects (BookId, BookTitle, Isbn13, PageCount), repository interface
+│   │   ├── user/         # User entity, value objects (UserId, Email, Username), repository interface
+│   │   └── reading/      # ReadingStatus aggregate, ReadingState (State pattern), PageProgress, repository interface
+│   ├── application/      # Use cases that orchestrate the domain (book, reading) and read-side queries (library)
+│   ├── http/             # Express routers, DTOs, CORS and the domain-error to HTTP status mapping
 │   ├── infrastructure/
-│   │   ├── database/
-│   │   │   ├── health-check.ts
-│   │   │   ├── migrate.ts
-│   │   │   ├── pool.ts
-│   │   │   ├── relations.ts
-│   │   │   ├── schema.ts
-│   │   │   └── seed.ts
-│   │   └── repositories/ # Concrete Drizzle repositories (User, Book, ReadingStatus)
-│   ├── app.ts       # createApp(): builds the Express app and its routes
-│   └── server.ts    # entry point: starts the HTTP server
+│   │   ├── database/     # pool, schema (query builder only), migrate, seed, health check
+│   │   ├── persistence/  # Data Mappers between rows and domain objects
+│   │   ├── queries/      # Read-side query objects (DrizzleLibraryQuery)
+│   │   └── repositories/ # Drizzle repositories implementing the domain interfaces
+│   ├── app.ts            # createApp(): composition root, wires use cases and routes by hand
+│   └── server.ts         # entry point: builds the dependencies and starts the HTTP server
 ├── tests/
-│   ├── helpers/     # Shared test utilities (http, test-db)
+│   ├── helpers/     # Shared test utilities (http, test-db, in-memory repositories)
+│   ├── unit/        # Domain and use case tests, no database needed
 │   └── integration/ # Integration tests against the database and HTTP API
 ├── drizzle.config.ts
 ├── eslint.config.js
@@ -97,4 +100,4 @@ apps/backend/
 └── tsconfig.build.json  # used by the build (excludes tests)
 ```
 
-`createApp()` is separate from `server.ts` so tests can call the app without opening a port. The layering (http, application, domain, infrastructure) is added by the next setup issues.
+`createApp()` is separate from `server.ts` so tests can call the app without opening a port. Dependencies point inwards: `http → application → domain ← infrastructure`. Drizzle is used only as a typed query builder inside `infrastructure/`; the relational API (`relations()`, `db.query`, `with:`) is not used. Domain errors map to HTTP status codes in [`src/http/error-handler.ts`](src/http/error-handler.ts): invalid values give 400, missing aggregates 404 and forbidden state changes 409.

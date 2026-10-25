@@ -20,6 +20,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
 | Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done |
 | Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
+| Backend domain model (OOP/DDD) | Rich entities with value objects, `ReadingStatus` lifecycle with the State pattern, use cases, Data Mappers and a library query object |
 | Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
 | Frontend routes (#64) | Initial routes implemented |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
@@ -194,9 +195,24 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Decided: keep Drizzle **only as a query builder** inside `infrastructure/`. Repositories and Data Mappers stay hand-written, the relational API (`relations.ts`, `db.query`, `with:`) is forbidden, and related data is loaded with explicit SQL joins. Rejected: full ORMs (Prisma, TypeORM, Sequelize, MikroORM) because they shape the domain model. Switching to raw `pg` is still open.
 - The skill flags anemic entities, primitive obsession, aggregate boundary and layering violations, and recommends DDD, PoEAA and GoF patterns (State, Strategy, Observer, Specification and others) to add or substitute.
 
+### 2026-10-25: Backend OOP/DDD refactor
+
+Applied the fixes found by the first `oop-ddd-review` run, one commit each. The [backend README](../../../apps/backend/README.md#folder-layout) has the new folder layout.
+
+- `d4f4601` Removed `relations.ts` and stopped passing the schema to `drizzle()`, so the relational API can no longer be used.
+- `7c991a5` Added a `UNIQUE (user_id, book_id)` constraint to `reading_status` ([migration 0001](../../../apps/backend/database/migrations/0001_reading_status_user_book_unique.sql) removes older duplicates first) and made `save()` a single atomic upsert. *Why:* find-then-insert could create duplicate rows under concurrent requests.
+- `c7c39f5` Added `DomainError` families and value objects (`BookId`, `UserId`, `ReadingStatusId`, `BookTitle`, `Isbn13` with check digit, `PageCount`, `PageProgress`, `Email`, `Username`).
+- `94d74b0`, `9ba953f` Made `Book` and `User` rich entities with a private constructor, `create`/`register` and `reconstitute` factories, plus `BookMapper` and `UserMapper` Data Mappers. The API returns DTOs, so the JSON contract used by the frontend is unchanged. Clients can no longer choose a book's id.
+- `d314f0b` Modelled the reading lifecycle with the **State** pattern (`NotStarted`, `InProgress`, `Finished`, `DidNotFinish`). Each state owns its transitions and its effect on page progress: finishing jumps to the last page, re-reading a finished book restarts at page 0, abandoning keeps the page, and pages cannot exceed the book's page count. The rules moved from `app.ts` into the `SetReadingStatus` and `UpdateReadingStatus` use cases, and the overloaded repository `update()` was removed. *Rejected:* a plain transition table, because progress handling already depends on the state.
+- `2dec36d` Moved the library page join out of the write repository into a `LibraryQuery` (CQRS read side) returning plain views.
+- `b5425a3` Split `app.ts` into routers per resource backed by book use cases. `createApp()` is the composition root (manual DI, no container), and one error handler maps domain errors to 400/404/409.
+- Tests went from 18 to 58: new unit tests for value objects, entities, the reading lifecycle and the use cases (with in-memory repositories), plus integration tests for the reading status repository and API.
+- Frontend impact: `PUT /reading-status` now answers 409 for forbidden moves (e.g. `not-started` → `did-not-finish`) and 400 for pages beyond the book's page count. When the target status is `finished` or `not-started`, the page is ignored.
+
 ## Next steps
 
-- Refactor `Book`, `User` and `ReadingStatus` into rich entities with value objects, remove `relations.ts`, and write an ADR restricting Drizzle to a query builder.
+- Write an ADR restricting Drizzle to a query builder (decided in the OOP/DDD review entry above).
+- Show the 400/409 messages from `PUT /reading-status` in the book reading panel.
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
 - Turn on branch protection on `main` (required `backend` check and one approval), and uncomment `frontend-ci.yml` when `apps/frontend` exists.

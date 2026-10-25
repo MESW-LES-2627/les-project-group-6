@@ -548,3 +548,20 @@ I want to create a SKILL.md that is responsible to analyze the backend code and 
 
 #### Explanation of Changes
 Discussed why ORMs condition the domain model and reviewed the current backend (Drizzle used as a query builder behind hand-written repositories, but with anemic entities and an enabled relational API). Created `.claude/skills/oop-ddd-review/SKILL.md` with mechanical checks, rules R1–R6 (persistence ignorance, rich domain model, value objects, aggregates, layering, SOLID), a DDD/PoEAA/GoF pattern catalog with substitution guidance, and a report format. Updated README and the iteration log.
+
+### 2026-10-25: Backend OOP/DDD refactor
+
+- **Date:** 2026-10-25
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database, architecture, testing
+
+#### Prompt
+```text
+use oop-ddd-review
+create an commit for each fix
+```
+
+#### Explanation of Changes
+Ran the `oop-ddd-review` skill on `apps/backend` (13 findings: unused Drizzle relations, anemic entities, primitive obsession, business rules in `app.ts`, a non-atomic reading status save, a read model in the write repository, no domain errors) and then applied the fixes, one commit each: removed the relational API, added a unique constraint with an atomic upsert, introduced value objects and domain errors, made `Book`/`User` rich entities with Data Mappers, modelled `ReadingStatus` with the State pattern behind use cases, moved the library join into a query object, and split the HTTP layer into routers with a single error handler. Added unit and integration tests (18 → 58). See the [iteration log](log.md) entry of the same date for the commit list.
