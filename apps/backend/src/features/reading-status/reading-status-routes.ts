@@ -1,27 +1,6 @@
 import { Router, type RequestHandler } from 'express';
-import type { ReadingStatusType } from './reading-state.js';
-import type { ReadingStatus } from './reading-status.js';
 import type { ReadingStatusService } from './reading-status-service.js';
-
-export interface ReadingStatusDto {
-  id: string;
-  userId: string;
-  bookId: string;
-  status: ReadingStatusType;
-  currentPage: number;
-  updatedAt: string;
-}
-
-export function toReadingStatusDto(status: ReadingStatus): ReadingStatusDto {
-  return {
-    id: status.id.value,
-    userId: status.userId.value,
-    bookId: status.bookId.value,
-    status: status.status,
-    currentPage: status.progress.page,
-    updatedAt: status.updatedAt.toISOString(),
-  };
-}
+import { toReadingStatusDto } from './reading-status-dto.js';
 
 export function readingStatusRoutes(readingStatuses: ReadingStatusService): Router {
   const router = Router();

@@ -19,7 +19,8 @@ Your job has two parts:
   - `features/<name>/<name>.ts`: entity or aggregate plus its value objects, typed id and errors. **Pure TypeScript.**
   - `features/<name>/<name>-service.ts`: application service, one method per use case, receives repository interfaces. **Pure TypeScript.**
   - `features/<name>/<name>-repository.ts`: repository interface, Drizzle implementation and the Data Mapper functions.
-  - `features/<name>/<name>-routes.ts`: Express routes and the DTO; controllers only translate HTTP ⇄ service calls.
+  - `features/<name>/<name>-dto.ts`: the DTO (JSON shape) and its `to<Name>Dto` mapper from the entity.
+  - `features/<name>/<name>-routes.ts`: Express routes; controllers only translate HTTP ⇄ service calls.
   - `features/library/library-query.ts`: read-side query (CQRS).
   - `api/` mounts the features, `middleware/` holds CORS and the error handler, `utils/` the DomainError families and the Uuid base, `database/` the schema, pool and migrations, `config/` the environment.
 - Dependency direction: routes → service → entity ← repository. The entity depends on nothing; ESLint `no-restricted-imports` blocks Drizzle, `pg`, Express and `database/` in entity and service files.
