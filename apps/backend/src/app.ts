@@ -10,6 +10,7 @@ import type { IReadingStatusRepository } from './domain/reading/reading-status-r
 import { UserId } from './domain/user/user-id.js';
 import { SetReadingStatusUseCase } from './application/reading/set-reading-status.js';
 import { UpdateReadingStatusUseCase } from './application/reading/update-reading-status.js';
+import type { LibraryQuery } from './application/library/library-query.js';
 import { domainErrorHandler } from './http/error-handler.js';
 import { toReadingStatusDto } from './http/reading-status-dto.js';
 
@@ -17,6 +18,7 @@ export interface AppDependencies {
   healthCheck?: DatabaseHealthCheck;
   bookRepository?: IBookRepository;
   readingStatusRepository?: IReadingStatusRepository;
+  libraryQuery?: LibraryQuery;
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -175,8 +177,8 @@ export function createApp(deps: AppDependencies = {}): Express {
   app.patch('/reading-status', updateReadingStatusHandler);
 
   app.get('/user/:userId/library', async (req, res) => {
-    if (!deps.readingStatusRepository) {
-      res.status(500).json({ error: 'Reading status repository not configured' });
+    if (!deps.libraryQuery) {
+      res.status(500).json({ error: 'Library query not configured' });
       return;
     }
 
@@ -191,11 +193,8 @@ export function createApp(deps: AppDependencies = {}): Express {
     const statusFilter =
       statusQuery && VALID_STATUSES.includes(statusQuery) ? statusQuery : undefined;
 
-    const library = await deps.readingStatusRepository.findUserLibrary(
-      UserId.of(userId),
-      statusFilter,
-    );
-    res.status(200).json(library.map((item) => ({ ...item, book: toBookDto(item.book) })));
+    const library = await deps.libraryQuery.forUser(UserId.of(userId), statusFilter);
+    res.status(200).json(library);
   });
 
   app.use(domainErrorHandler);

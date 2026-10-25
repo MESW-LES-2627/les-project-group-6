@@ -4,6 +4,7 @@ import { createApp } from '../../src/app.js';
 import { createDb } from '../../src/infrastructure/database/pool.js';
 import { DrizzleBookRepository } from '../../src/infrastructure/repositories/drizzle-book-repository.js';
 import { DrizzleReadingStatusRepository } from '../../src/infrastructure/repositories/drizzle-reading-status-repository.js';
+import { DrizzleLibraryQuery } from '../../src/infrastructure/queries/drizzle-library-query.js';
 import { DrizzleUserRepository } from '../../src/infrastructure/repositories/drizzle-user-repository.js';
 import { Book } from '../../src/domain/book/book.js';
 import { Email } from '../../src/domain/user/email.js';
@@ -27,7 +28,8 @@ describe('Reading status API Endpoints', () => {
   const db = createDb(pool);
   const bookRepository = new DrizzleBookRepository(db);
   const readingStatusRepository = new DrizzleReadingStatusRepository(db);
-  const app = createApp({ bookRepository, readingStatusRepository });
+  const libraryQuery = new DrizzleLibraryQuery(db);
+  const app = createApp({ bookRepository, readingStatusRepository, libraryQuery });
   let book: Book;
 
   const send = (baseUrl: string, method: string, path: string, body: object) =>

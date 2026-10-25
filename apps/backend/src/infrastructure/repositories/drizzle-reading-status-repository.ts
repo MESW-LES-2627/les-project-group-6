@@ -1,16 +1,11 @@
 import { eq, and } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { BookId } from '../../domain/book/book-id.js';
-import type { ReadingStatusType } from '../../domain/reading/reading-state.js';
 import type { ReadingStatus } from '../../domain/reading/reading-status.js';
 import type { ReadingStatusId } from '../../domain/reading/reading-status-id.js';
-import type {
-  IReadingStatusRepository,
-  UserLibraryItem,
-} from '../../domain/reading/reading-status-repository.js';
+import type { IReadingStatusRepository } from '../../domain/reading/reading-status-repository.js';
 import type { UserId } from '../../domain/user/user-id.js';
-import { readingStatus, books } from '../database/schema.js';
-import { BookMapper } from '../persistence/book-mapper.js';
+import { readingStatus } from '../database/schema.js';
 import { ReadingStatusMapper } from '../persistence/reading-status-mapper.js';
 
 export class DrizzleReadingStatusRepository implements IReadingStatusRepository {
@@ -46,35 +41,5 @@ export class DrizzleReadingStatusRepository implements IReadingStatusRepository 
         target: [readingStatus.userId, readingStatus.bookId],
         set: { status: row.status, currentPage: row.currentPage, updatedAt: row.updatedAt },
       });
-  }
-
-  async findUserLibrary(
-    userId: UserId,
-    statusFilter?: ReadingStatusType,
-  ): Promise<UserLibraryItem[]> {
-    const conditions = [eq(readingStatus.userId, userId.value)];
-    if (statusFilter) {
-      conditions.push(eq(readingStatus.status, statusFilter));
-    }
-
-    const rows = await this.db
-      .select({
-        statusId: readingStatus.id,
-        status: readingStatus.status,
-        currentPage: readingStatus.currentPage,
-        statusUpdatedAt: readingStatus.updatedAt,
-        book: books,
-      })
-      .from(readingStatus)
-      .innerJoin(books, eq(readingStatus.bookId, books.id))
-      .where(and(...conditions));
-
-    return rows.map((row) => ({
-      id: row.statusId,
-      book: BookMapper.toDomain(row.book),
-      status: row.status as ReadingStatusType,
-      currentPage: row.currentPage,
-      updatedAt: new Date(row.statusUpdatedAt),
-    }));
   }
 }

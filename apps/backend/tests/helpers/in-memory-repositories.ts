@@ -3,10 +3,7 @@ import type { BookId } from '../../src/domain/book/book-id.js';
 import type { IBookRepository } from '../../src/domain/book/book-repository.js';
 import type { ReadingStatus } from '../../src/domain/reading/reading-status.js';
 import type { ReadingStatusId } from '../../src/domain/reading/reading-status-id.js';
-import type {
-  IReadingStatusRepository,
-  UserLibraryItem,
-} from '../../src/domain/reading/reading-status-repository.js';
+import type { IReadingStatusRepository } from '../../src/domain/reading/reading-status-repository.js';
 import type { UserId } from '../../src/domain/user/user-id.js';
 
 // Test doubles that honour the repository contracts without a database.
@@ -44,9 +41,5 @@ export class InMemoryReadingStatusRepository implements IReadingStatusRepository
 
   async save(entry: ReadingStatus): Promise<void> {
     this.entries.set(`${entry.userId.value}:${entry.bookId.value}`, entry);
-  }
-
-  async findUserLibrary(): Promise<UserLibraryItem[]> {
-    return [];
   }
 }
