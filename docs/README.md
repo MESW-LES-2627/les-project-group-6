@@ -49,7 +49,8 @@ Technical models of the system. They are not tied to an iteration: update them a
 
 | File | Purpose | Status |
 |---|---|---|
-| [`table_UML.md`](architecture/table_UML.md) | Database tables UML (v1.0): every table with its columns, keys and relationships, derived from `LES-UML.drawio` and the requirements v1.1, plus the mapping decisions. | ✅ |
+| [`table_UML.md`](architecture/table_UML.md) | Database tables UML (v2.0, Core): the modelling rules, an ER diagram, every table with its columns, constraints and reasons, the enums, and the tables deferred to Extras. Implemented by `apps/backend/src/database/schema.ts`. | ✅ |
+| [`class_diagram.md`](architecture/class_diagram.md) | Domain class diagram (Core) in UML notation: aggregates, entities, value objects, enumerations, inheritance (State pattern), composition, aggregation, associations with multiplicities and the methods of each class, plus which classes are implemented. | ✅ |
 | [`infra.md`](architecture/infra.md) | Infrastructure for Core: database, backend server, frontend hosting, external services, environments, CI/CD and secrets. Also records the infra decisions (compute on read with no background jobs, user identity linked to Supabase Auth, user timezone) and the open ones. | ✅ (draft) |
 
 ## `sprints/`

@@ -49,18 +49,18 @@ The app is reachable 24/7, but no feature in Core needs a process that does work
 | Value | Calculated from |
 |---|---|
 | Current and longest streak | The user's sessions, grouped by day in the user's timezone (a day counts when it has at least one session of 5 counted minutes or more; a session counts on the day it started) |
-| Total minutes, books read | `reading_sessions` and `user_books` |
+| Total minutes, books read | `reading_session` and `reading_status` |
 | Challenge status (scheduled, active, finished) | `start_date`, `end_date` and the current time |
 | Leaderboard | Sessions inside the challenge period, from current members |
-| Winners and "challenges won" | The same leaderboard once the challenge has ended |
+| Winners and "challenges won" | The same leaderboard once the challenge has ended, frozen into `leaderboard_entry` the first time it is read after `end_date` |
 
 - *Why:* no scheduler to run or monitor, no "midnight job" to reset streaks or close challenges, and the backend stays stateless, so a host that sleeps when idle still works.
-- *Consequence:* cached tables from [table_UML.md](table_UML.md) (`USER_STREAK`, `LEADERBOARD_ENTRY`, `challenge_winners`, and the counter columns on `USER` such as `counted_minutes`, `books_read_count`, `challenges_won`) are **not** created in Core. We add them only if queries become slow.
+- *Consequence:* there are no streak, counter or status columns in [table_UML.md](table_UML.md) v2.0 (no `user_stats`, no `challenge_group.status`, no `counted_minutes` or `challenges_won` on `user`). The one stored result is `leaderboard_entry`, written lazily on the first read after a challenge ends, which needs no job.
 - *Rejected:* storing the values and keeping them up to date, because it needs a scheduled job to reset streaks and close challenges.
 
 Known edge cases:
 
-1. **Results could change after a challenge ends** if a member deletes a session. *Proposed:* deleting a session that counted in a finished challenge is blocked.
+1. **Results could change after a challenge ends** if a member deletes a session. *Solved:* the first read after `end_date` freezes the standings into `leaderboard_entry`.
 2. **Changing timezone recalculates past streaks**, because old sessions may fall on different days. *Proposed:* accepted, since it is rare and harmless.
 
 ### Days are counted in the user's timezone
@@ -69,20 +69,20 @@ Each user has a `timezone` (IANA name, e.g. `Europe/Lisbon`), taken from the bro
 
 ### Supabase handles identity, our database owns the user
 
-Supabase Auth only knows who the user is (email, password, session). Everything else (username, profile, timezone, sessions, library, groups) lives in our own `users` table, which uses **the same UUID** as the Supabase user.
+Supabase Auth only knows who the user is (email, password, session). Everything else (username, profile, timezone, sessions, library, groups) lives in our own `user` table, which uses **the same UUID** as the Supabase user.
 
 ```
-auth.users (Supabase, never touched)          users (ours)
+auth.users (Supabase, never touched)          user (ours)
 ┌──────────────────────┐                      ┌────────────────────────────────┐
 │ id  uuid  ───────────┼──── same value ─────▶│ id  uuid PK                    │
 │ email                │                      │ username UK                    │
-│ encrypted_password   │                      │ display_name, bio, photo_url   │
+│ encrypted_password   │                      │ display_name, photo_url        │
 │ ...                  │                      │ timezone                       │
-└──────────────────────┘                      │ profile_visibility, ...        │
+└──────────────────────┘                      │ profile_description, ...       │
                                               └────────────────────────────────┘
-                                                 ▲ reading_sessions.user_id
-                                                 ▲ user_books.user_id
-                                                 ▲ group_members.user_id ...
+                                                 ▲ reading_session.user_id
+                                                 ▲ reading_status.user_id
+                                                 ▲ group_member.user_id ...
 ```
 
 How a request is authenticated:
@@ -92,9 +92,9 @@ How a request is authenticated:
 3. The backend's `SupabaseAuthProvider` verifies the token with Supabase's public keys (JWKS) and returns the user ID.
 4. An auth middleware loads our `User` by that ID and attaches it to the request. Services and repositories only see our `User`, never Supabase.
 
-Creating our user row: right after sign-up, the frontend calls `POST /me { username, displayName, timezone }`. The backend inserts the `users` row and checks that the username is unique (F-AUTH-01). A logged-in user with no `users` row is sent back to this step, which also covers an interrupted sign-up.
+Creating our user row: right after sign-up, the frontend calls `POST /me { username, displayName, timezone }`. The backend inserts the `user` row and checks that the username is unique (F-AUTH-01). A logged-in user with no `user` row is sent back to this step, which also covers an interrupted sign-up.
 
-*Consequence for [table_UML.md](table_UML.md):* `USER.password_hash` and the `PASSWORD_RESET_TOKEN` table are handled by Supabase and should be removed, and `USER.timezone` should be added.
+*Consequence for [table_UML.md](table_UML.md):* done in v2.0. There is no password or reset-token table, and `user.timezone` exists.
 
 ### HTTP
 
