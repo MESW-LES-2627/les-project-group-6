@@ -14,8 +14,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=.env src/database/migrate.ts",
     "db:seed": "tsx --env-file-if-exists=.env src/database/seed.ts",
-    "db:studio": "drizzle-kit studio",
-    "db:init": "docker exec -i bookmarked-db psql -U postgres -d bookmarked_dev < src/database/schema.sql"
+    "db:studio": "drizzle-kit studio"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

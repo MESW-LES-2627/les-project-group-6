@@ -1,6 +1,11 @@
+// Core database model. The documented version, with the reasons behind each
+// table, is docs/architecture/table_UML.md: change both together.
 import {
   pgTable,
+  pgEnum,
   unique,
+  uniqueIndex,
+  index,
   uuid,
   varchar,
   text,
@@ -14,59 +19,114 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-export const users = pgTable(
-  'users',
+// Shared timestamp columns. `updated_at` is refreshed by Drizzle on every update
+// it issues; upserts set it explicitly.
+const createdAt = () =>
+  timestamp('created_at', { withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull();
+const updatedAt = () =>
+  timestamp('updated_at', { withTimezone: true, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull()
+    .$onUpdate(() => sql`CURRENT_TIMESTAMP`);
+const deletedAt = () => timestamp('deleted_at', { withTimezone: true, mode: 'string' });
+
+export const visibility = pgEnum('visibility', ['private', 'public']);
+export const friendshipStatus = pgEnum('friendship_status', ['pending', 'accepted', 'declined']);
+export const readingStatusType = pgEnum('reading_status_type', [
+  'not-started',
+  'in-progress',
+  'finished',
+  'did-not-finish',
+]);
+export const dnfReason = pgEnum('dnf_reason', [
+  'not-for-me',
+  'too-slow',
+  'will-try-later',
+  'other',
+]);
+export const readingSessionStatus = pgEnum('reading_session_status', ['running', 'finished']);
+export const groupMemberRole = pgEnum('group_member_role', ['admin', 'member']);
+export const groupMemberStatus = pgEnum('group_member_status', [
+  'invited',
+  'active',
+  'declined',
+  'left',
+]);
+
+// ---------------------------------------------------------------------------
+// Identity and social graph
+// ---------------------------------------------------------------------------
+
+// The id is the Supabase Auth user id, so it has no default.
+export const user = pgTable(
+  'user',
   {
     id: uuid().primaryKey().notNull(),
     email: varchar({ length: 255 }).notNull(),
     username: varchar({ length: 50 }).notNull(),
     displayName: varchar('display_name', { length: 255 }).notNull(),
     photoUrl: text('photo_url'),
-    bio: text(),
-    timezone: varchar({ length: 100 }).default('Europe/Lisbon').notNull(),
-    profileVisibility: varchar('profile_visibility', { length: 20 }).default('private').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    streakType: varchar('streak_type', { length: 20 }).default('daily').notNull(),
-    currentStreak: integer('current_streak').default(0).notNull(),
-    longestStreak: integer('longest_streak').default(0).notNull(),
-    hitStreak: boolean('hit_streak').default(false).notNull(),
+    profileDescription: text('profile_description'),
+    // IANA time zone name, used to decide which local day a session counts for.
+    timezone: varchar({ length: 64 }).default('Europe/Lisbon').notNull(),
+    profileVisibility: visibility('profile_visibility').default('private').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
   },
   (table) => [
-    unique('users_email_key').on(table.email),
-    unique('users_username_key').on(table.username),
+    unique('user_email_key').on(table.email),
+    unique('user_username_key').on(table.username),
   ],
 );
 
-export const friendships = pgTable(
-  'friendships',
+export const friendship = pgTable(
+  'friendship',
   {
     id: uuid().defaultRandom().primaryKey().notNull(),
-    requesterId: uuid('requester_id').notNull(),
-    addresseeId: uuid('addressee_id').notNull(),
-    status: varchar({ length: 20 }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    requesterUserId: uuid('requester_user_id').notNull(),
+    addresseeUserId: uuid('addressee_user_id').notNull(),
+    status: friendshipStatus().default('pending').notNull(),
+    createdAt: createdAt(),
     respondedAt: timestamp('responded_at', { withTimezone: true, mode: 'string' }),
   },
   (table) => [
     foreignKey({
-      columns: [table.requesterId],
-      foreignColumns: [users.id],
-      name: 'friendships_requester_id_fkey',
+      columns: [table.requesterUserId],
+      foreignColumns: [user.id],
+      name: 'friendship_requester_user_id_fkey',
     }).onDelete('cascade'),
     foreignKey({
-      columns: [table.addresseeId],
-      foreignColumns: [users.id],
-      name: 'friendships_addressee_id_fkey',
+      columns: [table.addresseeUserId],
+      foreignColumns: [user.id],
+      name: 'friendship_addressee_user_id_fkey',
     }).onDelete('cascade'),
+    check('friendship_not_self_check', sql`${table.requesterUserId} <> ${table.addresseeUserId}`),
+    // One friendship per pair of users, whoever sent the request.
+    uniqueIndex('friendship_pair_key').on(
+      sql`LEAST(${table.requesterUserId}, ${table.addresseeUserId})`,
+      sql`GREATEST(${table.requesterUserId}, ${table.addresseeUserId})`,
+    ),
   ],
 );
 
-export const books = pgTable(
-  'books',
+// ---------------------------------------------------------------------------
+// Catalog
+// ---------------------------------------------------------------------------
+
+// Fixed, seeded list. A table rather than an enum so a genre is added without a migration.
+export const genre = pgTable(
+  'genre',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+  },
+  (table) => [unique('genre_name_key').on(table.name)],
+);
+
+export const book = pgTable(
+  'book',
   {
     id: uuid().defaultRandom().primaryKey().notNull(),
     title: text().notNull(),
@@ -74,27 +134,50 @@ export const books = pgTable(
     isbn13: varchar({ length: 13 }),
     pageCount: integer('page_count'),
     coverUrl: text('cover_url'),
+    genreId: uuid('genre_id'),
     isCommunityAdded: boolean('is_community_added').default(false).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
   },
-  (table) => [unique('books_isbn13_key').on(table.isbn13)],
+  (table) => [
+    unique('book_isbn13_key').on(table.isbn13),
+    foreignKey({
+      columns: [table.genreId],
+      foreignColumns: [genre.id],
+      name: 'book_genre_id_fkey',
+    }).onDelete('set null'),
+  ],
 );
 
-export const authors = pgTable('authors', {
+export const author = pgTable('author', {
   id: uuid().defaultRandom().primaryKey().notNull(),
   name: text().notNull(),
 });
 
-export const genres = pgTable(
-  'genres',
+export const bookAuthor = pgTable(
+  'book_author',
   {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    name: text().notNull(),
+    bookId: uuid('book_id').notNull(),
+    authorId: uuid('author_id').notNull(),
   },
-  (table) => [unique('genres_name_key').on(table.name)],
+  (table) => [
+    foreignKey({
+      columns: [table.bookId],
+      foreignColumns: [book.id],
+      name: 'book_author_book_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.authorId],
+      foreignColumns: [author.id],
+      name: 'book_author_author_id_fkey',
+    }).onDelete('cascade'),
+    primaryKey({ columns: [table.bookId, table.authorId], name: 'book_author_pkey' }),
+  ],
 );
+
+// ---------------------------------------------------------------------------
+// Library: a book saved by a user has exactly one reading_status row
+// ---------------------------------------------------------------------------
 
 export const readingStatus = pgTable(
   'reading_status',
@@ -102,512 +185,82 @@ export const readingStatus = pgTable(
     id: uuid().defaultRandom().primaryKey().notNull(),
     userId: uuid('user_id').notNull(),
     bookId: uuid('book_id').notNull(),
-    status: varchar({ length: 20 }).notNull(),
+    status: readingStatusType().default('not-started').notNull(),
     currentPage: integer('current_page').default(0).notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    dnfReason: dnfReason('dnf_reason'),
+    finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'string' }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
   },
   (table) => [
     foreignKey({
       columns: [table.userId],
-      foreignColumns: [users.id],
+      foreignColumns: [user.id],
       name: 'reading_status_user_id_fkey',
     }).onDelete('cascade'),
     foreignKey({
       columns: [table.bookId],
-      foreignColumns: [books.id],
+      foreignColumns: [book.id],
       name: 'reading_status_book_id_fkey',
     }).onDelete('cascade'),
     unique('reading_status_user_id_book_id_key').on(table.userId, table.bookId),
   ],
 );
 
-export const groups = pgTable(
-  'groups',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    name: text().notNull(),
-    description: text().notNull(),
-    adminId: uuid('admin_id').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.adminId],
-      foreignColumns: [users.id],
-      name: 'groups_admin_id_fkey',
-    }).onDelete('restrict'),
-  ],
-);
-
-export const reviews = pgTable(
-  'reviews',
+export const review = pgTable(
+  'review',
   {
     id: uuid().defaultRandom().primaryKey().notNull(),
     userId: uuid('user_id').notNull(),
     bookId: uuid('book_id').notNull(),
     rating: integer().notNull(),
     comment: text(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    deletedAt: deletedAt(),
   },
   (table) => [
     foreignKey({
       columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'reviews_user_id_fkey',
+      foreignColumns: [user.id],
+      name: 'review_user_id_fkey',
     }).onDelete('cascade'),
     foreignKey({
       columns: [table.bookId],
-      foreignColumns: [books.id],
-      name: 'reviews_book_id_fkey',
+      foreignColumns: [book.id],
+      name: 'review_book_id_fkey',
     }).onDelete('cascade'),
-    check('reviews_rating_check', sql`(rating >= 1) AND (rating <= 5)`),
+    check('review_rating_check', sql`${table.rating} BETWEEN 1 AND 5`),
+    // One live review per user and book; deleted reviews do not block a new one.
+    uniqueIndex('review_user_id_book_id_key')
+      .on(table.userId, table.bookId)
+      .where(sql`${table.deletedAt} IS NULL`),
   ],
 );
 
-export const lists = pgTable(
-  'lists',
+// A named collection (folder) of books from the owner's library.
+export const list = pgTable(
+  'list',
   {
     id: uuid().defaultRandom().primaryKey().notNull(),
-    userId: uuid('user_id'),
-    groupId: uuid('group_id'),
+    userId: uuid('user_id').notNull(),
     name: text().notNull(),
-    visibility: varchar({ length: 20 }).default('private').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    visibility: visibility().default('private').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    deletedAt: deletedAt(),
   },
   (table) => [
     foreignKey({
       columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'lists_user_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.groupId],
-      foreignColumns: [groups.id],
-      name: 'lists_group_id_fkey',
-    }).onDelete('cascade'),
-    check(
-      'chk_list_owner',
-      sql`((user_id IS NOT NULL) AND (group_id IS NULL)) OR ((user_id IS NULL) AND (group_id IS NOT NULL))`,
-    ),
-  ],
-);
-
-export const bookClubs = pgTable(
-  'book_clubs',
-  {
-    groupId: uuid('group_id').primaryKey().notNull(),
-    currentBookId: uuid('current_book_id'),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.groupId],
-      foreignColumns: [groups.id],
-      name: 'book_clubs_group_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.currentBookId],
-      foreignColumns: [books.id],
-      name: 'book_clubs_current_book_id_fkey',
-    }).onDelete('set null'),
-  ],
-);
-
-export const categories = pgTable(
-  'categories',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    name: text().notNull(),
-  },
-  (table) => [unique('categories_name_key').on(table.name)],
-);
-
-export const bookClubRounds = pgTable(
-  'book_club_rounds',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    bookClubId: uuid('book_club_id').notNull(),
-    roundNumber: integer('round_number').notNull(),
-    start: date().notNull(),
-    deadline: date().notNull(),
-    status: varchar({ length: 20 }).default('pending').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.bookClubId],
-      foreignColumns: [bookClubs.groupId],
-      name: 'book_club_rounds_book_club_id_fkey',
+      foreignColumns: [user.id],
+      name: 'list_user_id_fkey',
     }).onDelete('cascade'),
   ],
 );
 
-export const challenges = pgTable(
-  'challenges',
-  {
-    id: integer().primaryKey().generatedByDefaultAsIdentity({
-      name: 'challenges_id_seq',
-      startWith: 1,
-      increment: 1,
-      minValue: 1,
-      maxValue: 2147483647,
-      cache: 1,
-    }),
-    groupId: uuid('group_id').notNull(),
-    startDate: date('start_date').notNull(),
-    endDate: date('end_date').notNull(),
-    winMetric: varchar('win_metric', { length: 20 }).notNull(),
-    metricGoal: integer('metric_goal').notNull(),
-    targetGenreId: uuid('target_genre_id'),
-    targetCategoryId: uuid('target_category_id'),
-    targetAuthorId: uuid('target_author_id'),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.groupId],
-      foreignColumns: [groups.id],
-      name: 'challenges_group_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.targetGenreId],
-      foreignColumns: [genres.id],
-      name: 'challenges_target_genre_id_fkey',
-    }).onDelete('set null'),
-    foreignKey({
-      columns: [table.targetCategoryId],
-      foreignColumns: [categories.id],
-      name: 'challenges_target_category_id_fkey',
-    }).onDelete('set null'),
-    foreignKey({
-      columns: [table.targetAuthorId],
-      foreignColumns: [authors.id],
-      name: 'challenges_target_author_id_fkey',
-    }).onDelete('set null'),
-  ],
-);
-
-export const challengeStatus = pgTable(
-  'challenge_status',
-  {
-    id: integer().primaryKey().generatedByDefaultAsIdentity({
-      name: 'challenge_status_id_seq',
-      startWith: 1,
-      increment: 1,
-      minValue: 1,
-      maxValue: 2147483647,
-      cache: 1,
-    }),
-    userId: uuid('user_id').notNull(),
-    challengeId: integer('challenge_id').notNull(),
-    code: varchar({ length: 20 }).notNull(),
-    progress: integer().default(0).notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'challenge_status_user_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.challengeId],
-      foreignColumns: [challenges.id],
-      name: 'challenge_status_challenge_id_fkey',
-    }).onDelete('cascade'),
-  ],
-);
-
-export const groupSessions = pgTable(
-  'group_sessions',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    groupId: uuid('group_id').notNull(),
-    hostId: uuid('host_id').notNull(),
-    startedAt: timestamp('started_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    endedAt: timestamp('ended_at', { withTimezone: true, mode: 'string' }),
-    status: varchar({ length: 20 }).default('open').notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.groupId],
-      foreignColumns: [groups.id],
-      name: 'group_sessions_group_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.hostId],
-      foreignColumns: [users.id],
-      name: 'group_sessions_host_id_fkey',
-    }).onDelete('cascade'),
-  ],
-);
-
-export const memberSessions = pgTable(
-  'member_sessions',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    groupSessionId: uuid('group_session_id').notNull(),
-    userId: uuid('user_id').notNull(),
-    joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    leftAt: timestamp('left_at', { withTimezone: true, mode: 'string' }),
-    pagesRead: integer('pages_read').default(0).notNull(),
-    bookId: uuid('book_id').notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.groupSessionId],
-      foreignColumns: [groupSessions.id],
-      name: 'member_sessions_group_session_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'member_sessions_user_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.bookId],
-      foreignColumns: [books.id],
-      name: 'member_sessions_book_id_fkey',
-    }).onDelete('cascade'),
-  ],
-);
-
-export const leaderboards = pgTable(
-  'leaderboards',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    groupId: uuid('group_id').notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    metric: varchar({ length: 20 }).notNull(),
-    targetGenreId: uuid('target_genre_id'),
-    targetCategoryId: uuid('target_category_id'),
-    targetAuthorId: uuid('target_author_id'),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.groupId],
-      foreignColumns: [groups.id],
-      name: 'leaderboards_group_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.targetGenreId],
-      foreignColumns: [genres.id],
-      name: 'leaderboards_target_genre_id_fkey',
-    }).onDelete('set null'),
-    foreignKey({
-      columns: [table.targetCategoryId],
-      foreignColumns: [categories.id],
-      name: 'leaderboards_target_category_id_fkey',
-    }).onDelete('set null'),
-    foreignKey({
-      columns: [table.targetAuthorId],
-      foreignColumns: [authors.id],
-      name: 'leaderboards_target_author_id_fkey',
-    }).onDelete('set null'),
-  ],
-);
-
-export const readingSessions = pgTable(
-  'reading_sessions',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    userId: uuid('user_id').notNull(),
-    bookId: uuid('book_id').notNull(),
-    startedAt: timestamp('started_at', { withTimezone: true, mode: 'string' }).notNull(),
-    endedAt: timestamp('ended_at', { withTimezone: true, mode: 'string' }),
-    durationSeconds: integer('duration_seconds').default(0).notNull(),
-    countedMinutes: integer('counted_minutes').default(0).notNull(),
-    pagesRead: integer('pages_read').default(0).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'reading_sessions_user_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.bookId],
-      foreignColumns: [books.id],
-      name: 'reading_sessions_book_id_fkey',
-    }).onDelete('cascade'),
-  ],
-);
-
-export const conversations = pgTable(
-  'conversations',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    groupId: uuid('group_id').notNull(),
-    name: text().notNull(),
-    description: text().notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.groupId],
-      foreignColumns: [groups.id],
-      name: 'conversations_group_id_fkey',
-    }).onDelete('cascade'),
-  ],
-);
-
-export const posts = pgTable(
-  'posts',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    authorId: uuid('author_id').notNull(),
-    conversationId: uuid('conversation_id'),
-    roundId: uuid('round_id'),
-    content: text().notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.authorId],
-      foreignColumns: [users.id],
-      name: 'posts_author_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.conversationId],
-      foreignColumns: [conversations.id],
-      name: 'posts_conversation_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.roundId],
-      foreignColumns: [bookClubRounds.id],
-      name: 'posts_round_id_fkey',
-    }).onDelete('cascade'),
-    check(
-      'chk_post_parent',
-      sql`((conversation_id IS NOT NULL) AND (round_id IS NULL)) OR ((conversation_id IS NULL) AND (round_id IS NOT NULL))`,
-    ),
-  ],
-);
-
-export const readingGoals = pgTable(
-  'reading_goals',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    userId: uuid('user_id').notNull(),
-    targetDate: date('target_date').notNull(),
-    metric: varchar({ length: 20 }).notNull(),
-    value: integer().notNull(),
-    targetGenreId: uuid('target_genre_id'),
-    targetCategoryId: uuid('target_category_id'),
-    targetAuthorId: uuid('target_author_id'),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'reading_goals_user_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.targetGenreId],
-      foreignColumns: [genres.id],
-      name: 'reading_goals_target_genre_id_fkey',
-    }).onDelete('set null'),
-    foreignKey({
-      columns: [table.targetCategoryId],
-      foreignColumns: [categories.id],
-      name: 'reading_goals_target_category_id_fkey',
-    }).onDelete('set null'),
-    foreignKey({
-      columns: [table.targetAuthorId],
-      foreignColumns: [authors.id],
-      name: 'reading_goals_target_author_id_fkey',
-    }).onDelete('set null'),
-  ],
-);
-
-export const notifications = pgTable(
-  'notifications',
-  {
-    id: uuid().defaultRandom().primaryKey().notNull(),
-    userId: uuid('user_id').notNull(),
-    type: varchar({ length: 50 }).notNull(),
-    targetId: uuid('target_id').notNull(),
-    isRead: boolean('is_read').default(false).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'notifications_user_id_fkey',
-    }).onDelete('cascade'),
-  ],
-);
-
-export const bookAuthors = pgTable(
-  'book_authors',
-  {
-    bookId: uuid('book_id').notNull(),
-    authorId: uuid('author_id').notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.bookId],
-      foreignColumns: [books.id],
-      name: 'book_authors_book_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.authorId],
-      foreignColumns: [authors.id],
-      name: 'book_authors_author_id_fkey',
-    }).onDelete('cascade'),
-    primaryKey({ columns: [table.bookId, table.authorId], name: 'book_authors_pkey' }),
-  ],
-);
-
-export const bookGenres = pgTable(
-  'book_genres',
-  {
-    bookId: uuid('book_id').notNull(),
-    genreId: uuid('genre_id').notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.bookId],
-      foreignColumns: [books.id],
-      name: 'book_genres_book_id_fkey',
-    }).onDelete('cascade'),
-    foreignKey({
-      columns: [table.genreId],
-      foreignColumns: [genres.id],
-      name: 'book_genres_genre_id_fkey',
-    }).onDelete('cascade'),
-    primaryKey({ columns: [table.bookId, table.genreId], name: 'book_genres_pkey' }),
-  ],
-);
-
-export const listBooks = pgTable(
-  'list_books',
+export const listBook = pgTable(
+  'list_book',
   {
     listId: uuid('list_id').notNull(),
     bookId: uuid('book_id').notNull(),
@@ -618,65 +271,181 @@ export const listBooks = pgTable(
   (table) => [
     foreignKey({
       columns: [table.listId],
-      foreignColumns: [lists.id],
-      name: 'list_books_list_id_fkey',
+      foreignColumns: [list.id],
+      name: 'list_book_list_id_fkey',
     }).onDelete('cascade'),
     foreignKey({
       columns: [table.bookId],
-      foreignColumns: [books.id],
-      name: 'list_books_book_id_fkey',
+      foreignColumns: [book.id],
+      name: 'list_book_book_id_fkey',
     }).onDelete('cascade'),
-    primaryKey({ columns: [table.listId, table.bookId], name: 'list_books_pkey' }),
+    primaryKey({ columns: [table.listId, table.bookId], name: 'list_book_pkey' }),
   ],
 );
 
-export const member = pgTable(
-  'member',
+// ---------------------------------------------------------------------------
+// Reading: one row per timer run. It has no group link; a session counts in
+// every challenge whose period contains it and where the user is an active member.
+// ---------------------------------------------------------------------------
+
+export const readingSession = pgTable(
+  'reading_session',
   {
-    groupId: uuid('group_id').notNull(),
+    id: uuid().defaultRandom().primaryKey().notNull(),
     userId: uuid('user_id').notNull(),
-    role: varchar({ length: 20 }).default('member').notNull(),
-    joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    bookId: uuid('book_id').notNull(),
+    status: readingSessionStatus().default('running').notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true, mode: 'string' }).notNull(),
+    endedAt: timestamp('ended_at', { withTimezone: true, mode: 'string' }),
+    durationSeconds: integer('duration_seconds').default(0).notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
   },
   (table) => [
     foreignKey({
-      columns: [table.groupId],
-      foreignColumns: [groups.id],
-      name: 'member_group_id_fkey',
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: 'reading_session_user_id_fkey',
     }).onDelete('cascade'),
     foreignKey({
-      columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'member_user_id_fkey',
+      columns: [table.bookId],
+      foreignColumns: [book.id],
+      name: 'reading_session_book_id_fkey',
     }).onDelete('cascade'),
-    primaryKey({ columns: [table.groupId, table.userId], name: 'member_pkey' }),
+    check(
+      'reading_session_ended_check',
+      sql`(${table.status} = 'running' AND ${table.endedAt} IS NULL) OR (${table.status} = 'finished' AND ${table.endedAt} >= ${table.startedAt})`,
+    ),
+    // F-READ-01: only one active session per user.
+    uniqueIndex('reading_session_one_running_key')
+      .on(table.userId)
+      .where(sql`${table.status} = 'running'`),
+    index('reading_session_user_id_started_at_idx').on(table.userId, table.startedAt),
   ],
 );
 
-export const leaderboardEntries = pgTable(
-  'leaderboard_entries',
+// ---------------------------------------------------------------------------
+// Challenge groups (book clubs come back in Extras)
+// ---------------------------------------------------------------------------
+
+// Scheduled, active or finished is computed from the dates (no background jobs, see infra.md).
+export const challengeGroup = pgTable(
+  'challenge_group',
   {
-    leaderboardId: uuid('leaderboard_id').notNull(),
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+    description: text(),
+    startDate: date('start_date').notNull(),
+    endDate: date('end_date').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    deletedAt: deletedAt(),
+  },
+  (table) => [check('challenge_group_period_check', sql`${table.endDate} >= ${table.startDate}`)],
+);
+
+// The admin is the member with role 'admin'; the group has no separate admin column.
+export const groupMember = pgTable(
+  'group_member',
+  {
+    challengeGroupId: uuid('challenge_group_id').notNull(),
     userId: uuid('user_id').notNull(),
-    score: integer().default(0).notNull(),
+    role: groupMemberRole().default('member').notNull(),
+    status: groupMemberStatus().default('invited').notNull(),
+    createdAt: createdAt(),
+    joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'string' }),
+    leftAt: timestamp('left_at', { withTimezone: true, mode: 'string' }),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.challengeGroupId],
+      foreignColumns: [challengeGroup.id],
+      name: 'group_member_challenge_group_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: 'group_member_user_id_fkey',
+    }).onDelete('cascade'),
+    primaryKey({ columns: [table.challengeGroupId, table.userId], name: 'group_member_pkey' }),
+    index('group_member_user_id_idx').on(table.userId),
+  ],
+);
+
+// The group chat, 1:1 with a challenge group.
+export const conversation = pgTable(
+  'conversation',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    challengeGroupId: uuid('challenge_group_id').notNull(),
+    createdAt: createdAt(),
+    // Also the time of the last message, to sort chats by activity.
+    updatedAt: updatedAt(),
+    deletedAt: deletedAt(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.challengeGroupId],
+      foreignColumns: [challengeGroup.id],
+      name: 'conversation_challenge_group_id_fkey',
+    }).onDelete('cascade'),
+    unique('conversation_challenge_group_id_key').on(table.challengeGroupId),
+  ],
+);
+
+export const message = pgTable(
+  'message',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    conversationId: uuid('conversation_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    content: text().notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    deletedAt: deletedAt(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.conversationId],
+      foreignColumns: [conversation.id],
+      name: 'message_conversation_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: 'message_user_id_fkey',
+    }).onDelete('cascade'),
+    index('message_conversation_id_created_at_idx').on(table.conversationId, table.createdAt),
+  ],
+);
+
+// Final standings, written the first time a finished challenge is read (no
+// scheduler). The live leaderboard is computed from reading_session.
+export const leaderboardEntry = pgTable(
+  'leaderboard_entry',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    challengeGroupId: uuid('challenge_group_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    totalMinutes: integer('total_minutes').default(0).notNull(),
+    // Ties share a rank; every rank-1 entry is a winner.
     rank: integer().notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+    createdAt: createdAt(),
   },
   (table) => [
     foreignKey({
-      columns: [table.leaderboardId],
-      foreignColumns: [leaderboards.id],
-      name: 'leaderboard_entries_leaderboard_id_fkey',
+      columns: [table.challengeGroupId],
+      foreignColumns: [challengeGroup.id],
+      name: 'leaderboard_entry_challenge_group_id_fkey',
     }).onDelete('cascade'),
     foreignKey({
       columns: [table.userId],
-      foreignColumns: [users.id],
-      name: 'leaderboard_entries_user_id_fkey',
+      foreignColumns: [user.id],
+      name: 'leaderboard_entry_user_id_fkey',
     }).onDelete('cascade'),
-    primaryKey({ columns: [table.leaderboardId, table.userId], name: 'leaderboard_entries_pkey' }),
+    unique('leaderboard_entry_challenge_group_id_user_id_key').on(
+      table.challengeGroupId,
+      table.userId,
+    ),
   ],
 );

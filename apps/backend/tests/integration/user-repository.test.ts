@@ -11,11 +11,11 @@ describe('DrizzleUserRepository Integration', () => {
   const repo = new DrizzleUserRepository(db);
 
   beforeEach(async () => {
-    await truncateTables(pool, ['users']);
+    await truncateTables(pool, ['user']);
   });
 
   after(async () => {
-    await truncateTables(pool, ['users']);
+    await truncateTables(pool, ['user']);
     await pool.end();
   });
 
@@ -38,8 +38,7 @@ describe('DrizzleUserRepository Integration', () => {
     assert.strictEqual(found.username.value, 'bookworm');
     assert.strictEqual(found.displayName, 'Book Worm');
     assert.strictEqual(found.profileVisibility, 'public');
-    assert.strictEqual(found.currentStreak, 0);
-    assert.strictEqual(found.hitStreak, false);
+    assert.strictEqual(found.profileDescription, null);
   });
 
   test('finds user by username', async () => {

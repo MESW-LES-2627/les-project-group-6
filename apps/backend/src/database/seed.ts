@@ -1,6 +1,6 @@
 import process from 'node:process';
 import { createPool, createDb } from './pool.js';
-import { users, books, readingStatus } from './schema.js';
+import { user, book, readingStatus } from './schema.js';
 
 const pool = createPool();
 const db = createDb(pool);
@@ -11,7 +11,7 @@ async function seed(): Promise<void> {
   // 1. Seed demo user
   const demoUserId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
   await db
-    .insert(users)
+    .insert(user)
     .values([
       {
         id: demoUserId,
@@ -80,14 +80,14 @@ async function seed(): Promise<void> {
     },
   ];
 
-  await db.insert(books).values(seedBooks).onConflictDoNothing();
+  await db.insert(book).values(seedBooks).onConflictDoNothing();
 
   // 3. Link demo user to all books with status 'not-started'
-  const statuses = seedBooks.map((book, index) => ({
+  const statuses = seedBooks.map((seedBook, index) => ({
     id: `d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a0${index + 1}`,
     userId: demoUserId,
-    bookId: book.id,
-    status: 'not-started',
+    bookId: seedBook.id,
+    status: 'not-started' as const,
     currentPage: 0,
   }));
 

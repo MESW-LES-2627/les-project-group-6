@@ -18,7 +18,7 @@ describe('DrizzleReadingStatusRepository Integration', () => {
   let book: Book;
 
   beforeEach(async () => {
-    await truncateTables(pool, ['users', 'books', 'reading_status']);
+    await truncateTables(pool, ['user', 'book', 'reading_status']);
     await new DrizzleUserRepository(db).save(
       User.register({
         id: USER_ID,
@@ -32,7 +32,7 @@ describe('DrizzleReadingStatusRepository Integration', () => {
   });
 
   after(async () => {
-    await truncateTables(pool, ['users', 'books', 'reading_status']);
+    await truncateTables(pool, ['user', 'book', 'reading_status']);
     await pool.end();
   });
 

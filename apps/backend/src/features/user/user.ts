@@ -74,14 +74,11 @@ export interface UserState {
   username: Username;
   displayName: string;
   photoUrl: string | null;
-  bio: string | null;
+  profileDescription: string | null;
   timezone: string;
   profileVisibility: ProfileVisibility;
-  streakType: string;
-  currentStreak: number;
-  longestStreak: number;
-  hitStreak: boolean;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export class User {
@@ -90,14 +87,11 @@ export class User {
   readonly username: Username;
   private _displayName: string;
   readonly photoUrl: string | null;
-  readonly bio: string | null;
+  readonly profileDescription: string | null;
   readonly timezone: string;
   private _profileVisibility: ProfileVisibility;
-  readonly streakType: string;
-  readonly currentStreak: number;
-  readonly longestStreak: number;
-  readonly hitStreak: boolean;
   readonly createdAt: Date;
+  private _updatedAt: Date;
 
   private constructor(state: UserState) {
     this.id = state.id;
@@ -105,32 +99,27 @@ export class User {
     this.username = state.username;
     this._displayName = state.displayName;
     this.photoUrl = state.photoUrl;
-    this.bio = state.bio;
+    this.profileDescription = state.profileDescription;
     this.timezone = state.timezone;
     this._profileVisibility = state.profileVisibility;
-    this.streakType = state.streakType;
-    this.currentStreak = state.currentStreak;
-    this.longestStreak = state.longestStreak;
-    this.hitStreak = state.hitStreak;
     this.createdAt = state.createdAt;
+    this._updatedAt = state.updatedAt;
   }
 
-  /** A new reader joins: private profile and no streak yet. */
+  /** A new reader joins with a private profile. Streaks are computed from sessions. */
   static register(props: NewUserProps): User {
+    const now = new Date();
     return new User({
       id: props.id,
       email: props.email,
       username: props.username,
       displayName: User.validDisplayName(props.displayName),
       photoUrl: null,
-      bio: null,
+      profileDescription: null,
       timezone: props.timezone ?? 'Europe/Lisbon',
       profileVisibility: 'private',
-      streakType: 'daily',
-      currentStreak: 0,
-      longestStreak: 0,
-      hitStreak: false,
-      createdAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
     });
   }
 
@@ -147,16 +136,27 @@ export class User {
     return this._profileVisibility;
   }
 
+  get updatedAt(): Date {
+    return this._updatedAt;
+  }
+
   rename(displayName: string): void {
     this._displayName = User.validDisplayName(displayName);
+    this.touch();
   }
 
   makeProfilePublic(): void {
     this._profileVisibility = 'public';
+    this.touch();
   }
 
   makeProfilePrivate(): void {
     this._profileVisibility = 'private';
+    this.touch();
+  }
+
+  private touch(): void {
+    this._updatedAt = new Date();
   }
 
   private static validDisplayName(raw: string): string {

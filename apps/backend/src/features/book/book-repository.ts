@@ -1,6 +1,6 @@
-import { eq, ilike } from 'drizzle-orm';
+import { eq, ilike, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { books } from '../../database/schema.js';
+import { book } from '../../database/schema.js';
 import { Book, BookId, BookTitle, Isbn13, PageCount } from './book.js';
 
 export interface IBookRepository {
@@ -10,9 +10,9 @@ export interface IBookRepository {
   delete(id: BookId): Promise<boolean>;
 }
 
-type BookRow = typeof books.$inferSelect;
+type BookRow = typeof book.$inferSelect;
 
-// Data Mapper: the only place that knows both the books row and the Book entity.
+// Data Mapper: the only place that knows both the book row and the Book entity.
 function toDomain(row: BookRow): Book {
   return Book.reconstitute({
     id: BookId.of(row.id),
@@ -22,20 +22,20 @@ function toDomain(row: BookRow): Book {
     pageCount: row.pageCount != null ? PageCount.of(row.pageCount) : null,
     coverUrl: row.coverUrl,
     isCommunityAdded: row.isCommunityAdded,
-    createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+    createdAt: new Date(row.createdAt),
   });
 }
 
-function toRow(book: Book): typeof books.$inferInsert {
+function toRow(entity: Book): typeof book.$inferInsert {
   return {
-    id: book.id.value,
-    title: book.title.value,
-    description: book.description,
-    isbn13: book.isbn13?.value ?? null,
-    pageCount: book.pageCount?.value ?? null,
-    coverUrl: book.coverUrl,
-    isCommunityAdded: book.isCommunityAdded,
-    createdAt: book.createdAt.toISOString(),
+    id: entity.id.value,
+    title: entity.title.value,
+    description: entity.description,
+    isbn13: entity.isbn13?.value ?? null,
+    pageCount: entity.pageCount?.value ?? null,
+    coverUrl: entity.coverUrl,
+    isCommunityAdded: entity.isCommunityAdded,
+    createdAt: entity.createdAt.toISOString(),
   };
 }
 
@@ -43,7 +43,7 @@ export class DrizzleBookRepository implements IBookRepository {
   constructor(private readonly db: NodePgDatabase) {}
 
   async findById(id: BookId): Promise<Book | null> {
-    const rows = await this.db.select().from(books).where(eq(books.id, id.value)).limit(1);
+    const rows = await this.db.select().from(book).where(eq(book.id, id.value)).limit(1);
     const row = rows[0];
     return row ? toDomain(row) : null;
   }
@@ -51,18 +51,18 @@ export class DrizzleBookRepository implements IBookRepository {
   async findByTitle(title: string): Promise<Book[]> {
     const rows = await this.db
       .select()
-      .from(books)
-      .where(ilike(books.title, `%${title}%`));
+      .from(book)
+      .where(ilike(book.title, `%${title}%`));
     return rows.map(toDomain);
   }
 
-  async save(book: Book): Promise<void> {
-    const row = toRow(book);
+  async save(entity: Book): Promise<void> {
+    const row = toRow(entity);
     await this.db
-      .insert(books)
+      .insert(book)
       .values(row)
       .onConflictDoUpdate({
-        target: books.id,
+        target: book.id,
         set: {
           title: row.title,
           description: row.description,
@@ -70,15 +70,16 @@ export class DrizzleBookRepository implements IBookRepository {
           pageCount: row.pageCount,
           coverUrl: row.coverUrl,
           isCommunityAdded: row.isCommunityAdded,
+          updatedAt: sql`CURRENT_TIMESTAMP`,
         },
       });
   }
 
   async delete(id: BookId): Promise<boolean> {
     const deleted = await this.db
-      .delete(books)
-      .where(eq(books.id, id.value))
-      .returning({ id: books.id });
+      .delete(book)
+      .where(eq(book.id, id.value))
+      .returning({ id: book.id });
     return deleted.length > 0;
   }
 }

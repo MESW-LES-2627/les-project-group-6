@@ -37,7 +37,7 @@ describe('Reading status API Endpoints', () => {
     });
 
   beforeEach(async () => {
-    await truncateTables(pool, ['users', 'books', 'reading_status']);
+    await truncateTables(pool, ['user', 'book', 'reading_status']);
     await new DrizzleUserRepository(db).save(
       User.register({
         id: UserId.of(USER_ID),
@@ -51,7 +51,7 @@ describe('Reading status API Endpoints', () => {
   });
 
   after(async () => {
-    await truncateTables(pool, ['users', 'books', 'reading_status']);
+    await truncateTables(pool, ['user', 'book', 'reading_status']);
     await pool.end();
   });
 

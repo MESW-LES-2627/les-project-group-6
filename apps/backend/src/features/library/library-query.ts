@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { books, readingStatus } from '../../database/schema.js';
+import { book, readingStatus } from '../../database/schema.js';
 import type { ReadingStatusType } from '../reading/reading-state.js';
 import type { UserId } from '../user/user.js';
 
@@ -42,10 +42,10 @@ export class DrizzleLibraryQuery implements LibraryQuery {
         status: readingStatus.status,
         currentPage: readingStatus.currentPage,
         updatedAt: readingStatus.updatedAt,
-        book: books,
+        book,
       })
       .from(readingStatus)
-      .innerJoin(books, eq(readingStatus.bookId, books.id))
+      .innerJoin(book, eq(readingStatus.bookId, book.id))
       .where(and(...conditions));
 
     return rows.map((row) => ({

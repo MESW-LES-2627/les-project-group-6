@@ -15,6 +15,13 @@
       "when": 1792937432750,
       "tag": "0001_reading_status_user_book_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792944069808,
+      "tag": "0002_core_model",
+      "breakpoints": true
     }
   ]
 }

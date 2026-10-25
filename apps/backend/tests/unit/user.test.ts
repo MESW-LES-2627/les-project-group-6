@@ -12,11 +12,11 @@ const newUser = () =>
   });
 
 describe('User', () => {
-  test('register starts with a private profile and no streak', () => {
+  test('register starts with a private profile and no description', () => {
     const user = newUser();
     assert.strictEqual(user.displayName, 'Reader');
     assert.strictEqual(user.profileVisibility, 'private');
-    assert.strictEqual(user.currentStreak, 0);
+    assert.strictEqual(user.profileDescription, null);
   });
 
   test('rename validates the display name', () => {
@@ -28,8 +28,10 @@ describe('User', () => {
 
   test('profile visibility changes through intention-revealing methods', () => {
     const user = newUser();
+    const registeredAt = user.updatedAt;
     user.makeProfilePublic();
     assert.strictEqual(user.profileVisibility, 'public');
+    assert.ok(user.updatedAt >= registeredAt);
     user.makeProfilePrivate();
     assert.strictEqual(user.profileVisibility, 'private');
   });

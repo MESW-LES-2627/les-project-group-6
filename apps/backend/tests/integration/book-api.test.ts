@@ -14,11 +14,11 @@ describe('Book API Endpoints', () => {
   const app = createApp({ bookRepository });
 
   beforeEach(async () => {
-    await truncateTables(pool, ['books']);
+    await truncateTables(pool, ['book']);
   });
 
   after(async () => {
-    await truncateTables(pool, ['books']);
+    await truncateTables(pool, ['book']);
     await pool.end();
   });
 

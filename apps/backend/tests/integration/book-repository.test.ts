@@ -11,11 +11,11 @@ describe('DrizzleBookRepository Integration', () => {
   const repo = new DrizzleBookRepository(db);
 
   beforeEach(async () => {
-    await truncateTables(pool, ['books']);
+    await truncateTables(pool, ['book']);
   });
 
   after(async () => {
-    await truncateTables(pool, ['books']);
+    await truncateTables(pool, ['book']);
     await pool.end();
   });
 

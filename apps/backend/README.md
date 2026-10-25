@@ -51,7 +51,7 @@ Run them inside `apps/backend`, or from the root with `pnpm --filter @bookmarked
 | `lint` | Runs ESLint |
 | `typecheck` | Type-checks without emitting files |
 | `test` | Runs `tests/**/*.test.ts` with the Node.js test runner (through `tsx`) |
-| `db:generate` | Generates SQL migrations from schema using `drizzle-kit` |
+| `db:generate` | Generates SQL migrations from schema using `drizzle-kit` (renames need a hand-written migration, see `0002_core_model.sql`) |
 | `db:migrate` | Applies pending migrations to the database |
 | `db:seed` | Populates database with demo user, books, and reading statuses |
 | `db:studio` | Opens Drizzle Studio local database viewer |
@@ -84,9 +84,8 @@ apps/backend/
 │   ├── middleware/        # CORS and the domain-error to HTTP status mapping
 │   ├── utils/             # DomainError families and the typed Uuid base
 │   ├── database/
-│   │   ├── migrations/    # Drizzle SQL migrations and journal metadata
+│   │   ├── migrations/    # Drizzle SQL migrations and journal metadata (the only source of the database schema)
 │   │   ├── schema.ts      # Tables for the query builder (source of the migrations)
-│   │   ├── schema.sql     # PostgreSQL database schema matching UML specification
 │   │   └── pool.ts, migrate.ts, seed.ts, health-check.ts
 │   ├── app.ts             # createApp(): middleware, the API router and the error handler
 │   └── server.ts          # entry point: builds the repositories and starts the HTTP server

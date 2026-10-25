@@ -12,7 +12,7 @@ export function createTestPool(): pg.Pool {
 
 export async function truncateTables(
   pool: pg.Pool,
-  tables: string[] = ['users', 'books', 'friendships'],
+  tables: string[] = ['user', 'book', 'friendship'],
 ): Promise<void> {
   if (tables.length === 0) return;
   const tableList = tables.map((t) => `"${t}"`).join(', ');
