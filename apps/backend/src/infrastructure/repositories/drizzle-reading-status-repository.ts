@@ -1,115 +1,58 @@
 import { eq, and } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import {
-  ReadingStatus,
-  type IReadingStatusRepository,
-  type ReadingStatusType,
-  type UserLibraryItem,
-} from '../../domain/reading-status.js';
-import { BookMapper } from '../persistence/book-mapper.js';
+import type { BookId } from '../../domain/book/book-id.js';
+import type { ReadingStatusType } from '../../domain/reading/reading-state.js';
+import type { ReadingStatus } from '../../domain/reading/reading-status.js';
+import type { ReadingStatusId } from '../../domain/reading/reading-status-id.js';
+import type {
+  IReadingStatusRepository,
+  UserLibraryItem,
+} from '../../domain/reading/reading-status-repository.js';
+import type { UserId } from '../../domain/user/user-id.js';
 import { readingStatus, books } from '../database/schema.js';
+import { BookMapper } from '../persistence/book-mapper.js';
+import { ReadingStatusMapper } from '../persistence/reading-status-mapper.js';
 
 export class DrizzleReadingStatusRepository implements IReadingStatusRepository {
   constructor(private readonly db: NodePgDatabase) {}
 
-  async findById(id: string): Promise<ReadingStatus | null> {
+  async findById(id: ReadingStatusId): Promise<ReadingStatus | null> {
     const rows = await this.db
       .select()
       .from(readingStatus)
-      .where(eq(readingStatus.id, id))
+      .where(eq(readingStatus.id, id.value))
       .limit(1);
-
     const row = rows[0];
-    if (!row) return null;
-    return this.mapToDomain(row);
+    return row ? ReadingStatusMapper.toDomain(row) : null;
   }
 
-  async findByUserAndBook(userId: string, bookId: string): Promise<ReadingStatus | null> {
+  async findByUserAndBook(userId: UserId, bookId: BookId): Promise<ReadingStatus | null> {
     const rows = await this.db
       .select()
       .from(readingStatus)
-      .where(and(eq(readingStatus.userId, userId), eq(readingStatus.bookId, bookId)))
+      .where(and(eq(readingStatus.userId, userId.value), eq(readingStatus.bookId, bookId.value)))
       .limit(1);
-
     const row = rows[0];
-    if (!row) return null;
-    return this.mapToDomain(row);
+    return row ? ReadingStatusMapper.toDomain(row) : null;
   }
 
-  async save(entry: ReadingStatus): Promise<void> {
+  async save(status: ReadingStatus): Promise<void> {
+    const row = ReadingStatusMapper.toPersistence(status);
     // Single atomic upsert: the (user_id, book_id) unique constraint keeps one row per pair.
     await this.db
       .insert(readingStatus)
-      .values({
-        id: entry.id,
-        userId: entry.userId,
-        bookId: entry.bookId,
-        status: entry.status,
-        currentPage: entry.currentPage,
-        updatedAt: entry.updatedAt.toISOString(),
-      })
+      .values(row)
       .onConflictDoUpdate({
         target: [readingStatus.userId, readingStatus.bookId],
-        set: {
-          status: entry.status,
-          currentPage: entry.currentPage,
-          updatedAt: entry.updatedAt.toISOString(),
-        },
+        set: { status: row.status, currentPage: row.currentPage, updatedAt: row.updatedAt },
       });
   }
 
-  async update(
-    target: string | ReadingStatus,
-    updated?: ReadingStatus,
-  ): Promise<ReadingStatus | null> {
-    let existingId: string;
-    let entryToApply: ReadingStatus;
-
-    if (updated) {
-      existingId = typeof target === 'string' ? target : target.id;
-      entryToApply = updated;
-    } else {
-      entryToApply = target as ReadingStatus;
-      existingId = entryToApply.id;
-    }
-
-    let existing = await this.findById(existingId);
-    if (!existing && entryToApply.userId && entryToApply.bookId) {
-      existing = await this.findByUserAndBook(entryToApply.userId, entryToApply.bookId);
-    }
-    if (!existing) {
-      return null;
-    }
-
-    const updatedStatus = entryToApply.status ?? existing.status;
-    const updatedPage =
-      entryToApply.currentPage !== undefined ? entryToApply.currentPage : existing.currentPage;
-    const updatedDate = entryToApply.updatedAt ?? new Date();
-
-    await this.db
-      .update(readingStatus)
-      .set({
-        status: updatedStatus,
-        currentPage: updatedPage,
-        updatedAt: updatedDate.toISOString(),
-      })
-      .where(eq(readingStatus.id, existing.id));
-
-    return new ReadingStatus({
-      id: existing.id,
-      userId: existing.userId,
-      bookId: existing.bookId,
-      status: updatedStatus,
-      currentPage: updatedPage,
-      updatedAt: updatedDate,
-    });
-  }
-
   async findUserLibrary(
-    userId: string,
+    userId: UserId,
     statusFilter?: ReadingStatusType,
   ): Promise<UserLibraryItem[]> {
-    const conditions = [eq(readingStatus.userId, userId)];
+    const conditions = [eq(readingStatus.userId, userId.value)];
     if (statusFilter) {
       conditions.push(eq(readingStatus.status, statusFilter));
     }
@@ -117,8 +60,6 @@ export class DrizzleReadingStatusRepository implements IReadingStatusRepository 
     const rows = await this.db
       .select({
         statusId: readingStatus.id,
-        userId: readingStatus.userId,
-        bookId: readingStatus.bookId,
         status: readingStatus.status,
         currentPage: readingStatus.currentPage,
         statusUpdatedAt: readingStatus.updatedAt,
@@ -135,16 +76,5 @@ export class DrizzleReadingStatusRepository implements IReadingStatusRepository 
       currentPage: row.currentPage,
       updatedAt: new Date(row.statusUpdatedAt),
     }));
-  }
-
-  private mapToDomain(row: typeof readingStatus.$inferSelect): ReadingStatus {
-    return new ReadingStatus({
-      id: row.id,
-      userId: row.userId,
-      bookId: row.bookId,
-      status: row.status as ReadingStatusType,
-      currentPage: row.currentPage,
-      updatedAt: row.updatedAt ? new Date(row.updatedAt) : new Date(),
-    });
   }
 }

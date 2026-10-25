@@ -65,7 +65,7 @@ export class Book {
   }
 
   /** The reader's progress in this book, bounded by its page count when known. */
-  progressAt(page: number): PageProgress {
+  progressAt(page: unknown): PageProgress {
     return PageProgress.of(page, this.pageCount);
   }
 }

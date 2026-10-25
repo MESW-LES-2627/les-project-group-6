@@ -5,11 +5,13 @@ import { BookId } from './domain/book/book-id.js';
 import type { IBookRepository } from './domain/book/book-repository.js';
 import { InvalidValueError } from './domain/shared/domain-error.js';
 import { toBookDto } from './http/book-dto.js';
-import {
-  ReadingStatus,
-  type IReadingStatusRepository,
-  type ReadingStatusType,
-} from './domain/reading-status.js';
+import { READING_STATUS_TYPES, type ReadingStatusType } from './domain/reading/reading-state.js';
+import type { IReadingStatusRepository } from './domain/reading/reading-status-repository.js';
+import { UserId } from './domain/user/user-id.js';
+import { SetReadingStatusUseCase } from './application/reading/set-reading-status.js';
+import { UpdateReadingStatusUseCase } from './application/reading/update-reading-status.js';
+import { domainErrorHandler } from './http/error-handler.js';
+import { toReadingStatusDto } from './http/reading-status-dto.js';
 
 export interface AppDependencies {
   healthCheck?: DatabaseHealthCheck;
@@ -18,12 +20,7 @@ export interface AppDependencies {
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const VALID_STATUSES: ReadingStatusType[] = [
-  'not-started',
-  'in-progress',
-  'finished',
-  'did-not-finish',
-];
+const VALID_STATUSES: readonly string[] = READING_STATUS_TYPES;
 
 export function createApp(deps: AppDependencies = {}): Express {
   const app = express();
@@ -135,106 +132,42 @@ export function createApp(deps: AppDependencies = {}): Express {
     res.status(204).send();
   });
 
+  const readingStatusUseCases = () => {
+    if (!deps.readingStatusRepository || !deps.bookRepository) return null;
+    return {
+      set: new SetReadingStatusUseCase(deps.readingStatusRepository, deps.bookRepository),
+      update: new UpdateReadingStatusUseCase(deps.readingStatusRepository, deps.bookRepository),
+    };
+  };
+
   app.put('/reading-status', async (req, res) => {
-    if (!deps.readingStatusRepository) {
+    const useCases = readingStatusUseCases();
+    if (!useCases) {
       res.status(500).json({ error: 'Reading status repository not configured' });
       return;
     }
 
     const { userId, bookId, status, currentPage } = req.body;
-    if (!userId || !UUID_REGEX.test(userId)) {
-      res.status(400).json({ error: 'Valid userId is required' });
-      return;
-    }
-    if (!bookId || !UUID_REGEX.test(bookId)) {
-      res.status(400).json({ error: 'Valid bookId is required' });
-      return;
-    }
-
-    if (!status || !VALID_STATUSES.includes(status)) {
-      res.status(400).json({
-        error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,
-      });
-      return;
-    }
-
-    const entry = new ReadingStatus({
-      userId,
-      bookId,
-      status,
-      currentPage: typeof currentPage === 'number' && currentPage >= 0 ? currentPage : 0,
-    });
-
-    try {
-      await deps.readingStatusRepository.save(entry);
-      res.status(200).json(entry);
-    } catch {
-      res.status(500).json({ error: 'Failed to update reading status' });
-    }
+    const entry = await useCases.set.execute({ userId, bookId, status, currentPage });
+    res.status(200).json(toReadingStatusDto(entry));
   });
 
   const updateReadingStatusHandler = async (req: express.Request, res: express.Response) => {
-    if (!deps.readingStatusRepository) {
+    const useCases = readingStatusUseCases();
+    if (!useCases) {
       res.status(500).json({ error: 'Reading status repository not configured' });
       return;
     }
 
-    const id = req.params.id || req.body.id;
-    let existing: ReadingStatus | null = null;
-
-    if (id) {
-      if (!UUID_REGEX.test(id)) {
-        res.status(400).json({ error: 'Invalid UUID format' });
-        return;
-      }
-      existing = await deps.readingStatusRepository.findById(id);
-    } else if (req.body.userId && req.body.bookId) {
-      if (!UUID_REGEX.test(req.body.userId) || !UUID_REGEX.test(req.body.bookId)) {
-        res.status(400).json({ error: 'Valid userId and bookId are required' });
-        return;
-      }
-      existing = await deps.readingStatusRepository.findByUserAndBook(
-        req.body.userId,
-        req.body.bookId,
-      );
-    } else {
-      res.status(400).json({ error: 'Reading status ID or userId and bookId are required' });
-      return;
-    }
-
-    if (!existing) {
-      res.status(404).json({ error: 'Reading status not found' });
-      return;
-    }
-
-    const { status, currentPage } = req.body;
-    if (status !== undefined && !VALID_STATUSES.includes(status)) {
-      res.status(400).json({
-        error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`,
-      });
-      return;
-    }
-
-    if (currentPage !== undefined && (typeof currentPage !== 'number' || currentPage < 0)) {
-      res.status(400).json({ error: 'currentPage must be a non-negative number' });
-      return;
-    }
-
-    const updated = new ReadingStatus({
-      id: existing.id,
-      userId: existing.userId,
-      bookId: existing.bookId,
-      status: status ?? existing.status,
-      currentPage: currentPage !== undefined ? currentPage : existing.currentPage,
-      updatedAt: new Date(),
+    const { userId, bookId, status, currentPage } = req.body;
+    const entry = await useCases.update.execute({
+      id: req.params.id ?? req.body.id,
+      userId,
+      bookId,
+      status,
+      currentPage,
     });
-
-    try {
-      const result = await deps.readingStatusRepository.update(existing, updated);
-      res.status(200).json(result);
-    } catch {
-      res.status(500).json({ error: 'Failed to update reading status' });
-    }
+    res.status(200).json(toReadingStatusDto(entry));
   };
 
   app.patch('/reading-status/:id', updateReadingStatusHandler);
@@ -258,9 +191,14 @@ export function createApp(deps: AppDependencies = {}): Express {
     const statusFilter =
       statusQuery && VALID_STATUSES.includes(statusQuery) ? statusQuery : undefined;
 
-    const library = await deps.readingStatusRepository.findUserLibrary(userId, statusFilter);
+    const library = await deps.readingStatusRepository.findUserLibrary(
+      UserId.of(userId),
+      statusFilter,
+    );
     res.status(200).json(library.map((item) => ({ ...item, book: toBookDto(item.book) })));
   });
+
+  app.use(domainErrorHandler);
 
   return app;
 }
