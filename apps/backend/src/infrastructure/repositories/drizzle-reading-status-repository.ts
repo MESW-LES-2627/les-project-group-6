@@ -6,7 +6,7 @@ import {
   type ReadingStatusType,
   type UserLibraryItem,
 } from '../../domain/reading-status.js';
-import { Book } from '../../domain/book.js';
+import { BookMapper } from '../persistence/book-mapper.js';
 import { readingStatus, books } from '../database/schema.js';
 
 export class DrizzleReadingStatusRepository implements IReadingStatusRepository {
@@ -130,16 +130,7 @@ export class DrizzleReadingStatusRepository implements IReadingStatusRepository 
 
     return rows.map((row) => ({
       id: row.statusId,
-      book: new Book({
-        id: row.book.id,
-        title: row.book.title,
-        description: row.book.description,
-        isbn13: row.book.isbn13,
-        pageCount: row.book.pageCount,
-        coverUrl: row.book.coverUrl,
-        isCommunityAdded: row.book.isCommunityAdded,
-        createdAt: row.book.createdAt ? new Date(row.book.createdAt) : new Date(),
-      }),
+      book: BookMapper.toDomain(row.book),
       status: row.status as ReadingStatusType,
       currentPage: row.currentPage,
       updatedAt: new Date(row.statusUpdatedAt),

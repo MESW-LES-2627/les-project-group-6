@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import type { Book } from './book.js';
+import type { Book } from './book/book.js';
 
 export type ReadingStatusType = 'not-started' | 'in-progress' | 'finished' | 'did-not-finish';
 

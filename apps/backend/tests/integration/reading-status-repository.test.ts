@@ -4,25 +4,27 @@ import { createDb } from '../../src/infrastructure/database/pool.js';
 import { DrizzleBookRepository } from '../../src/infrastructure/repositories/drizzle-book-repository.js';
 import { DrizzleReadingStatusRepository } from '../../src/infrastructure/repositories/drizzle-reading-status-repository.js';
 import { DrizzleUserRepository } from '../../src/infrastructure/repositories/drizzle-user-repository.js';
-import { Book } from '../../src/domain/book.js';
+import { Book } from '../../src/domain/book/book.js';
 import { ReadingStatus } from '../../src/domain/reading-status.js';
 import { User } from '../../src/domain/user.js';
 import { createTestPool, truncateTables } from '../helpers/test-db.js';
 
 const USER_ID = 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a51';
-const BOOK_ID = 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a52';
 
 describe('DrizzleReadingStatusRepository Integration', () => {
   const pool = createTestPool();
   const db = createDb(pool);
   const repo = new DrizzleReadingStatusRepository(db);
+  let BOOK_ID: string;
 
   beforeEach(async () => {
     await truncateTables(pool, ['users', 'books', 'reading_status']);
     await new DrizzleUserRepository(db).save(
       new User({ id: USER_ID, email: 'r@example.com', username: 'reader', displayName: 'R' }),
     );
-    await new DrizzleBookRepository(db).save(new Book({ id: BOOK_ID, title: 'Dune' }));
+    const book = Book.create({ title: 'Dune' });
+    await new DrizzleBookRepository(db).save(book);
+    BOOK_ID = book.id.value;
   });
 
   after(async () => {

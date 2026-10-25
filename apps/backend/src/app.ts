@@ -1,6 +1,10 @@
 import express, { type Express } from 'express';
 import type { DatabaseHealthCheck } from './infrastructure/database/health-check.js';
-import { Book, type IBookRepository } from './domain/book.js';
+import { Book } from './domain/book/book.js';
+import { BookId } from './domain/book/book-id.js';
+import type { IBookRepository } from './domain/book/book-repository.js';
+import { InvalidValueError } from './domain/shared/domain-error.js';
+import { toBookDto } from './http/book-dto.js';
 import {
   ReadingStatus,
   type IReadingStatusRepository,
@@ -52,25 +56,27 @@ export function createApp(deps: AppDependencies = {}): Express {
       return;
     }
 
-    const { title, description, isbn13, pageCount, coverUrl, isCommunityAdded, id } = req.body;
-    if (!title || typeof title !== 'string' || title.trim() === '') {
-      res.status(400).json({ error: 'Title is required' });
+    const { title, description, isbn13, pageCount, coverUrl, isCommunityAdded } = req.body;
+
+    let book: Book;
+    try {
+      book = Book.create({
+        title,
+        description,
+        isbn13,
+        pageCount: pageCount !== undefined && pageCount !== null ? Number(pageCount) : null,
+        coverUrl,
+        isCommunityAdded,
+      });
+    } catch (error) {
+      if (!(error instanceof InvalidValueError)) throw error;
+      res.status(400).json({ error: error.message });
       return;
     }
 
-    const book = new Book({
-      id,
-      title: title.trim(),
-      description,
-      isbn13,
-      pageCount: pageCount !== undefined && pageCount !== null ? Number(pageCount) : null,
-      coverUrl,
-      isCommunityAdded,
-    });
-
     try {
       await deps.bookRepository.save(book);
-      res.status(201).json(book);
+      res.status(201).json(toBookDto(book));
     } catch {
       res.status(500).json({ error: 'Failed to save book' });
     }
@@ -84,7 +90,7 @@ export function createApp(deps: AppDependencies = {}): Express {
 
     const title = typeof req.query.title === 'string' ? req.query.title.trim() : '';
     const books = await deps.bookRepository.findByTitle(title);
-    res.status(200).json(books);
+    res.status(200).json(books.map(toBookDto));
   });
 
   app.get('/book/:id', async (req, res) => {
@@ -99,13 +105,13 @@ export function createApp(deps: AppDependencies = {}): Express {
       return;
     }
 
-    const book = await deps.bookRepository.findById(id);
+    const book = await deps.bookRepository.findById(BookId.of(id));
     if (!book) {
       res.status(404).json({ error: 'Book not found' });
       return;
     }
 
-    res.status(200).json(book);
+    res.status(200).json(toBookDto(book));
   });
 
   app.delete('/book/:id', async (req, res) => {
@@ -120,7 +126,7 @@ export function createApp(deps: AppDependencies = {}): Express {
       return;
     }
 
-    const deleted = await deps.bookRepository.delete(id);
+    const deleted = await deps.bookRepository.delete(BookId.of(id));
     if (!deleted) {
       res.status(404).json({ error: 'Book not found' });
       return;
@@ -253,7 +259,7 @@ export function createApp(deps: AppDependencies = {}): Express {
       statusQuery && VALID_STATUSES.includes(statusQuery) ? statusQuery : undefined;
 
     const library = await deps.readingStatusRepository.findUserLibrary(userId, statusFilter);
-    res.status(200).json(library);
+    res.status(200).json(library.map((item) => ({ ...item, book: toBookDto(item.book) })));
   });
 
   return app;

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { createApp } from '../../src/app.js';
 import { createDb } from '../../src/infrastructure/database/pool.js';
 import { DrizzleBookRepository } from '../../src/infrastructure/repositories/drizzle-book-repository.js';
-import { Book } from '../../src/domain/book.js';
+import { Book } from '../../src/domain/book/book.js';
+import { BookId } from '../../src/domain/book/book-id.js';
 import { createTestPool, truncateTables } from '../helpers/test-db.js';
 import { withApp } from '../helpers/http.js';
 
@@ -42,9 +43,9 @@ describe('Book API Endpoints', () => {
       assert.strictEqual(data.title, '1984');
       assert.strictEqual(data.pageCount, 328);
 
-      const saved = await bookRepository.findById(data.id);
+      const saved = await bookRepository.findById(BookId.of(data.id));
       assert.ok(saved);
-      assert.strictEqual(saved.title, '1984');
+      assert.strictEqual(saved.title.value, '1984');
     });
   });
 
@@ -63,8 +64,7 @@ describe('Book API Endpoints', () => {
   });
 
   test('GET /book/:id returns 200 with book when found', async () => {
-    const book = new Book({
-      id: 'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44',
+    const book = Book.create({
       title: 'Brave New World',
       pageCount: 288,
     });
@@ -75,7 +75,7 @@ describe('Book API Endpoints', () => {
       assert.strictEqual(response.status, 200);
 
       const data = (await response.json()) as { id: string; title: string };
-      assert.strictEqual(data.id, book.id);
+      assert.strictEqual(data.id, book.id.value);
       assert.strictEqual(data.title, 'Brave New World');
     });
   });
@@ -88,9 +88,9 @@ describe('Book API Endpoints', () => {
   });
 
   test('GET /book?title= searches books by title', async () => {
-    await bookRepository.save(new Book({ title: 'Foundation' }));
-    await bookRepository.save(new Book({ title: 'Foundation and Empire' }));
-    await bookRepository.save(new Book({ title: 'Second Foundation' }));
+    await bookRepository.save(Book.create({ title: 'Foundation' }));
+    await bookRepository.save(Book.create({ title: 'Foundation and Empire' }));
+    await bookRepository.save(Book.create({ title: 'Second Foundation' }));
 
     await withApp(app, async (baseUrl) => {
       const response = await fetch(`${baseUrl}/book?title=Empire`);
@@ -110,8 +110,7 @@ describe('Book API Endpoints', () => {
   });
 
   test('DELETE /book/:id deletes book and returns 204', async () => {
-    const book = new Book({
-      id: 'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380a45',
+    const book = Book.create({
       title: 'To Be Deleted',
     });
     await bookRepository.save(book);
