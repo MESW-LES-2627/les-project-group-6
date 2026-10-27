@@ -203,6 +203,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 ### 2026-10-27: Release workflow permission fix
 
 - [`release.yml`](../../../.github/workflows/release.yml) failed with HTTP 403 when listing the prod CD runs of the merged commit: its token had no `actions: read`. Added that permission.
+- It then failed in `actions/setup-node@v5` with "Unable to locate executable file: pnpm": v5 turns on the pnpm cache by itself from `packageManager` in the root `package.json`, and this job does not install pnpm. Set `package-manager-cache: false`.
 
 ## Next steps
 

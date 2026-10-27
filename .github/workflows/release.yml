@@ -53,6 +53,9 @@ jobs:
         if: steps.gate.outputs.ready == 'true'
         with:
           node-version-file: .nvmrc
+          # No pnpm here (only npx semantic-release), so skip the automatic
+          # pnpm cache setup-node v5 enables from packageManager
+          package-manager-cache: false
 
       # Checked out at a commit, not a branch: tell semantic-release it is main
       - name: Tag version and create GitHub Release
