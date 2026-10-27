@@ -1,62 +1,12 @@
-import { flushPromises, mount } from '@vue/test-utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mount } from '@vue/test-utils';
+import { describe, expect, it } from 'vitest';
+
 import router from '@/router';
 import HomeView from '../HomeView.vue';
 
 const mountView = () => mount(HomeView, { global: { plugins: [router] } });
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-describe('HomeView backend status', () => {
-  it('requests health and displays the backend response', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ status: 'ok' }), {
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    );
-    vi.stubGlobal('fetch', fetchMock);
-    const wrapper = mountView();
-
-    expect(wrapper.get('[data-test="health"]').text()).toBe('Checking backend…');
-    await flushPromises();
-
-    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
-      expect.stringMatching(/\/health$/),
-      expect.objectContaining({ headers: { Accept: 'application/json' } }),
-    );
-    expect(wrapper.get('[data-test="health"]').text()).toBe('Backend status: ok');
-    wrapper.unmount();
-  });
-
-  it.each([
-    ['HTTP failure', () => Promise.resolve({ ok: false, status: 503 }), 'HTTP 503'],
-    ['network failure', () => Promise.reject(new Error('Failed to fetch')), 'Failed to fetch'],
-    [
-      'invalid response',
-      () => Promise.resolve({ ok: true, json: async () => ({ message: 'unexpected' }) }),
-      'Invalid health response',
-    ],
-  ])('displays a useful error for %s', async (_name, response, message) => {
-    vi.stubGlobal('fetch', vi.fn().mockImplementation(response));
-    const wrapper = mountView();
-    await flushPromises();
-
-    expect(wrapper.get('[data-test="health"]').text()).toBe(`Backend unavailable: ${message}`);
-    expect(wrapper.get('[data-test="health"]').classes()).toContain('health-status--error');
-    wrapper.unmount();
-  });
-});
-
 describe('HomeView content', () => {
-  beforeEach(() => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ status: 'ok' }) }),
-    );
-  });
-
   it('shows the greeting, the bedside book, the streak and the goals', () => {
     const wrapper = mountView();
 

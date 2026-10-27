@@ -26,7 +26,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Library page prototype (#76) | Responsive `/library` UI with reusable card and shelves components, filters, tests, and API integration with user library endpoint |
 | Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels, and API reading status updates |
 | Active reading session | Responsive `/session/:bookId` with a separate timer, progress editor, session notes and group-counting rail; save wiring still to do |
-| Home page prototype | `/home` built from design screen 05 with mock data; keeps the backend health line; no home API yet |
+| Home page prototype | `/home` built from design screen 05 with mock data only, no backend calls; no home API yet |
 | Profile page prototype | `/profile` with app header and footer, mock data and empty states, built on the #64 skeleton |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
 | Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
@@ -210,7 +210,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 
 - Replaced the Home placeholder with the [home page](../../../apps/frontend/src/views/HomeView.vue) from design screen [05](../../design/screens/05-home.png): bedside book with progress and last session, streak, yearly goal rings, current challenge and book club, circle activity, friends reading now, friend request and group invitation (accept/decline only change local state), trending books and the first-book prompt.
 - Mock data in [`mocks/home.ts`](../../../apps/frontend/src/mocks/home.ts) with types in [`types/home.ts`](../../../apps/frontend/src/types/home.ts); reuses the library cover images. Links go to `/session/emma`, `/library/emma`, `/library` and `/groups/:groupId`.
-- Kept the backend health line at the bottom of the page as the production connection smoke check, and extended the [view tests](../../../apps/frontend/src/views/__tests__/HomeView.spec.ts).
+- Removed the backend health status from Home: the page is mocked for now and makes no backend calls. *Why:* keep the prototype independent of the API; the deploy check now uses the library API request (see the [frontend README](../../../apps/frontend/README.md)). Replaced the health tests with content [view tests](../../../apps/frontend/src/views/__tests__/HomeView.spec.ts).
 
 ## Next steps
 

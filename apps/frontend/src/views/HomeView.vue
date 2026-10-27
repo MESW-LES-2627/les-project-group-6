@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import { mockHome } from '@/mocks/home';
-import { getHealth } from '../services/api';
 
 // Mock data until the home API exists. Accepting or declining only changes this page.
 const home = mockHome;
@@ -48,18 +47,6 @@ function declineInvitation() {
   message.value = `You declined ${invitation.value.title}.`;
   invitation.value = null;
 }
-
-const health = ref('Checking backend…');
-const failed = ref(false);
-
-onMounted(async () => {
-  try {
-    health.value = `Backend status: ${await getHealth()}`;
-  } catch (error) {
-    failed.value = true;
-    health.value = `Backend unavailable: ${error instanceof Error ? error.message : 'Unknown error'}`;
-  }
-});
 </script>
 
 <template>
@@ -317,10 +304,6 @@ onMounted(async () => {
         <RouterLink class="button-outline" to="/library">+ Add a first book</RouterLink>
       </section>
     </div>
-
-    <p class="health-status" :class="{ 'health-status--error': failed }" data-test="health">
-      {{ health }}
-    </p>
   </main>
 </template>
 
@@ -684,16 +667,6 @@ p {
 
 .first-chapter .button-outline {
   justify-self: start;
-}
-
-.health-status {
-  margin-top: var(--space-8);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-}
-
-.health-status--error {
-  color: var(--color-error);
 }
 
 @media (max-width: 1023px) {

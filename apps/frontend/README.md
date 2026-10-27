@@ -11,7 +11,7 @@ pnpm dev:backend
 pnpm --filter @bookmarked/frontend dev
 ```
 
-Open the Vite URL (normally http://localhost:5173), then visit `/home` for the home prototype (mock data, from design screen 05). The profile prototype is at `/profile` (mock data); `/profile?state=new` shows every section's empty state. A line at the bottom of the home page initially shows “Checking backend…” and then the backend result (normally “Backend status: ok”) or an error. It remains available in production as a connection smoke check.
+Open the Vite URL (normally http://localhost:5173), then visit `/home` for the home prototype (mock data, from design screen 05). The profile prototype is at `/profile` (mock data); `/profile?state=new` shows every section's empty state.
 
 The library view is at `/library`. It connects to the backend API (`GET /api/user/:userId/library`) for the demo reader (`a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11`), dynamically updating shelf filter counts, with seamless fallback to mock data in `src/mocks/library.ts` when offline or during tests.
 
@@ -27,7 +27,7 @@ Build with `pnpm --filter @bookmarked/frontend build` and deploy `dist/`. Config
 
 Alternatively, set `VITE_API_BASE_URL` to the public backend URL **at build time** (e.g. on Render's Environment settings). The Express backend configures permissive CORS headers to support cross-origin requests. Do not put secrets in `VITE_*` variables, which are public in the bundle.
 
-After deployment, open `/home` and check for “Backend status: ok” and a successful `/health` request in browser network tools. Production verification requires a deployed frontend/backend and host routing.
+After deployment, open `/library` and check for a successful library API request in browser network tools (the home page uses mock data only). Production verification requires a deployed frontend/backend and host routing.
 
 ## Checks
 

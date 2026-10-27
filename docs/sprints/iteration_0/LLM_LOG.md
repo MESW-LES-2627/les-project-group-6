@@ -584,7 +584,8 @@ Renamed the prod deploy environments to `backend` and `frontend`, and added `bac
 ```text
 Can you create another mocked page to @docs/design/screens/05-home.png and @docs/design/screens/16-profile.png ? this way we will have all mocked pages. Add into a new pr
 actually, create just the home apge
+the home page is is mocked for now, no need to access backend
 ```
 
 #### Explanation of Changes
-Replaced the Home placeholder with the `/home` page from design screen 05 using mock data (`mocks/home.ts`, `types/home.ts`), kept the backend health line, and added view tests. Checked with tests, lint and typecheck. See the [iteration log](log.md) entry of the same date.
+Replaced the Home placeholder with the `/home` page from design screen 05 using mock data (`mocks/home.ts`, `types/home.ts`) with no backend calls (the old health status was removed), and added view tests. Checked with tests, lint and typecheck. See the [iteration log](log.md) entry of the same date.
