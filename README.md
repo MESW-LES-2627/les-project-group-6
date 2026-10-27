@@ -95,16 +95,17 @@ GitHub configuration: the pull request template, the issue templates (`ISSUE_TEM
 
 #### Continuous integration
 
-Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks (and `<app>-cd.yml` if a deploy workflow is ever needed), so each app's CI stays separate. A change to one app does not run the other app's checks:
+Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks and `<app>-cd-<env>.yml` / `cd-prod.yml` for deploys, so each app's CI stays separate. A change to one app does not run the other app's checks:
 
-- `backend-ci.yml`: runs on every pull request to `main` and on push to `main` when `apps/backend/`, the shared root config or the workflow itself changes. It installs with the locked dependencies, then runs lint, format check, typecheck, tests and build.
-- `frontend-ci.yml`: the same steps for `apps/frontend/`. It is enabled and runs lint, format check, typecheck, component/router tests and build.
+- `backend-ci.yml`: runs on every pull request to `main` when `apps/backend/`, the shared root config or the workflow itself changes. It installs with the locked dependencies, then runs lint, format check, typecheck, tests (against a Postgres service) and build.
+- `frontend-ci.yml`: the same steps for `apps/frontend/`: lint, format check, typecheck, component/router tests and build.
+- `commitlint.yml`: runs on every pull request to `main` and fails when a commit (merge commits aside) does not follow Conventional Commits: `<type>(<scope>)!: <description>` with type `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style` or `test`. Check locally with `scripts/check-commits.sh origin/main..HEAD`. Fix a bad message with `git commit --amend` or `git rebase -i` and force-push.
 
 #### Deploy (Render)
 
 The backend runs on Render as two Docker web services linked to this repository:
 
-- **prod**: Render auto-deploys on every push to its branch (`main`).
+- **prod**: deployed only by `cd-prod.yml` (below), never by Render Auto-Deploy.
 - **stg**: deployed only by `backend-cd-stg.yml`. Run it by hand (Actions, "Backend CD (stg)", "Run workflow") and pick any branch in "Use workflow from". It points the stg service at that branch through the Render API, deploys that commit, waits until it is live and checks `/health`. It needs the secret `RENDER_API_KEY` and the variable `RENDER_BACKEND_STG_SERVICE_ID` (the `srv-...` id), and Auto-Deploy turned off on the stg service.
 
 Settings for both services (stg gets its own environment values, never the prod database):
@@ -119,6 +120,17 @@ The frontend runs on Render as a static site (no Dockerfile; Vite builds plain f
 - Build command: `pnpm install --frozen-lockfile --filter @bookmarked/frontend... && pnpm --filter @bookmarked/frontend build` (no `corepack enable`: `/usr/bin` is read-only on Render and `pnpm` is already there).
 - Publish directory: `apps/frontend/dist`.
 - Redirects/Rewrites, in this order: `/api/*` rewrite to `https://<backend-service>.onrender.com/*` (so `VITE_API_BASE_URL=/api` works and no CORS is needed), then `/*` rewrite to `/index.html` (the router uses history mode).
+
+#### Production deploy and versions (`cd-prod.yml`)
+
+Every merge to `main` runs "CD (prod)" (it can also be run by hand, which deploys both apps). Steps, each one stopping the run on failure so a broken deploy shows up red in Actions:
+
+1. CI of the apps that changed (it calls `backend-ci.yml` / `frontend-ci.yml`).
+2. Backend changed: migrations on the production database (`db:migrate` with `PROD_DATABASE_URL`), then the backend deploy on Render, wait until live, check `/health`.
+3. Frontend changed: the static site deploy, after the backend, then a check that the site answers.
+4. A version tag `vX.Y.Z` and a GitHub Release with generated notes, from the commits since the last tag (`scripts/next-version.sh`): `feat` bumps minor, a breaking change (`type!:` or `BREAKING CHANGE:`) bumps major (minor while in `0.x`), anything else bumps patch. The first tag is `v0.1.0`. No tag is created when a step failed.
+
+The Render steps live in the composite action `.github/actions/render-deploy`, shared with the stg workflows. Setup (repo admin): secrets `RENDER_API_KEY` and `PROD_DATABASE_URL`, variables `RENDER_BACKEND_PROD_SERVICE_ID` and `RENDER_FRONTEND_PROD_SERVICE_ID`, and Auto-Deploy turned off on both prod services.
 
 To try the image locally: `docker build -f apps/backend/Dockerfile -t bookmarked-backend .` then `docker run -p 3000:3000 bookmarked-backend`.
 
