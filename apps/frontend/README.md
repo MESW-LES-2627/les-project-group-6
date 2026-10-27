@@ -11,7 +11,7 @@ pnpm dev:backend
 pnpm --filter @bookmarked/frontend dev
 ```
 
-Open the Vite URL (normally http://localhost:5173), then visit `/home`. The profile prototype is at `/profile` (mock data); `/profile?state=new` shows every section's empty state. The placeholder initially shows “Checking backend…” and then the backend result (normally “Backend status: ok”) or an error. It remains available in production as a connection smoke check.
+Open the Vite URL (normally http://localhost:5173), then visit `/home` for the home prototype (mock data, from design screen 05). The profile prototype is at `/profile` (mock data); `/profile?state=new` shows every section's empty state. A line at the bottom of the home page initially shows “Checking backend…” and then the backend result (normally “Backend status: ok”) or an error. It remains available in production as a connection smoke check.
 
 The library view is at `/library`. It connects to the backend API (`GET /api/user/:userId/library`) for the demo reader (`a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11`), dynamically updating shelf filter counts, with seamless fallback to mock data in `src/mocks/library.ts` when offline or during tests.
 
@@ -50,7 +50,7 @@ defined once here. Use the `--font-size-*` scale (`2xs` 11px to `display` 56px) 
 tokens added for the profile page and app layout (hover and on-primary colors, page width, cover and menu shadows, motion).       
 - `src/assets/styles/main.css`: global styles consuming tokens, plus shared classes (`.page-column`, `.button`, `.text-link`, `.
 book-link`, `.progress-bar`, `.section-title`, `.sr-only`).
-- `src/views/`: Login, Home and not-found placeholders, the profile page prototype (`ProfileView`), the responsive [library     
+- `src/views/`: Login and not-found placeholders, the home page prototype (`HomeView`, mock data in `src/mocks/home.ts`), the profile page prototype (`ProfileView`), the responsive [library     
 page](src/views/LibraryView.vue), [book detail](src/views/BookDetailView.vue), [active session](src/views/ActiveSessionView.vue), 
 and view tests in `__tests__/`.
 - `src/components/layout/`: `AppHeader` (nav, search, notifications, account menu) and `AppFooter`, shown on every route except 

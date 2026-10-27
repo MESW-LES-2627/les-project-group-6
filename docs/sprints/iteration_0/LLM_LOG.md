@@ -571,3 +571,20 @@ rename to frontend and backend. can we do the same with frontend (stg) and backe
 
 #### Explanation of Changes
 Renamed the prod deploy environments to `backend` and `frontend`, and added `backend-stg` and `frontend-stg` environments with the live URL to the stg workflows. Deleted the old `production` and `production-frontend` environments. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-27: Home page prototype
+
+- **Date:** 2026-10-27
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend
+
+#### Prompt
+```text
+Can you create another mocked page to @docs/design/screens/05-home.png and @docs/design/screens/16-profile.png ? this way we will have all mocked pages. Add into a new pr
+actually, create just the home apge
+```
+
+#### Explanation of Changes
+Replaced the Home placeholder with the `/home` page from design screen 05 using mock data (`mocks/home.ts`, `types/home.ts`), kept the backend health line, and added view tests. Checked with tests, lint and typecheck. See the [iteration log](log.md) entry of the same date.

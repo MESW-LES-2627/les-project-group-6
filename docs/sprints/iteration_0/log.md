@@ -26,6 +26,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Library page prototype (#76) | Responsive `/library` UI with reusable card and shelves components, filters, tests, and API integration with user library endpoint |
 | Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels, and API reading status updates |
 | Active reading session | Responsive `/session/:bookId` with a separate timer, progress editor, session notes and group-counting rail; save wiring still to do |
+| Home page prototype | `/home` built from design screen 05 with mock data; keeps the backend health line; no home API yet |
 | Profile page prototype | `/profile` with app header and footer, mock data and empty states, built on the #64 skeleton |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
 | Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
@@ -204,6 +205,12 @@ A running record of what the team did and decided in iteration 0. The [release n
 
 - [`release.yml`](../../../.github/workflows/release.yml) failed with HTTP 403 when listing the prod CD runs of the merged commit: its token had no `actions: read`. Added that permission.
 - It then failed in `actions/setup-node@v5` with "Unable to locate executable file: pnpm": v5 turns on the pnpm cache by itself from `packageManager` in the root `package.json`, and this job does not install pnpm. Set `package-manager-cache: false`.
+
+### 2026-10-27: Home page prototype (screen 05)
+
+- Replaced the Home placeholder with the [home page](../../../apps/frontend/src/views/HomeView.vue) from design screen [05](../../design/screens/05-home.png): bedside book with progress and last session, streak, yearly goal rings, current challenge and book club, circle activity, friends reading now, friend request and group invitation (accept/decline only change local state), trending books and the first-book prompt.
+- Mock data in [`mocks/home.ts`](../../../apps/frontend/src/mocks/home.ts) with types in [`types/home.ts`](../../../apps/frontend/src/types/home.ts); reuses the library cover images. Links go to `/session/emma`, `/library/emma`, `/library` and `/groups/:groupId`.
+- Kept the backend health line at the bottom of the page as the production connection smoke check, and extended the [view tests](../../../apps/frontend/src/views/__tests__/HomeView.spec.ts).
 
 ## Next steps
 

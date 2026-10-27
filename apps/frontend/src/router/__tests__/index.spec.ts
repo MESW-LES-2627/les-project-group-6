@@ -9,7 +9,7 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('login');
   });
 
-  it('routes to the home placeholder', async () => {
+  it('routes to the home page', async () => {
     await router.push('/home');
 
     expect(router.currentRoute.value.name).toBe('home');
