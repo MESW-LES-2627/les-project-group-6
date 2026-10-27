@@ -1,0 +1,183 @@
+# Deploys main to production on every merge, in this order:
+#   1. CI for the apps that changed (backend-ci.yml, frontend-ci.yml)
+#   2. database migrations on the production database (Supabase)
+#   3. backend deploy on Render, wait until live, check /health
+#   4. frontend deploy on Render, wait until live, check the site
+#   5. version tag vX.Y.Z and a GitHub Release (semantic-release, config in
+#      the "release" key of the root package.json)
+# A failed step stops the run, so a broken deploy shows up red in Actions and
+# no tag is created for it. Apps that did not change are not redeployed.
+#
+# Needs the secrets RENDER_API_KEY and PROD_DATABASE_URL, and the variables
+# RENDER_BACKEND_PROD_SERVICE_ID and RENDER_FRONTEND_PROD_SERVICE_ID (the
+# srv-... ids). Turn Auto-Deploy off on both prod services so only this
+# workflow deploys them.
+name: CD (prod)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One prod deploy at a time; a newer merge waits instead of cancelling a deploy
+concurrency:
+  group: cd-prod
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # A manual run deploys both apps
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'push'
+        with:
+          filters: |
+            shared: &shared
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - tsconfig.base.json
+              - .nvmrc
+              - .npmrc
+              - .github/workflows/cd-prod.yml
+              - .github/actions/render-deploy/**
+            backend:
+              - *shared
+              - apps/backend/**
+              - .github/workflows/backend-ci.yml
+            frontend:
+              - *shared
+              - apps/frontend/**
+              - .github/workflows/frontend-ci.yml
+
+  backend-ci:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/backend-ci.yml
+
+  frontend-ci:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/frontend-ci.yml
+
+  migrate:
+    name: migrate prod database
+    needs: backend-ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      # Uses the pnpm version pinned in packageManager (root package.json)
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter @bookmarked/backend...
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Set the PROD_DATABASE_URL secret"
+            exit 1
+          fi
+          pnpm --filter @bookmarked/backend db:migrate
+
+  deploy-backend:
+    name: deploy backend
+    needs: migrate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: ${{ steps.render.outputs.url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/render-deploy
+        id: render
+        with:
+          api-key: ${{ secrets.RENDER_API_KEY }}
+          service-id: ${{ vars.RENDER_BACKEND_PROD_SERVICE_ID }}
+          commit: ${{ github.sha }}
+          check-path: /health
+
+      - name: Summary
+        env:
+          URL: ${{ steps.render.outputs.url }}
+        run: |
+          echo "### Backend deployed to prod: $URL" >> "$GITHUB_STEP_SUMMARY"
+
+  # Runs after the backend so the site never calls an older API. It still runs
+  # when the backend was skipped (no backend change), but not when it failed.
+  deploy-frontend:
+    name: deploy frontend
+    needs: [frontend-ci, deploy-backend]
+    if: >-
+      !cancelled() && needs.frontend-ci.result == 'success'
+      && contains(fromJSON('["success", "skipped"]'), needs.deploy-backend.result)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production-frontend
+      url: ${{ steps.render.outputs.url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/render-deploy
+        id: render
+        with:
+          api-key: ${{ secrets.RENDER_API_KEY }}
+          service-id: ${{ vars.RENDER_FRONTEND_PROD_SERVICE_ID }}
+          commit: ${{ github.sha }}
+
+      - name: Summary
+        env:
+          URL: ${{ steps.render.outputs.url }}
+        run: |
+          echo "### Frontend deployed to prod: $URL" >> "$GITHUB_STEP_SUMMARY"
+
+  # Tags the version from the commits since the last tag (feat: minor, fix and
+  # the like: patch, "!" or BREAKING CHANGE: major) as long as nothing above
+  # failed. A merge with only docs/chore/ci commits makes no release.
+  release:
+    name: tag version
+    needs: [changes, backend-ci, frontend-ci, migrate, deploy-backend, deploy-frontend]
+    if: >-
+      !cancelled() && !contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Create tag and release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npx --yes semantic-release@24

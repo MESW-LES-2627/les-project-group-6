@@ -18,7 +18,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Kanban board (GitHub Project) | Created |
 | Database tables model | v1.0 drafted |
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
-| Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done |
+| Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done; prod CD with migrations, version tags and commit message check |
 | Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
 | Backend domain model (OOP/DDD) | Rich entities with value objects, `ReadingStatus` lifecycle with the State pattern, use cases, Data Mappers and a library query object |
 | Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
@@ -219,6 +219,14 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - The DDD rule that entities and services do not know Drizzle, `pg` or Express is now enforced by ESLint (`no-restricted-imports` in [`eslint.config.js`](../../../apps/backend/eslint.config.js)) instead of by the folder tree. The [`oop-ddd-review`](../../../.claude/skills/oop-ddd-review/SKILL.md) skill was updated to the new paths.
 - No behaviour change: the API and its JSON contract are the same, and the 58 tests pass.
 
+### 2026-10-27: Production CD, version tags and commit message check (#6)
+
+- Added [`cd-prod.yml`](../../../.github/workflows/cd-prod.yml): on every merge to `main` it runs the CI of the changed apps, applies the migrations to the production database, deploys the backend and then the frontend to Render through the API, waits until each deploy is live and checks it, then tags the version. Replaces Render Auto-Deploy on prod and the `migrate-production` job of `backend-ci.yml`. Why: migrations run before the code that needs them, and a failed deploy is visible (red run, no tag) instead of hidden in the Render dashboard. Rejected: Render pre-deploy command (paid instances only) and keeping Auto-Deploy (no ordering with migrations).
+- Version tags `vX.Y.Z` with a GitHub Release, made by semantic-release from Conventional Commits, configured in the `release` key of the root [`package.json`](../../../package.json). A `v0.1.0` tag was created by hand on `main` so versions start in `0.x`. Rejected: python-semantic-release (needs `pyproject.toml` or a separate config file, and Python in the job), a hand-written bump script (more code to maintain), and committing version bumps to `main` (needs a token that bypasses branch protection).
+- Added [`commitlint.yml`](../../../.github/workflows/commitlint.yml) and [`scripts/check-commits.sh`](../../../scripts/check-commits.sh): every PR commit must follow `<type>(<scope>): <description>`. A plain script instead of `@commitlint/cli` to avoid new dependencies.
+- Moved the Render deploy steps into the composite action [`render-deploy`](../../../.github/actions/render-deploy/action.yml), now used by prod and both stg workflows. The CI workflows run on PRs and are called by `cd-prod.yml` (`workflow_call`) instead of running on push.
+- See the [README](../../../README.md#continuous-integration) for the setup (secrets, variables, Auto-Deploy off).
+
 ## Next steps
 
 - Write an ADR restricting Drizzle to a query builder (decided in the OOP/DDD review entry above).
@@ -331,7 +339,8 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
-- Point the Render backend service at `main` once this branch is merged, and add `DATABASE_URL` when Supabase is set up.
+- Prod CD setup (repo admin): add `PROD_DATABASE_URL`, `RENDER_BACKEND_PROD_SERVICE_ID` and `RENDER_FRONTEND_PROD_SERVICE_ID`, and turn Auto-Deploy off on both prod services.
+- Require the `commitlint` check on `main` with branch protection.
 - Create the Render stg service (Auto-Deploy off), create the Render stg static site for the frontend, add the `RENDER_API_KEY` secret and the `RENDER_BACKEND_STG_SERVICE_ID` and `RENDER_FRONTEND_STG_SERVICE_ID` variables (repo admin), and use a separate Supabase project for stg.
 - Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands. Frontend CI is now enabled.
 - Implement folder and card menu actions on the library page, wire session persistence for the active reading session, and replace remaining static review/club mock data.
