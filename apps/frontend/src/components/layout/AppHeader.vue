@@ -9,11 +9,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{ search: [query: string] }>();
 
-// Library, Groups and Explore have no route yet
+// Library and Explore have no route yet in the header
 const navItems = [
   { label: 'Home', to: '/home' },
   { label: 'Library', to: null },
-  { label: 'Groups', to: null },
+  { label: 'Groups', to: '/groups' },
   { label: 'Explore', to: null },
   { label: 'Profile', to: '/profile' },
 ];
@@ -79,7 +79,7 @@ async function toggleSearch() {
 
       <nav aria-label="Main" class="nav">
         <template v-for="item in navItems" :key="item.label">
-          <RouterLink v-if="item.to" :to="item.to" class="nav-link" exact-active-class="active">
+          <RouterLink v-if="item.to" :to="item.to" class="nav-link" active-class="active">
             {{ item.label }}
           </RouterLink>
           <a v-else href="#" class="nav-link">{{ item.label }}</a>

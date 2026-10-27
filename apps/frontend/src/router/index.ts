@@ -39,6 +39,23 @@ const router = createRouter({
       props: true,
     },
     {
+      path: '/groups',
+      name: 'groups',
+      component: () => import('../views/GroupsView.vue'),
+    },
+    // Declared before `:groupId` so "new" is not read as a group id
+    {
+      path: '/groups/new',
+      name: 'group-create',
+      component: () => import('../views/CreateGroupView.vue'),
+    },
+    {
+      path: '/groups/:groupId',
+      name: 'group-detail',
+      component: () => import('../views/GroupDetailView.vue'),
+      props: true,
+    },
+    {
       path: '/profile',
       name: 'profile',
       component: () => import('../views/ProfileView.vue'),

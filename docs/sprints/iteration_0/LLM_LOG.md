@@ -571,3 +571,19 @@ rename to frontend and backend. can we do the same with frontend (stg) and backe
 
 #### Explanation of Changes
 Renamed the prod deploy environments to `backend` and `frontend`, and added `backend-stg` and `frontend-stg` environments with the live URL to the stg workflows. Deleted the old `production` and `production-frontend` environments. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-27: Groups pages prototype
+
+- **Date:** 2026-10-27
+- **Author:** Robert Gleison
+- **Model:** Claude Sonnet 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend
+
+#### Prompt
+```text
+use the docs/design/screens 12, 13, 14, 15. Implement them using mocks in front end in route /groups You can have more infos in docs/product/requirement. If you want examples of code, we have the login page mock implementation in https://github.com/MESW-LES-2627/les-project-group-6/pull/88
+```
+
+#### Explanation of Changes
+Added the `/groups`, `/groups/new` and `/groups/:groupId` pages (groups list, create group, challenge and book club) with mock data, shared group components, tests and the header link. Checked with typecheck, lint, tests, build and headless screenshots against the design. See the [iteration log](log.md) entry of the same date.
