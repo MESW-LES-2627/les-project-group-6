@@ -3,7 +3,7 @@ name: Frontend CI
 on:
   pull_request:
     branches: [main]
-    paths: &paths
+    paths:
       - apps/frontend/**
       - package.json
       - pnpm-lock.yaml
@@ -14,15 +14,14 @@ on:
       - .prettierrc.json
       - .prettierignore
       - .github/workflows/frontend-ci.yml
-  push:
-    branches: [main]
-    paths: *paths
+  # Called by cd-prod.yml on every merge to main, before the deploy
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: frontend-ci-${{ github.ref }}
+  group: frontend-ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
