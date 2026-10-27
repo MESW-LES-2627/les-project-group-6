@@ -128,7 +128,7 @@ Every merge to `main` runs "CD (prod)" (it can also be run by hand, which deploy
 1. CI of the apps that changed (it calls `backend-ci.yml` / `frontend-ci.yml`).
 2. Backend changed: migrations on the production database (`db:migrate` with `PROD_DATABASE_URL`), then the backend deploy on Render, wait until live, check `/health`.
 3. Frontend changed: the static site deploy, after the backend, then a check that the site answers.
-4. A version tag `vX.Y.Z` and a GitHub Release with generated notes, from the commits since the last tag (`scripts/next-version.sh`): `feat` bumps minor, a breaking change (`type!:` or `BREAKING CHANGE:`) bumps major (minor while in `0.x`), anything else bumps patch. The first tag is `v0.1.0`. No tag is created when a step failed.
+4. A version tag `vX.Y.Z` and a GitHub Release with generated notes, made by [semantic-release](https://semantic-release.gitbook.io/) from the commits since the last tag (config in the `release` key of the root `package.json`): `feat` bumps minor, `fix`/`perf`/`revert` bump patch, a breaking change (`type!:` or `BREAKING CHANGE:`) bumps major. A merge with only `docs`, `chore`, `ci`, `style`, `test`, `build` or `refactor` commits makes no release, and no tag is created when a step failed. Versions started from a hand-made `v0.1.0` tag (semantic-release would otherwise start at `v1.0.0`).
 
 The Render steps live in the composite action `.github/actions/render-deploy`, shared with the stg workflows. Setup (repo admin): secrets `RENDER_API_KEY` and `PROD_DATABASE_URL`, variables `RENDER_BACKEND_PROD_SERVICE_ID` and `RENDER_FRONTEND_PROD_SERVICE_ID`, and Auto-Deploy turned off on both prod services.
 

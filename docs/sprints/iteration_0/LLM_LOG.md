@@ -616,7 +616,10 @@ Moved `BookDto`/`toBookDto` into `features/book/book-dto.ts` and `ReadingStatusD
 ```text
 https://github.com/orgs/MESW-LES-2627/projects/9?pane=issue&itemId=274530087&issue=MESW-LES-2627%7Cles-project-group-6%7C6 we need to finish this issue. I want to: do a explicit cd pipeline in repo instead of directly in render hosting platform, this way we can apply migrations there and see wrong deploys. Also, I want to create version tags that will updated on each merge to main. Last thing, add a commit message step in ci to ensure all commits have a correct commit pattern
 one important thing, you need to create the repo from the refactor/oop-ddd-review-fixes
+cant we use remantic release?
+in python we can add the release file in pyproject.toml, what about here? we can  reuse any config file?
+yes
 ```
 
 #### Explanation of Changes
-Added `cd-prod.yml` (CI of the changed apps, prod migrations, Render backend then frontend deploy with live and health checks, then a `vX.Y.Z` tag and GitHub Release), `scripts/next-version.sh` (semver bump from Conventional Commits), `commitlint.yml` with `scripts/check-commits.sh`, and the shared `render-deploy` composite action used by prod and stg. The CI workflows became callable and no longer run on push; the old `migrate-production` job was removed. Checked with actionlint, Prettier and by running both scripts on the repository history. See the [iteration log](log.md) entry of the same date.
+Added `cd-prod.yml` (CI of the changed apps, prod migrations, Render backend then frontend deploy with live and health checks, then a `vX.Y.Z` tag and GitHub Release), semantic-release configured in the root `package.json` `release` key (replacing a first hand-written bump script), `commitlint.yml` with `scripts/check-commits.sh`, and the shared `render-deploy` composite action used by prod and stg. The CI workflows became callable and no longer run on push; the old `migrate-production` job was removed. Checked with actionlint, Prettier and by running both scripts on the repository history. See the [iteration log](log.md) entry of the same date.

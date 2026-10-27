@@ -3,7 +3,8 @@
 #   2. database migrations on the production database (Supabase)
 #   3. backend deploy on Render, wait until live, check /health
 #   4. frontend deploy on Render, wait until live, check the site
-#   5. version tag vX.Y.Z and a GitHub Release (scripts/next-version.sh)
+#   5. version tag vX.Y.Z and a GitHub Release (semantic-release, config in
+#      the "release" key of the root package.json)
 # A failed step stops the run, so a broken deploy shows up red in Actions and
 # no tag is created for it. Apps that did not change are not redeployed.
 #
@@ -154,8 +155,9 @@ jobs:
         run: |
           echo "### Frontend deployed to prod: $URL" >> "$GITHUB_STEP_SUMMARY"
 
-  # Tags every merge to main, deployed or not (a docs-only merge gets a patch
-  # bump), as long as nothing above failed.
+  # Tags the version from the commits since the last tag (feat: minor, fix and
+  # the like: patch, "!" or BREAKING CHANGE: major) as long as nothing above
+  # failed. A merge with only docs/chore/ci commits makes no release.
   release:
     name: tag version
     needs: [changes, backend-ci, frontend-ci, migrate, deploy-backend, deploy-frontend]
@@ -164,19 +166,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
       - name: Create tag and release
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          tag=$(bash scripts/next-version.sh "$GITHUB_SHA")
-          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
-            echo "$tag already exists, nothing to release"
-            exit 0
-          fi
-          gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" --generate-notes
-          echo "### Released $tag" >> "$GITHUB_STEP_SUMMARY"
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npx --yes semantic-release@24
