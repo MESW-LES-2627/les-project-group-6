@@ -21,73 +21,25 @@ concurrency:
   group: frontend-cd-stg
   cancel-in-progress: false
 
-env:
-  RENDER_API: https://api.render.com/v1
-  SERVICE_ID: ${{ vars.RENDER_FRONTEND_STG_SERVICE_ID }}
-
 jobs:
   deploy:
     name: deploy
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Check configuration
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: |
-          if [ -z "$RENDER_API_KEY" ] || [ -z "$SERVICE_ID" ]; then
-            echo "::error::Set the RENDER_API_KEY secret and the RENDER_FRONTEND_STG_SERVICE_ID variable"
-            exit 1
-          fi
+      - uses: actions/checkout@v5
 
-      - name: Point stg at ${{ github.ref_name }}
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          BRANCH: ${{ github.ref_name }}
-        run: |
-          jq -n --arg branch "$BRANCH" '{branch: $branch, autoDeploy: "no"}' \
-            | curl -fsS -X PATCH "$RENDER_API/services/$SERVICE_ID" \
-                -H "Authorization: Bearer $RENDER_API_KEY" \
-                -H "Content-Type: application/json" \
-                --data @- -o /dev/null
+      - uses: ./.github/actions/render-deploy
+        id: render
+        with:
+          api-key: ${{ secrets.RENDER_API_KEY }}
+          service-id: ${{ vars.RENDER_FRONTEND_STG_SERVICE_ID }}
+          branch: ${{ github.ref_name }}
+          commit: ${{ github.sha }}
+          check-path: /
 
-      - name: Deploy ${{ github.sha }}
-        id: deploy
+      - name: Summary
         env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          COMMIT: ${{ github.sha }}
+          URL: ${{ steps.render.outputs.url }}
         run: |
-          deploy_id=$(jq -n --arg commit "$COMMIT" '{commitId: $commit}' \
-            | curl -fsS -X POST "$RENDER_API/services/$SERVICE_ID/deploys" \
-                -H "Authorization: Bearer $RENDER_API_KEY" \
-                -H "Content-Type: application/json" \
-                --data @- | jq -r '.id')
-          echo "Render deploy $deploy_id"
-          echo "id=$deploy_id" >> "$GITHUB_OUTPUT"
-
-      - name: Wait until live
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          DEPLOY_ID: ${{ steps.deploy.outputs.id }}
-        run: |
-          while true; do
-            status=$(curl -fsS "$RENDER_API/services/$SERVICE_ID/deploys/$DEPLOY_ID" \
-              -H "Authorization: Bearer $RENDER_API_KEY" | jq -r '.status')
-            echo "status: $status"
-            case "$status" in
-              live) break ;;
-              build_failed|update_failed|canceled|deactivated|pre_deploy_failed)
-                echo "::error::Render deploy ended with status $status"
-                exit 1 ;;
-            esac
-            sleep 15
-          done
-
-      - name: Smoke check
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: |
-          url=$(curl -fsS "$RENDER_API/services/$SERVICE_ID" \
-            -H "Authorization: Bearer $RENDER_API_KEY" | jq -r '.serviceDetails.url')
-          curl -fsS -o /dev/null --retry 5 --retry-delay 10 --retry-all-errors "$url"
-          echo "### Deployed \`${GITHUB_REF_NAME}\` to stg: $url" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Deployed \`${GITHUB_REF_NAME}\` to stg: $URL" >> "$GITHUB_STEP_SUMMARY"

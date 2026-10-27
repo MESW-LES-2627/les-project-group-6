@@ -1,0 +1,106 @@
+# Deploys one exact commit to a Render service through the Render API, waits
+# until the deploy is live and checks that the service answers. A deploy that
+# fails on Render (build, pre-deploy or update) fails the calling job.
+name: Render deploy
+description: Deploy a commit to a Render service, wait until live and check it
+
+inputs:
+  api-key:
+    description: Render API key
+    required: true
+  service-id:
+    description: The srv-... id of the Render service
+    required: true
+  commit:
+    description: Commit SHA to deploy
+    required: true
+  branch:
+    description: Point the service at this branch first (empty keeps the current branch)
+    required: false
+    default: ''
+  check-path:
+    description: Path requested once the deploy is live, e.g. /health
+    required: false
+    default: /
+
+outputs:
+  url:
+    description: Public URL of the service
+    value: ${{ steps.check.outputs.url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check configuration
+      shell: bash
+      env:
+        RENDER_API_KEY: ${{ inputs.api-key }}
+        SERVICE_ID: ${{ inputs.service-id }}
+      run: |
+        if [ -z "$RENDER_API_KEY" ] || [ -z "$SERVICE_ID" ]; then
+          echo "::error::Missing Render API key or service id"
+          exit 1
+        fi
+
+    - name: Point service at ${{ inputs.branch }}
+      if: inputs.branch != ''
+      shell: bash
+      env:
+        RENDER_API_KEY: ${{ inputs.api-key }}
+        SERVICE_ID: ${{ inputs.service-id }}
+        BRANCH: ${{ inputs.branch }}
+      run: |
+        jq -n --arg branch "$BRANCH" '{branch: $branch, autoDeploy: "no"}' \
+          | curl -fsS -X PATCH "https://api.render.com/v1/services/$SERVICE_ID" \
+              -H "Authorization: Bearer $RENDER_API_KEY" \
+              -H "Content-Type: application/json" \
+              --data @- -o /dev/null
+
+    - name: Deploy ${{ inputs.commit }}
+      id: deploy
+      shell: bash
+      env:
+        RENDER_API_KEY: ${{ inputs.api-key }}
+        SERVICE_ID: ${{ inputs.service-id }}
+        COMMIT: ${{ inputs.commit }}
+      run: |
+        deploy_id=$(jq -n --arg commit "$COMMIT" '{commitId: $commit}' \
+          | curl -fsS -X POST "https://api.render.com/v1/services/$SERVICE_ID/deploys" \
+              -H "Authorization: Bearer $RENDER_API_KEY" \
+              -H "Content-Type: application/json" \
+              --data @- | jq -r '.id')
+        echo "Render deploy $deploy_id"
+        echo "id=$deploy_id" >> "$GITHUB_OUTPUT"
+
+    - name: Wait until live
+      shell: bash
+      env:
+        RENDER_API_KEY: ${{ inputs.api-key }}
+        SERVICE_ID: ${{ inputs.service-id }}
+        DEPLOY_ID: ${{ steps.deploy.outputs.id }}
+      run: |
+        while true; do
+          status=$(curl -fsS "https://api.render.com/v1/services/$SERVICE_ID/deploys/$DEPLOY_ID" \
+            -H "Authorization: Bearer $RENDER_API_KEY" | jq -r '.status')
+          echo "status: $status"
+          case "$status" in
+            live) break ;;
+            build_failed|update_failed|canceled|deactivated|pre_deploy_failed)
+              echo "::error::Render deploy ended with status $status"
+              exit 1 ;;
+          esac
+          sleep 15
+        done
+
+    - name: Check ${{ inputs.check-path }}
+      id: check
+      shell: bash
+      env:
+        RENDER_API_KEY: ${{ inputs.api-key }}
+        SERVICE_ID: ${{ inputs.service-id }}
+        CHECK_PATH: ${{ inputs.check-path }}
+      run: |
+        url=$(curl -fsS "https://api.render.com/v1/services/$SERVICE_ID" \
+          -H "Authorization: Bearer $RENDER_API_KEY" | jq -r '.serviceDetails.url')
+        curl -fsS -o /dev/null --retry 5 --retry-delay 10 --retry-all-errors "$url$CHECK_PATH"
+        echo "url=$url" >> "$GITHUB_OUTPUT"
