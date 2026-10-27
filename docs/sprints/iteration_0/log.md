@@ -196,6 +196,10 @@ A running record of what the team did and decided in iteration 0. The [release n
 - The CI workflows run on PRs and are called by the prod CD workflows (`workflow_call`) instead of running on push. Created the [`v0.1.0` release](https://github.com/MESW-LES-2627/les-project-group-6/releases/tag/v0.1.0).
 - See the [README](../../../README.md#continuous-integration) for the setup (secrets, variables, Auto-Deploy off).
 
+### 2026-10-27: GitHub deployment environments per app
+
+- The deploy jobs record their deploys in GitHub environments named after the app: `backend` and `frontend` for prod, `backend-stg` and `frontend-stg` for stg, each with the live URL. Replaces the auto-created `production` and `production-frontend` environments, which were deleted. Why: one environment per app and stage keeps a separate deploy history and URL for each on the repository page.
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
