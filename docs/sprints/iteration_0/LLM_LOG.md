@@ -152,6 +152,8 @@ Moved the Node, editor and Prettier config back to the repository root and resto
 the files are inconsistent?
 how can we solve this? what is the lts version
 yes
+cant we have the release version? the release version will be the same as tag
+well, the idea is to see running like we have in backend CD (stg). I want to see the steps of migration, deploy, upload of the image and etc
 ```
 
 #### Explanation of Changes
@@ -619,7 +621,9 @@ one important thing, you need to create the repo from the refactor/oop-ddd-revie
 cant we use remantic release?
 in python we can add the release file in pyproject.toml, what about here? we can  reuse any config file?
 yes
+cant we have the release version? the release version will be the same as tag
+well, the idea is to see running like we have in backend CD (stg). I want to see the steps of migration, deploy, upload of the image and etc
 ```
 
 #### Explanation of Changes
-Added `cd-prod.yml` (CI of the changed apps, prod migrations, Render backend then frontend deploy with live and health checks, then a `vX.Y.Z` tag and GitHub Release), semantic-release configured in the root `package.json` `release` key (replacing a first hand-written bump script), `commitlint.yml` with `scripts/check-commits.sh`, and the shared `render-deploy` composite action used by prod and stg. The CI workflows became callable and no longer run on push; the old `migrate-production` job was removed. Checked with actionlint, Prettier and by running both scripts on the repository history. See the [iteration log](log.md) entry of the same date.
+Added `backend-cd-prod.yml` (backend CI, prod migrations, Render deploy, wait until live, Render build log, `/health`) and `frontend-cd-prod.yml` (frontend CI, Render deploy, build log, smoke check), with the steps inline like the stg workflows. Added `release.yml`, which runs semantic-release (config in the root `package.json` `release` key) once every prod CD of a merge has succeeded, creating a `vX.Y.Z` tag and a GitHub Release of the same name; created the starting `v0.1.0` tag and release. Added `commitlint.yml` with `scripts/check-commits.sh`. The CI workflows became callable and no longer run on push; the old `migrate-production` job was removed. A first single `cd-prod.yml` with a shared composite action was replaced by the per-app workflows. Checked with actionlint, Prettier, a `semantic-release --dry-run` and the commit script on the repository history. See the [iteration log](log.md) entry of the same date.

@@ -1,0 +1,63 @@
+# Tags the version and creates the GitHub Release (vX.Y.Z, same name for both)
+# after a successful prod deploy. semantic-release reads the commits since the
+# last tag (config in the "release" key of the root package.json): feat bumps
+# minor, fix/perf/revert bump patch, "!" or BREAKING CHANGE bumps major, and
+# docs/chore/ci-only merges make no release.
+#
+# When a merge deploys both apps, this runs after each CD; it releases only
+# once every prod CD run of that commit has succeeded, so a failed deploy is
+# never tagged and the version is created once.
+name: Release
+
+on:
+  workflow_run:
+    workflows: [Backend CD (prod), Frontend CD (prod)]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: tag version
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for the other prod deploys of this commit
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          pending=$(gh run list -R "$GITHUB_REPOSITORY" --commit "$SHA" --json name,status,conclusion \
+            --jq '[.[] | select(.name | endswith("CD (prod)")) | select(.conclusion != "success")] | length')
+          echo "prod CD runs of $SHA not successful yet: $pending"
+          echo "ready=$([ "$pending" -eq 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v5
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          node-version-file: .nvmrc
+
+      # Checked out at a commit, not a branch: tell semantic-release it is main
+      - name: Tag version and create GitHub Release
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REF: refs/heads/main
+        run: |
+          git checkout -B main
+          npx --yes semantic-release@24

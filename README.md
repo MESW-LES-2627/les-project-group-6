@@ -95,7 +95,7 @@ GitHub configuration: the pull request template, the issue templates (`ISSUE_TEM
 
 #### Continuous integration
 
-Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks and `<app>-cd-<env>.yml` / `cd-prod.yml` for deploys, so each app's CI stays separate. A change to one app does not run the other app's checks:
+Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks and `<app>-cd-<env>.yml` for deploys (`release.yml` tags the versions), so each app's CI stays separate. A change to one app does not run the other app's checks:
 
 - `backend-ci.yml`: runs on every pull request to `main` when `apps/backend/`, the shared root config or the workflow itself changes. It installs with the locked dependencies, then runs lint, format check, typecheck, tests (against a Postgres service) and build.
 - `frontend-ci.yml`: the same steps for `apps/frontend/`: lint, format check, typecheck, component/router tests and build.
@@ -105,7 +105,7 @@ Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks a
 
 The backend runs on Render as two Docker web services linked to this repository:
 
-- **prod**: deployed only by `cd-prod.yml` (below), never by Render Auto-Deploy.
+- **prod**: deployed only by `backend-cd-prod.yml` (below), never by Render Auto-Deploy.
 - **stg**: deployed only by `backend-cd-stg.yml`. Run it by hand (Actions, "Backend CD (stg)", "Run workflow") and pick any branch in "Use workflow from". It points the stg service at that branch through the Render API, deploys that commit, waits until it is live and checks `/health`. It needs the secret `RENDER_API_KEY` and the variable `RENDER_BACKEND_STG_SERVICE_ID` (the `srv-...` id), and Auto-Deploy turned off on the stg service.
 
 Settings for both services (stg gets its own environment values, never the prod database):
@@ -121,16 +121,15 @@ The frontend runs on Render as a static site (no Dockerfile; Vite builds plain f
 - Publish directory: `apps/frontend/dist`.
 - Redirects/Rewrites, in this order: `/api/*` rewrite to `https://<backend-service>.onrender.com/*` (so `VITE_API_BASE_URL=/api` works and no CORS is needed), then `/*` rewrite to `/index.html` (the router uses history mode).
 
-#### Production deploy and versions (`cd-prod.yml`)
+#### Production deploy and versions
 
-Every merge to `main` runs "CD (prod)" (it can also be run by hand, which deploys both apps). Steps, each one stopping the run on failure so a broken deploy shows up red in Actions:
+Every merge to `main` deploys the apps it changed, each in its own workflow (they can also be run by hand from Actions). Each step stops the run on failure, so a broken deploy shows up red in Actions:
 
-1. CI of the apps that changed (it calls `backend-ci.yml` / `frontend-ci.yml`).
-2. Backend changed: migrations on the production database (`db:migrate` with `PROD_DATABASE_URL`), then the backend deploy on Render, wait until live, check `/health`.
-3. Frontend changed: the static site deploy, after the backend, then a check that the site answers.
-4. A version tag `vX.Y.Z` and a GitHub Release with generated notes, made by [semantic-release](https://semantic-release.gitbook.io/) from the commits since the last tag (config in the `release` key of the root `package.json`): `feat` bumps minor, `fix`/`perf`/`revert` bump patch, a breaking change (`type!:` or `BREAKING CHANGE:`) bumps major. A merge with only `docs`, `chore`, `ci`, `style`, `test`, `build` or `refactor` commits makes no release, and no tag is created when a step failed. Versions started from a hand-made `v0.1.0` tag (semantic-release would otherwise start at `v1.0.0`).
+- **Backend CD (prod)** (`backend-cd-prod.yml`): `ci` (calls `backend-ci.yml`), `migrate` (`db:migrate` on the prod database with `PROD_DATABASE_URL`), then `deploy`: start the Render deploy of that commit, wait while Render builds the image and goes live, print the Render build log, check `/health`.
+- **Frontend CD (prod)** (`frontend-cd-prod.yml`): `ci` (calls `frontend-ci.yml`), then `deploy`: the same Render steps for the static site, ending with a check that the site answers. It does not wait for the backend deploy of the same merge.
+- **Release** (`release.yml`): runs when a prod CD succeeds and, once every prod CD of that commit has succeeded, creates the version tag `vX.Y.Z` and a GitHub Release of the same name with generated notes, made by [semantic-release](https://semantic-release.gitbook.io/) from the commits since the last tag (config in the `release` key of the root `package.json`). `feat` bumps minor, `fix`/`perf`/`revert` bump patch, a breaking change (`type!:` or `BREAKING CHANGE:`) bumps major. A merge with only `docs`, `chore`, `ci`, `style`, `test`, `build` or `refactor` commits makes no release, and a failed deploy is never tagged. Versions started from a hand-made `v0.1.0` (semantic-release would otherwise start at `v1.0.0`).
 
-The Render steps live in the composite action `.github/actions/render-deploy`, shared with the stg workflows. Setup (repo admin): secrets `RENDER_API_KEY` and `PROD_DATABASE_URL`, variables `RENDER_BACKEND_PROD_SERVICE_ID` and `RENDER_FRONTEND_PROD_SERVICE_ID`, and Auto-Deploy turned off on both prod services.
+Setup (repo admin): secrets `RENDER_API_KEY` and `PROD_DATABASE_URL`, variables `RENDER_BACKEND_PROD_SERVICE_ID` and `RENDER_FRONTEND_PROD_SERVICE_ID`, and Auto-Deploy turned off on both prod services.
 
 To try the image locally: `docker build -f apps/backend/Dockerfile -t bookmarked-backend .` then `docker run -p 3000:3000 bookmarked-backend`.
 
