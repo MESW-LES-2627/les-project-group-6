@@ -14,7 +14,7 @@ on:
       - .prettierrc.json
       - .prettierignore
       - .github/workflows/frontend-ci.yml
-  # Called by cd-prod.yml on every merge to main, before the deploy
+  # Called by frontend-cd-prod.yml on every merge to main, before the deploy
   workflow_call:
 
 permissions:
