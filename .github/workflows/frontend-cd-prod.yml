@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
-      name: production-frontend
+      name: frontend
       url: ${{ steps.health.outputs.url }}
     steps:
       - name: Check configuration
