@@ -532,3 +532,25 @@ Hey, let's connect the frontend to the backend for the vertical prototype:
 
 #### Explanation of Changes
 Connected the Vue frontend (`/library` and `/library/:bookId`) to the Express backend API. Added API service functions (`getUserLibrary`, `getBook`, `updateReadingStatus`) in `apps/frontend/src/services/api.ts` with demo reader mappings. Updated `LibraryView.vue` to fetch real seeded books and dynamically synchronize shelf counts. Added an interactive reading status and current page editor in `BookReadingPanel.vue` with `PUT /reading-status` updates. Added Express CORS middleware in `apps/backend/src/app.ts` to support cross-origin API calls on deployed environments. Updated backend and frontend READMEs and iteration logs.
+
+### 2026-10-27: Production CD pipeline, version tags and commit message check
+
+- **Date:** 2026-10-27
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** infra
+
+#### Prompt
+```text
+https://github.com/orgs/MESW-LES-2627/projects/9?pane=issue&itemId=274530087&issue=MESW-LES-2627%7Cles-project-group-6%7C6 we need to finish this issue. I want to: do a explicit cd pipeline in repo instead of directly in render hosting platform, this way we can apply migrations there and see wrong deploys. Also, I want to create version tags that will updated on each merge to main. Last thing, add a commit message step in ci to ensure all commits have a correct commit pattern
+one important thing, you need to create the repo from the refactor/oop-ddd-review-fixes
+cant we use remantic release?
+in python we can add the release file in pyproject.toml, what about here? we can  reuse any config file?
+yes
+cant we have the release version? the release version will be the same as tag
+well, the idea is to see running like we have in backend CD (stg). I want to see the steps of migration, deploy, upload of the image and etc
+```
+
+#### Explanation of Changes
+Added `backend-cd-prod.yml` (backend CI, prod migrations, Render deploy, wait until live, Render build log, `/health`) and `frontend-cd-prod.yml` (frontend CI, Render deploy, build log, smoke check), with the steps inline like the stg workflows. Added `release.yml`, which runs semantic-release (config in the root `package.json` `release` key) once every prod CD of a merge has succeeded, creating a `vX.Y.Z` tag and a GitHub Release of the same name; created the starting `v0.1.0` tag and release. Added `commitlint.yml` with `scripts/check-commits.sh`. The CI workflows became callable and no longer run on push; the old `migrate-production` job was removed. A first single `cd-prod.yml` with a shared composite action was replaced by the per-app workflows. Checked with actionlint, Prettier, a `semantic-release --dry-run` and the commit script on the repository history. See the [iteration log](log.md) entry of the same date.
