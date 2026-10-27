@@ -18,7 +18,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Kanban board (GitHub Project) | Created |
 | Database tables model | v1.0 drafted |
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
-| Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done |
+| Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done; prod CD with migrations, version tags and commit message check |
 | Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
 | Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
 | Frontend routes (#64) | Initial routes implemented |
@@ -188,6 +188,14 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Rewrote [`mvp.md`](mvp.md): it now opens with the 6 MVP features (authentication, clubs and challenges with real-time text chat and leaderboard, library, search, gamification, friends) followed by 14 user stories. Out of scope: photos and videos in the chat, recommendations, onboarding and email notifications.
 - **Decision:** one-to-one messages, reading statistics and user-created challenges left the MVP list, and "reading session" was dropped as a separate story (the streak counts days with reading logged). *Why:* they were not in the feature list agreed by the team. The MoSCoW tags in the requirements may need to follow.
 
+### 2026-10-27: Production CD, version tags and commit message check (#6)
+
+- Added [`backend-cd-prod.yml`](../../../.github/workflows/backend-cd-prod.yml) and [`frontend-cd-prod.yml`](../../../.github/workflows/frontend-cd-prod.yml): on every merge to `main` that changes the app, they run its CI, apply the migrations to the production database (backend), deploy that commit to Render through the API, wait until live, print the Render build log and check the service. They replace Render Auto-Deploy on prod and the `migrate-production` job of `backend-ci.yml`. Why: migrations run before the code that needs them, and a failed deploy is visible as a red run with each step listed, like the stg workflows. Rejected: one `cd-prod.yml` for both apps (no per-app entry in Actions), a Render pre-deploy command (paid instances only), and building the image in Actions and pushing it to GHCR (would need the prod service recreated as an image service).
+- Version tags `vX.Y.Z` with a GitHub Release of the same name, made by [`release.yml`](../../../.github/workflows/release.yml) with semantic-release once every prod CD of the merge has succeeded from Conventional Commits, configured in the `release` key of the root [`package.json`](../../../package.json). A `v0.1.0` tag was created by hand on `main` so versions start in `0.x`. Rejected: python-semantic-release (needs `pyproject.toml` or a separate config file, and Python in the job), a hand-written bump script (more code to maintain), and committing version bumps to `main` (needs a token that bypasses branch protection).
+- Added [`commitlint.yml`](../../../.github/workflows/commitlint.yml) and [`scripts/check-commits.sh`](../../../scripts/check-commits.sh): every PR commit must follow `<type>(<scope>): <description>`. A plain script instead of `@commitlint/cli` to avoid new dependencies.
+- The CI workflows run on PRs and are called by the prod CD workflows (`workflow_call`) instead of running on push. Created the [`v0.1.0` release](https://github.com/MESW-LES-2627/les-project-group-6/releases/tag/v0.1.0).
+- See the [README](../../../README.md#continuous-integration) for the setup (secrets, variables, Auto-Deploy off).
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
@@ -289,7 +297,8 @@ A running record of what the team did and decided in iteration 0. The [release n
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
-- Point the Render backend service at `main` once this branch is merged, and add `DATABASE_URL` when Supabase is set up.
+- Prod CD setup (repo admin): add `PROD_DATABASE_URL`, `RENDER_BACKEND_PROD_SERVICE_ID` and `RENDER_FRONTEND_PROD_SERVICE_ID`, and turn Auto-Deploy off on both prod services.
+- Require the `commitlint` check on `main` with branch protection.
 - Create the Render stg service (Auto-Deploy off), create the Render stg static site for the frontend, add the `RENDER_API_KEY` secret and the `RENDER_BACKEND_STG_SERVICE_ID` and `RENDER_FRONTEND_STG_SERVICE_ID` variables (repo admin), and use a separate Supabase project for stg.
 - Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands. Frontend CI is now enabled.
 - Implement folder and card menu actions on the library page, wire session persistence for the active reading session, and replace remaining static review/club mock data.

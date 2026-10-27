@@ -1,0 +1,155 @@
+# Deploys the backend to production (prod) on Render on every merge to main
+# that changes the backend, or by hand (Actions, "Backend CD (prod)", "Run
+# workflow"). Steps: backend CI, database migrations on the prod database,
+# deploy of that exact commit, wait until live (Render builds the image), print
+# the Render build log, check /health. A failed step makes the run red and
+# release.yml does not tag the version.
+#
+# Needs the secrets RENDER_API_KEY and PROD_DATABASE_URL and the variable
+# RENDER_BACKEND_PROD_SERVICE_ID (the srv-... id in the prod service URL). Turn
+# Auto-Deploy off on the prod service so only this workflow deploys it.
+name: Backend CD (prod)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/backend/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - tsconfig.base.json
+      - .nvmrc
+      - .npmrc
+      - .github/workflows/backend-ci.yml
+      - .github/workflows/backend-cd-prod.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One prod deploy at a time; a newer merge waits instead of cancelling a deploy
+concurrency:
+  group: backend-cd-prod
+  cancel-in-progress: false
+
+env:
+  RENDER_API: https://api.render.com/v1
+  SERVICE_ID: ${{ vars.RENDER_BACKEND_PROD_SERVICE_ID }}
+
+jobs:
+  ci:
+    name: ci
+    uses: ./.github/workflows/backend-ci.yml
+
+  migrate:
+    name: migrate
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      # Uses the pnpm version pinned in packageManager (root package.json)
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter @bookmarked/backend...
+
+      - name: Run migrations on the prod database
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Set the PROD_DATABASE_URL secret"
+            exit 1
+          fi
+          pnpm --filter @bookmarked/backend db:migrate
+
+  deploy:
+    name: deploy
+    needs: migrate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: ${{ steps.health.outputs.url }}
+    steps:
+      - name: Check configuration
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          if [ -z "$RENDER_API_KEY" ] || [ -z "$SERVICE_ID" ]; then
+            echo "::error::Set the RENDER_API_KEY secret and the RENDER_BACKEND_PROD_SERVICE_ID variable"
+            exit 1
+          fi
+
+      - name: Deploy ${{ github.sha }}
+        id: deploy
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          deploy_id=$(jq -n --arg commit "$COMMIT" '{commitId: $commit}' \
+            | curl -fsS -X POST "$RENDER_API/services/$SERVICE_ID/deploys" \
+                -H "Authorization: Bearer $RENDER_API_KEY" \
+                -H "Content-Type: application/json" \
+                --data @- | jq -r '.id')
+          echo "Render deploy $deploy_id"
+          echo "id=$deploy_id" >> "$GITHUB_OUTPUT"
+          echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Build image and wait until live
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          DEPLOY_ID: ${{ steps.deploy.outputs.id }}
+        run: |
+          while true; do
+            status=$(curl -fsS "$RENDER_API/services/$SERVICE_ID/deploys/$DEPLOY_ID" \
+              -H "Authorization: Bearer $RENDER_API_KEY" | jq -r '.status')
+            echo "$(date -u +%H:%M:%S) status: $status"
+            case "$status" in
+              live) break ;;
+              build_failed|update_failed|canceled|deactivated|pre_deploy_failed)
+                echo "::error::Render deploy ended with status $status"
+                exit 1 ;;
+            esac
+            sleep 15
+          done
+
+      # Best effort: shown even when the deploy failed, never fails the job
+      - name: Render build log
+        if: always() && steps.deploy.outputs.id != ''
+        continue-on-error: true
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          STARTED: ${{ steps.deploy.outputs.started }}
+        run: |
+          owner=$(curl -fsS "$RENDER_API/services/$SERVICE_ID" \
+            -H "Authorization: Bearer $RENDER_API_KEY" | jq -r '.ownerId')
+          curl -fsS -G "$RENDER_API/logs" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            --data-urlencode "ownerId=$owner" \
+            --data-urlencode "resource=$SERVICE_ID" \
+            --data-urlencode "type=build" \
+            --data-urlencode "startTime=$STARTED" \
+            --data-urlencode "direction=forward" \
+            --data-urlencode "limit=100" \
+            | jq -r '.logs[] | "\(.timestamp) \(.message)"'
+
+      - name: Health check
+        id: health
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          url=$(curl -fsS "$RENDER_API/services/$SERVICE_ID" \
+            -H "Authorization: Bearer $RENDER_API_KEY" | jq -r '.serviceDetails.url')
+          curl -fsS --retry 5 --retry-delay 10 --retry-all-errors "$url/health"
+          echo
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "### Deployed \`${GITHUB_SHA::7}\` to prod: $url" >> "$GITHUB_STEP_SUMMARY"
