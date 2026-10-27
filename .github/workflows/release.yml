@@ -16,6 +16,8 @@ on:
     branches: [main]
 
 permissions:
+  # actions: read lets the first step list the prod CD runs of the commit
+  actions: read
   contents: write
   issues: write
   pull-requests: write
