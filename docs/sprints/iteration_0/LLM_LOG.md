@@ -513,6 +513,7 @@ out: photos and videos in chat, book recommendation system, user onboarding, ema
 #### Explanation of Changes
 Rewrote `mvp.md` with a short table of the 6 MVP features, user stories grouped under each feature, and an updated out-of-scope list.
 
+
 ### 2026-10-23: Frontend and backend connection for library and reading status
 
 - **Date:** 2026-10-23
@@ -571,3 +572,4 @@ rename to frontend and backend. can we do the same with frontend (stg) and backe
 
 #### Explanation of Changes
 Renamed the prod deploy environments to `backend` and `frontend`, and added `backend-stg` and `frontend-stg` environments with the live URL to the stg workflows. Deleted the old `production` and `production-frontend` environments. See the [iteration log](log.md) entry of the same date.
+

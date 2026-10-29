@@ -22,6 +22,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
 | Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
 | Frontend routes (#64) | Initial routes implemented |
+| Authentication UI and Supabase skeleton | Reference-based `/login` forms and adapter/integration tests implemented; credentials, trusted username flow, provider UI and live session lifecycle pending |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
 | Library page prototype (#76) | Responsive `/library` UI with reusable card and shelves components, filters, tests, and API integration with user library endpoint |
 | Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels, and API reading status updates |
@@ -295,6 +296,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added database seed script [`apps/backend/src/infrastructure/database/seed.ts`](../../../apps/backend/src/infrastructure/database/seed.ts) (`pnpm db:seed`): seeds demo reader user (`demo_reader`), 6 books with high-resolution Open Library cover URLs, and initial `not-started` reading status entries linking the demo user to all seeded books so the library is immediately populated for vertical prototype testing.
 - Updated [`apps/backend/README.md`](../../../apps/backend/README.md) with reading status endpoints and seed documentation.
 
+
 ### 2026-10-23: Frontend and backend connection for library and reading status
 
 - Connected the responsive [`/library` view](../../../apps/frontend/src/views/LibraryView.vue) to `GET /user/:userId/library` through [`api.ts`](../../../apps/frontend/src/services/api.ts), fetching the demo user's seeded books and synchronizing shelf counts dynamically. Keeps seamless fallback to mock data when offline or in unit tests.
@@ -303,7 +305,10 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added Express CORS middleware in [`apps/backend/src/app.ts`](../../../apps/backend/src/app.ts) with `Access-Control-Allow-Origin: *` and preflight `OPTIONS` handling to support cross-origin API calls from the deployed frontend static site.
 - Updated [`apps/frontend/README.md`](../../../apps/frontend/README.md) and [`apps/backend/README.md`](../../../apps/backend/README.md).
 
+
 ## Next steps
+
+- Finish Supabase project configuration, trusted username authentication/uniqueness, OIDC UI approval, session callbacks/guards, logout, password recovery and onboarding (see frontend guide).
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
 - Prod CD setup (repo admin): add `PROD_DATABASE_URL`, `RENDER_BACKEND_PROD_SERVICE_ID` and `RENDER_FRONTEND_PROD_SERVICE_ID`, and turn Auto-Deploy off on both prod services.
