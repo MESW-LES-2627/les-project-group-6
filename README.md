@@ -95,16 +95,17 @@ GitHub configuration: the pull request template, the issue templates (`ISSUE_TEM
 
 #### Continuous integration
 
-Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks (and `<app>-cd.yml` if a deploy workflow is ever needed), so each app's CI stays separate. A change to one app does not run the other app's checks:
+Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks and `<app>-cd-<env>.yml` for deploys (`release.yml` tags the versions), so each app's CI stays separate. A change to one app does not run the other app's checks:
 
-- `backend-ci.yml`: runs on every pull request to `main` and on push to `main` when `apps/backend/`, the shared root config or the workflow itself changes. It installs with the locked dependencies, then runs lint, format check, typecheck, tests and build.
-- `frontend-ci.yml`: the same steps for `apps/frontend/`. It is enabled and runs lint, format check, typecheck, component/router tests and build.
+- `backend-ci.yml`: runs on every pull request to `main` when `apps/backend/`, the shared root config or the workflow itself changes. It installs with the locked dependencies, then runs lint, format check, typecheck, tests (against a Postgres service) and build.
+- `frontend-ci.yml`: the same steps for `apps/frontend/`: lint, format check, typecheck, component/router tests and build.
+- `commitlint.yml`: runs on every pull request to `main` and fails when a commit (merge commits aside) does not follow Conventional Commits: `<type>(<scope>)!: <description>` with type `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style` or `test`. Check locally with `scripts/check-commits.sh origin/main..HEAD`. Fix a bad message with `git commit --amend` or `git rebase -i` and force-push.
 
 #### Deploy (Render)
 
 The backend runs on Render as two Docker web services linked to this repository:
 
-- **prod**: Render auto-deploys on every push to its branch (`main`).
+- **prod**: deployed only by `backend-cd-prod.yml` (below), never by Render Auto-Deploy.
 - **stg**: deployed only by `backend-cd-stg.yml`. Run it by hand (Actions, "Backend CD (stg)", "Run workflow") and pick any branch in "Use workflow from". It points the stg service at that branch through the Render API, deploys that commit, waits until it is live and checks `/health`. It needs the secret `RENDER_API_KEY` and the variable `RENDER_BACKEND_STG_SERVICE_ID` (the `srv-...` id), and Auto-Deploy turned off on the stg service.
 
 Settings for both services (stg gets its own environment values, never the prod database):
@@ -120,6 +121,16 @@ The frontend runs on Render as a static site (no Dockerfile; Vite builds plain f
 - Publish directory: `apps/frontend/dist`.
 - Redirects/Rewrites, in this order: `/api/*` rewrite to `https://<backend-service>.onrender.com/*` (so `VITE_API_BASE_URL=/api` works and no CORS is needed), then `/*` rewrite to `/index.html` (the router uses history mode).
 
+#### Production deploy and versions
+
+Every merge to `main` deploys the apps it changed, each in its own workflow (they can also be run by hand from Actions). Each step stops the run on failure, so a broken deploy shows up red in Actions:
+
+- **Backend CD (prod)** (`backend-cd-prod.yml`): `ci` (calls `backend-ci.yml`), `migrate` (`db:migrate` on the prod database with `PROD_DATABASE_URL`), then `deploy`: start the Render deploy of that commit, wait while Render builds the image and goes live, print the Render build log, check `/health`.
+- **Frontend CD (prod)** (`frontend-cd-prod.yml`): `ci` (calls `frontend-ci.yml`), then `deploy`: the same Render steps for the static site, ending with a check that the site answers. It does not wait for the backend deploy of the same merge.
+- **Release** (`release.yml`): runs when a prod CD succeeds and, once every prod CD of that commit has succeeded, creates the version tag `vX.Y.Z` and a GitHub Release of the same name with generated notes, made by [semantic-release](https://semantic-release.gitbook.io/) from the commits since the last tag (config in the `release` key of the root `package.json`). `feat` bumps minor, `fix`/`perf`/`revert` bump patch, a breaking change (`type!:` or `BREAKING CHANGE:`) bumps major. A merge with only `docs`, `chore`, `ci`, `style`, `test`, `build` or `refactor` commits makes no release, and a failed deploy is never tagged. Versions started from a hand-made `v0.1.0` (semantic-release would otherwise start at `v1.0.0`).
+
+Setup (repo admin): secrets `RENDER_API_KEY` and `PROD_DATABASE_URL`, variables `RENDER_BACKEND_PROD_SERVICE_ID` and `RENDER_FRONTEND_PROD_SERVICE_ID`, and Auto-Deploy turned off on both prod services.
+
 To try the image locally: `docker build -f apps/backend/Dockerfile -t bookmarked-backend .` then `docker run -p 3000:3000 bookmarked-backend`.
 
 A pull request must be green before review. Run `make check` locally to run the same checks before pushing.
@@ -127,6 +138,7 @@ A pull request must be green before review. Run `make check` locally to run the 
 ### `.agents/` and `AGENTS.md`
 
 Configuration and instructions for AI coding agents working on this repository.
+
 
 ## Getting started
 

@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import LibraryBookCard from '@/components/library/LibraryBookCard.vue';
 import LibrarySidebar from '@/components/library/LibrarySidebar.vue';
 import { mockLibrary } from '@/mocks/library';
-import type { LibrarySort, ShelfId } from '@/types/library';
+import { getUserLibrary, mapApiLibraryItemToBook } from '@/services/api';
+import type { LibraryBook, LibrarySort, Shelf, ShelfId } from '@/types/library';
 import { sortBooks } from '@/utils/library';
 
-const library = mockLibrary;
+const rawBooks = ref<LibraryBook[]>(mockLibrary.books);
+const isApiLoaded = ref(false);
 
 const activeShelf = ref<ShelfId>('all');
 const activeFolder = ref('autumn');
@@ -16,16 +18,60 @@ const activeGenre = ref('all');
 const search = ref('');
 const sort = ref<LibrarySort>('recent');
 
-const genreOptions = [...new Set(library.books.map((book) => book.genre))].sort();
+async function fetchLibraryData() {
+  try {
+    const items = await getUserLibrary();
+    if (items && items.length > 0) {
+      rawBooks.value = items.map(mapApiLibraryItemToBook);
+      isApiLoaded.value = true;
+      activeFolder.value = '';
+    }
+  } catch {
+    // Keep mock data on error or in testing
+  }
+}
+
+onMounted(() => {
+  void fetchLibraryData();
+});
+
+const genreOptions = computed(() => [...new Set(rawBooks.value.map((book) => book.genre))].sort());
 
 const folderName = computed(
-  () => library.folders.find((folder) => folder.id === activeFolder.value)?.name,
+  () => mockLibrary.folders.find((folder) => folder.id === activeFolder.value)?.name,
 );
-const tagName = computed(() => library.tags.find((tag) => tag.id === activeTag.value)?.name);
+const tagName = computed(() => mockLibrary.tags.find((tag) => tag.id === activeTag.value)?.name);
+
+const shelves = computed<Shelf[]>(() => {
+  if (!isApiLoaded.value) return mockLibrary.shelves;
+  return [
+    { id: 'all', label: 'All books', count: rawBooks.value.length },
+    {
+      id: 'not-started',
+      label: 'Not started',
+      count: rawBooks.value.filter((b) => b.status === 'not-started').length,
+    },
+    {
+      id: 'in-progress',
+      label: 'In progress',
+      count: rawBooks.value.filter((b) => b.status === 'in-progress').length,
+    },
+    {
+      id: 'finished',
+      label: 'Finished',
+      count: rawBooks.value.filter((b) => b.status === 'finished').length,
+    },
+    {
+      id: 'did-not-finish',
+      label: 'Did not finish',
+      count: rawBooks.value.filter((b) => b.status === 'did-not-finish').length,
+    },
+  ];
+});
 
 const books = computed(() => {
   const term = search.value.trim().toLowerCase();
-  const filtered = library.books.filter((book) => {
+  const filtered = rawBooks.value.filter((book) => {
     if (activeShelf.value !== 'all' && book.status !== activeShelf.value) return false;
     if (activeFolder.value && !book.folderIds.includes(activeFolder.value)) return false;
     if (activeTag.value && !book.tagIds.includes(activeTag.value)) return false;
@@ -37,8 +83,10 @@ const books = computed(() => {
   return sortBooks(filtered, sort.value);
 });
 
+const totalCount = computed(() => (isApiLoaded.value ? rawBooks.value.length : mockLibrary.total));
+
 const summary = computed(() => {
-  const parts = [`Showing ${books.value.length} of ${library.total} books`];
+  const parts = [`Showing ${books.value.length} of ${totalCount.value} books`];
   if (folderName.value) parts.push(`${folderName.value} folder`);
   if (tagName.value) parts.push(`#${tagName.value}`);
   return parts.join(' • ');
@@ -83,9 +131,9 @@ function showEverything() {
 
       <div class="layout">
         <LibrarySidebar
-          :shelves="library.shelves"
-          :folders="library.folders"
-          :tags="library.tags"
+          :shelves="shelves"
+          :folders="mockLibrary.folders"
+          :tags="mockLibrary.tags"
           :active-shelf="activeShelf"
           :active-folder="activeFolder || null"
           :active-tag="activeTag || null"
@@ -133,7 +181,7 @@ function showEverything() {
               <span class="select">
                 <select v-model="activeTag">
                   <option value="">All tags</option>
-                  <option v-for="tag in library.tags" :key="tag.id" :value="tag.id">
+                  <option v-for="tag in mockLibrary.tags" :key="tag.id" :value="tag.id">
                     {{ tag.name }}
                   </option>
                 </select>
@@ -180,7 +228,7 @@ function showEverything() {
 
           <div class="tabs" role="group" aria-label="Filter by reading status">
             <button
-              v-for="shelf in library.shelves"
+              v-for="shelf in shelves"
               :key="shelf.id"
               type="button"
               :class="['tab', { active: activeShelf === shelf.id }]"

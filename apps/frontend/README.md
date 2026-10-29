@@ -13,9 +13,9 @@ pnpm --filter @bookmarked/frontend dev
 
 Open the Vite URL (normally http://localhost:5173), then visit `/home`. The profile prototype is at `/profile` (mock data); `/profile?state=new` shows every section's empty state. The placeholder initially shows “Checking backend…” and then the backend result (normally “Backend status: ok”) or an error. It remains available in production as a connection smoke check.
 
-The library prototype is at `/library`. It currently uses mock data in `src/mocks/library.ts`; the layout, filters, cards and shelves are already in place, and the API wiring comes when the library endpoints exist.
+The library view is at `/library`. It connects to the backend API (`GET /api/user/:userId/library`) for the demo reader (`a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11`), dynamically updating shelf filter counts, with seamless fallback to mock data in `src/mocks/library.ts` when offline or during tests.
 
-Opening a book goes to `/library/:bookId`. The detail page covers your reading progress, edition, thoughts, friends' reviews and reading-club activity; “Start session” opens `/session/:bookId`. The active-session page runs the mock Emma session, including the separate `ReadingTimer` component, page/percentage progress editing and the eligible-group rail. Both pages fall back to a friendly message for an unknown book id and use mock data until the book and session APIs exist.
+Opening a book goes to `/library/:bookId`. It loads book details and reading status from the backend by UUID, and includes an interactive status editor in the reading panel to update the reading status (e.g. to `in-progress`) and current page (e.g. to `10`) via `PUT /api/reading-status`. “Start session” opens `/session/:bookId`. Both pages fall back gracefully for unknown IDs or offline testing.
 
 The default API base is `/api`. Vite proxies `/api/health` to `http://localhost:3000/health`, avoiding browser CORS errors. If your backend uses a different local port, change the proxy target in `vite.config.ts`. Copy `.env.example` to `.env.local` only if overriding the API base. Requests time out after ten seconds.
 
@@ -25,7 +25,7 @@ If a local `.env` or `.env.local` still sets `VITE_API_BASE_URL=http://localhost
 
 Build with `pnpm --filter @bookmarked/frontend build` and deploy `dist/`. Configure the host to route `/api/*` to the backend, removing the `/api` prefix: `/api/health` must reach backend `GET /health`. Apply this rule before the SPA fallback (`/*` → `index.html`) so deep links such as `/home` work. The Vite development proxy is not part of the production build or `vite preview`.
 
-Alternatively, set `VITE_API_BASE_URL` to the public backend URL **at build time**. A separate backend origin must allow the frontend origin through CORS; the current backend skeleton does not configure CORS. Do not put secrets in `VITE_*` variables, which are public in the bundle.
+Alternatively, set `VITE_API_BASE_URL` to the public backend URL **at build time** (e.g. on Render's Environment settings). The Express backend configures permissive CORS headers to support cross-origin requests. Do not put secrets in `VITE_*` variables, which are public in the bundle.
 
 After deployment, open `/home` and check for “Backend status: ok” and a successful `/health` request in browser network tools. Production verification requires a deployed frontend/backend and host routing.
 

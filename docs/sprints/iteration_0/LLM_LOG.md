@@ -513,24 +513,63 @@ out: photos and videos in chat, book recommendation system, user onboarding, ema
 #### Explanation of Changes
 Rewrote `mvp.md` with a short table of the 6 MVP features, user stories grouped under each feature, and an updated out-of-scope list.
 
-### 2026-10-23: Authentication screen and Supabase skeleton
+
+### 2026-10-23: Frontend and backend connection for library and reading status
 
 - **Date:** 2026-10-23
-- **Author:** Segun Adesanya
-- **Model:** GPT-6
-- **Tool:** Codex
-- **Domain:** frontend, authentication, testing, docs
+- **Author:** Vasco Gonçalves
+- **Model:** Antigravity
+- **Tool:** Antigravity CLI
+- **Domain:** frontend, backend, docs
 
 #### Prompt
 ```text
-Design the login/sign up page strictly following docs/design/screens/01-authentication.png.
-Check assets/styles and teammates’ components to reuse existing styles/components.
-Prepare the Supabase integration skeleton while credentials are pending.
-Have a login route; prepare username/password and OIDC login/sign-up.
-Create tests for the changes and integration.
+Hey, let's connect the frontend to the backend for the vertical prototype:
+1. On /library, fetch and show the books with reading status from the backend API for our test user.
+2. Clicking a book should open the book detail page (/library/:bookId) using its ID from the backend.
+3. On that book page, add an option to update the reading status to "in-progress" and set the current page (e.g. to 10), saving it back to the database.
+4. Also make sure CORS is enabled on the backend so our deployed frontend on Render can talk to the API without getting blocked.
 ```
 
 #### Explanation of Changes
-Inspected the screenshot, global styles, layout components and auth requirements. Built both forms with the reference layout/photo crop and shared styles. Added the official Supabase SDK behind our AuthProvider interface, missing-credential handling, signup confirmation handling, persistence selection, a trusted username resolver hook, and an OIDC service method without inventing provider buttons. Added adapter and page-to-adapter tests with the SDK mocked. Documented setup and explicitly pending live integration/session/profile work; updated repository/docs indexes and iteration status/log.
+Connected the Vue frontend (`/library` and `/library/:bookId`) to the Express backend API. Added API service functions (`getUserLibrary`, `getBook`, `updateReadingStatus`) in `apps/frontend/src/services/api.ts` with demo reader mappings. Updated `LibraryView.vue` to fetch real seeded books and dynamically synchronize shelf counts. Added an interactive reading status and current page editor in `BookReadingPanel.vue` with `PUT /reading-status` updates. Added Express CORS middleware in `apps/backend/src/app.ts` to support cross-origin API calls on deployed environments. Updated backend and frontend READMEs and iteration logs.
 
-Validation: frontend lint, formatting, vue-tsc, component/adapter/router tests and production build; browser review at 1440 px and 390 px (no horizontal overflow). Live Supabase verification awaits project credentials.
+### 2026-10-27: Production CD pipeline, version tags and commit message check
+
+- **Date:** 2026-10-27
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** infra
+
+#### Prompt
+```text
+https://github.com/orgs/MESW-LES-2627/projects/9?pane=issue&itemId=274530087&issue=MESW-LES-2627%7Cles-project-group-6%7C6 we need to finish this issue. I want to: do a explicit cd pipeline in repo instead of directly in render hosting platform, this way we can apply migrations there and see wrong deploys. Also, I want to create version tags that will updated on each merge to main. Last thing, add a commit message step in ci to ensure all commits have a correct commit pattern
+one important thing, you need to create the repo from the refactor/oop-ddd-review-fixes
+cant we use remantic release?
+in python we can add the release file in pyproject.toml, what about here? we can  reuse any config file?
+yes
+cant we have the release version? the release version will be the same as tag
+well, the idea is to see running like we have in backend CD (stg). I want to see the steps of migration, deploy, upload of the image and etc
+```
+
+#### Explanation of Changes
+Added `backend-cd-prod.yml` (backend CI, prod migrations, Render deploy, wait until live, Render build log, `/health`) and `frontend-cd-prod.yml` (frontend CI, Render deploy, build log, smoke check), with the steps inline like the stg workflows. Added `release.yml`, which runs semantic-release (config in the root `package.json` `release` key) once every prod CD of a merge has succeeded, creating a `vX.Y.Z` tag and a GitHub Release of the same name; created the starting `v0.1.0` tag and release. Added `commitlint.yml` with `scripts/check-commits.sh`. The CI workflows became callable and no longer run on push; the old `migrate-production` job was removed. A first single `cd-prod.yml` with a shared composite action was replaced by the per-app workflows. Checked with actionlint, Prettier, a `semantic-release --dry-run` and the commit script on the repository history. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-27: Deployment environments per app
+
+- **Date:** 2026-10-27
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** infra
+
+#### Prompt
+```text
+why we have 2 deployments called production and production-frontend? who created this?
+rename to frontend and backend. can we do the same with frontend (stg) and backend (stg)?
+```
+
+#### Explanation of Changes
+Renamed the prod deploy environments to `backend` and `frontend`, and added `backend-stg` and `frontend-stg` environments with the live URL to the stg workflows. Deleted the old `production` and `production-frontend` environments. See the [iteration log](log.md) entry of the same date.
+

@@ -18,14 +18,14 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Kanban board (GitHub Project) | Created |
 | Database tables model | v1.0 drafted |
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
-| Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done |
+| Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done; prod CD with migrations, version tags and commit message check |
 | Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
 | Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
 | Frontend routes (#64) | Initial routes implemented |
 | Authentication UI and Supabase skeleton | Reference-based `/login` forms and adapter/integration tests implemented; credentials, trusted username flow, provider UI and live session lifecycle pending |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
-| Library page prototype (#76) | Responsive `/library` UI with mock data, reusable card and shelves components, filters and tests; API wiring and menu actions still to do |
-| Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels; API wiring still to do |
+| Library page prototype (#76) | Responsive `/library` UI with reusable card and shelves components, filters, tests, and API integration with user library endpoint |
+| Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels, and API reading status updates |
 | Active reading session | Responsive `/session/:bookId` with a separate timer, progress editor, session notes and group-counting rail; save wiring still to do |
 | Profile page prototype | `/profile` with app header and footer, mock data and empty states, built on the #64 skeleton |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
@@ -189,6 +189,23 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Rewrote [`mvp.md`](mvp.md): it now opens with the 6 MVP features (authentication, clubs and challenges with real-time text chat and leaderboard, library, search, gamification, friends) followed by 14 user stories. Out of scope: photos and videos in the chat, recommendations, onboarding and email notifications.
 - **Decision:** one-to-one messages, reading statistics and user-created challenges left the MVP list, and "reading session" was dropped as a separate story (the streak counts days with reading logged). *Why:* they were not in the feature list agreed by the team. The MoSCoW tags in the requirements may need to follow.
 
+### 2026-10-27: Production CD, version tags and commit message check (#6)
+
+- Added [`backend-cd-prod.yml`](../../../.github/workflows/backend-cd-prod.yml) and [`frontend-cd-prod.yml`](../../../.github/workflows/frontend-cd-prod.yml): on every merge to `main` that changes the app, they run its CI, apply the migrations to the production database (backend), deploy that commit to Render through the API, wait until live, print the Render build log and check the service. They replace Render Auto-Deploy on prod and the `migrate-production` job of `backend-ci.yml`. Why: migrations run before the code that needs them, and a failed deploy is visible as a red run with each step listed, like the stg workflows. Rejected: one `cd-prod.yml` for both apps (no per-app entry in Actions), a Render pre-deploy command (paid instances only), and building the image in Actions and pushing it to GHCR (would need the prod service recreated as an image service).
+- Version tags `vX.Y.Z` with a GitHub Release of the same name, made by [`release.yml`](../../../.github/workflows/release.yml) with semantic-release once every prod CD of the merge has succeeded from Conventional Commits, configured in the `release` key of the root [`package.json`](../../../package.json). A `v0.1.0` tag was created by hand on `main` so versions start in `0.x`. Rejected: python-semantic-release (needs `pyproject.toml` or a separate config file, and Python in the job), a hand-written bump script (more code to maintain), and committing version bumps to `main` (needs a token that bypasses branch protection).
+- Added [`commitlint.yml`](../../../.github/workflows/commitlint.yml) and [`scripts/check-commits.sh`](../../../scripts/check-commits.sh): every PR commit must follow `<type>(<scope>): <description>`. A plain script instead of `@commitlint/cli` to avoid new dependencies.
+- The CI workflows run on PRs and are called by the prod CD workflows (`workflow_call`) instead of running on push. Created the [`v0.1.0` release](https://github.com/MESW-LES-2627/les-project-group-6/releases/tag/v0.1.0).
+- See the [README](../../../README.md#continuous-integration) for the setup (secrets, variables, Auto-Deploy off).
+
+### 2026-10-27: GitHub deployment environments per app
+
+- The deploy jobs record their deploys in GitHub environments named after the app: `backend` and `frontend` for prod, `backend-stg` and `frontend-stg` for stg, each with the live URL. Replaces the auto-created `production` and `production-frontend` environments, which were deleted. Why: one environment per app and stage keeps a separate deploy history and URL for each on the repository page.
+
+### 2026-10-27: Release workflow permission fix
+
+- [`release.yml`](../../../.github/workflows/release.yml) failed with HTTP 403 when listing the prod CD runs of the merged commit: its token had no `actions: read`. Added that permission.
+- It then failed in `actions/setup-node@v5` with "Unable to locate executable file: pnpm": v5 turns on the pnpm cache by itself from `packageManager` in the root `package.json`, and this job does not install pnpm. Set `package-manager-cache: false`.
+
 ## Next steps
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
@@ -279,21 +296,26 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added database seed script [`apps/backend/src/infrastructure/database/seed.ts`](../../../apps/backend/src/infrastructure/database/seed.ts) (`pnpm db:seed`): seeds demo reader user (`demo_reader`), 6 books with high-resolution Open Library cover URLs, and initial `not-started` reading status entries linking the demo user to all seeded books so the library is immediately populated for vertical prototype testing.
 - Updated [`apps/backend/README.md`](../../../apps/backend/README.md) with reading status endpoints and seed documentation.
 
-### 2026-10-23: Authentication page and Supabase integration skeleton
 
-- Built [LoginView](../../../apps/frontend/src/views/LoginView.vue) from the [authentication screenshot](../../design/screens/01-authentication.png), including its photo crop, copy, forms, privacy note and footer. Reused shared tokens/button styles; the existing signed-in header/footer do not match this design. Added only missing type sizes to [tokens.css](../../../apps/frontend/src/assets/styles/tokens.css).
-- Added an [AuthProvider/Supabase adapter](../../../apps/frontend/src/services/auth.ts) for password login, signup metadata and OIDC provider redirects, with missing-configuration handling and an injectable username resolver. Rejected an invented public username/email lookup and extra OIDC buttons absent from the reference. Username uniqueness/profile provisioning and live callbacks/guards remain pending; see the [frontend setup guide](../../../apps/frontend/README.md).
-- Added [adapter tests](../../../apps/frontend/src/services/__tests__/auth.spec.ts) and [page integration tests](../../../apps/frontend/src/views/__tests__/LoginView.spec.ts) using the real adapter and mocked SDK, with no credentials or live requests. Signup confirmation never masquerades as a session; username availability is not falsely asserted. Verified desktop layout at 1440 px and mobile at 390 px with no horizontal overflow; lint, formatting, typechecking, tests and build pass.
+### 2026-10-23: Frontend and backend connection for library and reading status
+
+- Connected the responsive [`/library` view](../../../apps/frontend/src/views/LibraryView.vue) to `GET /user/:userId/library` through [`api.ts`](../../../apps/frontend/src/services/api.ts), fetching the demo user's seeded books and synchronizing shelf counts dynamically. Keeps seamless fallback to mock data when offline or in unit tests.
+- Connected [`/library/:bookId` view](../../../apps/frontend/src/views/BookDetailView.vue) to load book details and current reading status by UUID from the backend.
+- Added interactive reading status editor to [`BookReadingPanel.vue`](../../../apps/frontend/src/components/library/BookReadingPanel.vue), allowing the reader to update status (e.g. to `in-progress`) and current page (e.g. to `10`) via `PUT /reading-status`.
+- Added Express CORS middleware in [`apps/backend/src/app.ts`](../../../apps/backend/src/app.ts) with `Access-Control-Allow-Origin: *` and preflight `OPTIONS` handling to support cross-origin API calls from the deployed frontend static site.
+- Updated [`apps/frontend/README.md`](../../../apps/frontend/README.md) and [`apps/backend/README.md`](../../../apps/backend/README.md).
+
 
 ## Next steps
 
 - Finish Supabase project configuration, trusted username authentication/uniqueness, OIDC UI approval, session callbacks/guards, logout, password recovery and onboarding (see frontend guide).
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
-- Point the Render backend service at `main` once this branch is merged, and add `DATABASE_URL` when Supabase is set up.
+- Prod CD setup (repo admin): add `PROD_DATABASE_URL`, `RENDER_BACKEND_PROD_SERVICE_ID` and `RENDER_FRONTEND_PROD_SERVICE_ID`, and turn Auto-Deploy off on both prod services.
+- Require the `commitlint` check on `main` with branch protection.
 - Create the Render stg service (Auto-Deploy off), create the Render stg static site for the frontend, add the `RENDER_API_KEY` secret and the `RENDER_BACKEND_STG_SERVICE_ID` and `RENDER_FRONTEND_STG_SERVICE_ID` variables (repo admin), and use a separate Supabase project for stg.
 - Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands. Frontend CI is now enabled.
-- Wire the library, book-detail and active-session pages to the backend when those endpoints exist; replace the mock data, implement the folder and card menu actions, and persist a stopped session.
+- Implement folder and card menu actions on the library page, wire session persistence for the active reading session, and replace remaining static review/club mock data.
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
 - Create the issues for Extras once Core is under way.
