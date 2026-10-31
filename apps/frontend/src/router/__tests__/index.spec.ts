@@ -9,6 +9,13 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('login');
   });
 
+  it('exposes the login screen without signed-in app chrome', async () => {
+    await router.push('/login');
+
+    expect(router.currentRoute.value.name).toBe('login');
+    expect(router.currentRoute.value.meta.hideAppChrome).toBe(true);
+  });
+
   it('routes to the home page', async () => {
     await router.push('/home');
 
@@ -45,5 +52,17 @@ describe('router', () => {
     await router.push('/unknown');
 
     expect(router.currentRoute.value.name).toBe('not-found');
+  });
+
+  it('routes to the groups pages', async () => {
+    await router.push('/groups');
+    expect(router.currentRoute.value.name).toBe('groups');
+
+    await router.push('/groups/new');
+    expect(router.currentRoute.value.name).toBe('group-create');
+
+    await router.push('/groups/october-sprint');
+    expect(router.currentRoute.value.name).toBe('group-detail');
+    expect(router.currentRoute.value.params.groupId).toBe('october-sprint');
   });
 });

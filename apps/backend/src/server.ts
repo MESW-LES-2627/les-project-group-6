@@ -1,22 +1,22 @@
 import { createApp } from './app.js';
-import { createPool, createDb } from './infrastructure/database/pool.js';
-import { DatabaseHealthCheck } from './infrastructure/database/health-check.js';
-import { DrizzleBookRepository } from './infrastructure/repositories/drizzle-book-repository.js';
-import { DrizzleReadingStatusRepository } from './infrastructure/repositories/drizzle-reading-status-repository.js';
+import { env } from './config/env.js';
+import { DatabaseHealthCheck } from './database/health-check.js';
+import { createPool, createDb } from './database/pool.js';
+import { DrizzleBookRepository } from './features/book/book-repository.js';
+import { DrizzleLibraryQuery } from './features/library/library-query.js';
+import { DrizzleReadingStatusRepository } from './features/reading-status/reading-status-repository.js';
 
 const pool = createPool();
 const db = createDb(pool);
-const port = Number(process.env.PORT ?? 3000);
-const healthCheck = new DatabaseHealthCheck(pool);
-const bookRepository = new DrizzleBookRepository(db);
-const readingStatusRepository = new DrizzleReadingStatusRepository(db);
 
-const server = createApp({ healthCheck, bookRepository, readingStatusRepository }).listen(
-  port,
-  () => {
-    console.log(`Backend listening on http://localhost:${port}`);
-  },
-);
+const server = createApp({
+  healthCheck: new DatabaseHealthCheck(pool),
+  bookRepository: new DrizzleBookRepository(db),
+  readingStatusRepository: new DrizzleReadingStatusRepository(db),
+  libraryQuery: new DrizzleLibraryQuery(db),
+}).listen(env.port, () => {
+  console.log(`Backend listening on http://localhost:${env.port}`);
+});
 
 const shutdown = async () => {
   console.log('Shutting down server and closing database pool...');

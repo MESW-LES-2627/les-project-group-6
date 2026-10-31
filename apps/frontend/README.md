@@ -13,6 +13,8 @@ pnpm --filter @bookmarked/frontend dev
 
 Open the Vite URL (normally http://localhost:5173), then visit `/home` for the home prototype (mock data, from design screen 05). The profile prototype is at `/profile` (mock data); `/profile?state=new` shows every section's empty state.
 
+The groups prototype (mock data only) is at `/groups`: the list, `/groups/new` to create a group, and `/groups/october-sprint` (challenge) and `/groups/classics` (book club).
+
 The library view is at `/library`. It connects to the backend API (`GET /api/user/:userId/library`) for the demo reader (`a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11`), dynamically updating shelf filter counts, with seamless fallback to mock data in `src/mocks/library.ts` when offline or during tests.
 
 Opening a book goes to `/library/:bookId`. It loads book details and reading status from the backend by UUID, and includes an interactive status editor in the reading panel to update the reading status (e.g. to `in-progress`) and current page (e.g. to `10`) via `PUT /api/reading-status`. “Start session” opens `/session/:bookId`. Both pages fall back gracefully for unknown IDs or offline testing.
@@ -45,27 +47,39 @@ Lint uses Oxlint and ESLint with `eslint-plugin-vue`. Formatting uses the root P
 
 ## Source layout and design
 
-- `src/assets/styles/tokens.css`: the five brand colors, semantic aliases, typography, spacing and radii. Brand hex values are  
-defined once here. Use the `--font-size-*` scale (`2xs` 11px to `display` 56px) for every font size. A second block holds the     
-tokens added for the profile page and app layout (hover and on-primary colors, page width, cover and menu shadows, motion).       
-- `src/assets/styles/main.css`: global styles consuming tokens, plus shared classes (`.page-column`, `.button`, `.text-link`, `.
-book-link`, `.progress-bar`, `.section-title`, `.sr-only`).
-- `src/views/`: Login and not-found placeholders, the home page prototype (`HomeView`, mock data in `src/mocks/home.ts`), the profile page prototype (`ProfileView`), the responsive [library     
-page](src/views/LibraryView.vue), [book detail](src/views/BookDetailView.vue), [active session](src/views/ActiveSessionView.vue), 
-and view tests in `__tests__/`.
-- `src/components/layout/`: `AppHeader` (nav, search, notifications, account menu) and `AppFooter`, shown on every route except 
-those with `meta.hideAppChrome` (Login).
-- `src/components/library/`: the reusable [book card](src/components/library/LibraryBookCard.vue), the [“Your shelves” side     
-menu](src/components/library/LibrarySidebar.vue), and the book-detail reading, edition, thoughts, review and reading-club panels. 
-- `src/components/profile/`: the profile sections (`ProfileBookplate`, `CurrentlyReading`, `BookShelf`, `CoverGrid`,            
-`ChapterLevel`, `StreakCalendar`, `ReadingTime`, `ChallengesSummary`, `FolderList`, `MonthRecap`, `BookCover`). Each one handles  
-its own empty state.
-- `src/components/session/`: the separate [reading timer](src/components/session/ReadingTimer.vue) with pause, resume and stop  
-events.
-- `src/mocks/`, `src/types/`, `src/utils/`: domain types, helpers, and typed mock data for the profile, library, and active     
-session, used until the backend APIs exist.
-- `src/assets/covers/`: the book cover crops used by the library and detail prototypes, including the portrait Emma detail cover.
+- `src/assets/styles/tokens.css`: brand colors, semantic aliases, typography, spacing, radii and layout/motion tokens. Use the `--font-size-*` scale for font sizes.
+- `src/assets/styles/main.css`: global styles and shared classes (`.page-column`, `.button`, `.text-link`, `.book-link`, `.progress-bar`, `.section-title`, `.sr-only`).
+- `src/views/`: the authentication screen, the home page prototype (`HomeView`, mock data in `src/mocks/home.ts`), the not-found placeholder, the profile, library, book-detail and active-session prototypes, and the groups pages (`GroupsView`, `CreateGroupView`, `GroupDetailView`, which shows `ChallengeGroupView` or `BookClubGroupView`); view tests live in `__tests__/`.
+- `src/components/layout/`: `AppHeader` and `AppFooter`, hidden on routes with `meta.hideAppChrome` (Login).
+- `src/components/library/`: reusable book card, shelves sidebar and book-detail panels.
+- `src/components/groups/`: the groups building blocks (`GroupCard`, `GroupLeaderboard`, `GroupChat`, `GroupsPageHeader`, `InfoNote`, `ToggleSwitch`, `MemberAvatar`).
+- `src/components/profile/`: profile sections with their empty states.
+- `src/components/session/`: reading timer with pause, resume and stop events.
+- `src/mocks/`, `src/types/`, `src/utils/`: domain types, helpers and typed prototype data.
+- `src/assets/covers/`: book cover crops; `src/assets/auth/`: the authentication reference photo crop.
 - `src/router/`: routes and router tests.
-- `src/services/api.ts`: configurable health request and response validation.
+- `src/services/api.ts`: health request and response validation; `src/services/auth.ts`: the Supabase adapter; `src/services/__tests__/`: adapter tests.
 
 The [Home](../../docs/design/screens/05-home.png) and [authentication](../../docs/design/screens/01-authentication.png) screenshots guide typography: [Lora](https://fonts.google.com/specimen/Lora) for headings, book titles and editorial text; [Inter](https://fonts.google.com/specimen/Inter) for body copy, navigation, labels and controls. `index.html` loads both with `display=swap`, with local serif/sans-serif fallbacks. Warm neutral background, surface, muted text and border tokens follow the screenshots; the five brand colors are unchanged.
+
+## Authentication skeleton
+
+`/` redirects to `/login`, which contains both forms from [01-authentication.png](../../docs/design/screens/01-authentication.png). It intentionally uses the screenshot’s “Re”/“Marginalia” branding and has no invented provider buttons. The reading photograph in `src/assets/auth/reading-by-window.png` is cropped directly from that reference (x=48, y=406, 440×350), with no generated replacement. Shared tokens, `.button`, `.muted` and `.sr-only` are reused. Existing app chrome is hidden via the route’s `hideAppChrome` metadata because it differs from the reference.
+
+The page calls our `AuthProvider` interface in `src/services/auth.ts`; the adapter lazily creates the official Supabase client. Copy these public values from `.env.example` into `.env.local` when the project is ready, then restart Vite:
+
+```dotenv
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-public-publishable-key
+```
+
+Leave them empty for now. Submitting without configuration shows an availability error and never simulates a session. Never use a service-role or secret key in browser variables.
+
+- Email/password login uses [`signInWithPassword`](https://supabase.com/docs/reference/javascript/auth-signinwithpassword). Home navigation requires an actual returned session. “Keep me signed in” selects local storage; otherwise the client uses session storage.
+- Signup uses [`signUp`](https://supabase.com/docs/reference/javascript/auth-signup), passing display name and normalized username as profile metadata. Without a returned session, the page asks the user to confirm their email. With a session, it currently opens Home; onboarding is not implemented yet.
+- Username login is an explicit `UsernameResolver` dependency in `createAuthProvider`. Supabase password login accepts email/phone, so a trusted backend flow is still needed. Until supplied, username login shows an explanatory error; there is no invented email-lookup endpoint. The reference email label is retained, with “or username” included in its accessible label.
+- `signInWithOidc(provider)` prepares the SDK’s [`signInWithOAuth`](https://supabase.com/docs/reference/javascript/auth-signinwithoauth) provider redirect with `/home` as callback. Configure and choose the provider in Supabase before enabling it. Provider buttons are awaiting an approved design; none exist in the supplied screenshot.
+
+Before live authentication: configure allowed redirect URLs (`/login` and `/home`) and email delivery/confirmation, wire the trusted username resolver and server-enforced username uniqueness/profile creation, and finish callback/session restoration, logout, route guards and onboarding. Signup metadata alone does not enforce username uniqueness or create the application’s user row. Other prototype pages remain accessible with mock data while this is a skeleton. Password recovery currently reports that it is unavailable; footer/legal destinations are not implemented. The username helper states the permitted characters rather than falsely asserting availability.
+
+`src/services/__tests__/auth.spec.ts` tests adapter behavior against the mocked SDK; `src/views/__tests__/LoginView.spec.ts` exercises the actual page → adapter → mocked SDK integration. No tests contact Supabase or require credentials.
