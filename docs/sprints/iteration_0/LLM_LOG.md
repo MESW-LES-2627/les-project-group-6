@@ -746,3 +746,21 @@ can we also add the name of the book read in the leaderboard? ok, we read 1 min,
 
 #### Explanation of Changes
 The standings query now groups counted minutes by member and book (joining `books` for the title) and returns a `books` list per standing; the leaderboard shows each book and its minutes under the member. Updated the group page test and checked the SQL against a migrated database. See the [iteration log](log.md).
+
+### 2026-10-31: PR #102 review fixes and a proportionality rule for the OOP/DDD skill
+
+- **Date:** 2026-10-31
+- **Author:** Robert Gleison
+- **Model:** Claude Sonnet 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, testing, docs
+
+#### Prompt
+```text
+i think you need to add the following thing in ddd skill we have. We want to use ddd and oop patern yes, but we don't want to overuse. We don't need an interface if we currently have just one implementation of the interface. For cases like: ScoringMetric, yes, we need an strategy because we have just the minutes score metrics, but we can also have pages, time, etc.. For cases that we know we will use just once we can simplify things. If we have if else statements, swtich cases and etc, this could be a tip of use interfaces and strategies and etc
+
+Now, answer all my pr questions and apply the fix I told you to do https://github.com/MESW-LES-2627/les-project-group-6/pull/102
+```
+
+#### Explanation of Changes
+Added rule R7 (proportionality) to the `oop-ddd-review` skill. Applied the replies on PR #102: a per-reader advisory lock around starting a session (with an integration test), `Clock` moved to `utils/clock.ts`, a `ScoreStrategy` for the leaderboard metric, the single-use `StandingsQuery` interface removed, `memberRoleOf` instead of a cast, and the guard inlined into `ReadingSession.cancel`. See the [iteration log](log.md).

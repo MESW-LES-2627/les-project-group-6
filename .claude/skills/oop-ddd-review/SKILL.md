@@ -105,12 +105,22 @@ A Value Object is immutable, validated at creation, has no identity and compares
 - **OCP**: adding a variant should mean adding a class, not editing a `switch`. A `switch` on a type or status is a smell → Strategy or State.
 - **LSP**: subclasses must honour the base contract. Prefer composition over inheritance.
 - **ISP**: small, focused interfaces (a read-side query interface is separate from the write repository).
-- **DIP**: depend on abstractions you own.
+- **DIP**: depend on abstractions you own (but only once a second implementation or a test double exists, see R7).
 - Prefer polymorphism over type checks (`instanceof`, `typeof`, `kind ===` chains).
+
+### R7. Proportionality: patterns earn their place
+
+We want DDD and OOP, not pattern decoration. Before recommending (or keeping) a pattern or an abstraction, check that it pays for itself now.
+
+- **No interface for a single implementation.** An interface is justified when there are, or are clearly planned, two or more implementations, or when tests need a double. Repository interfaces qualify (`Drizzle*Repository` plus `InMemory*Repository` in tests). A query class with one implementation and one caller (e.g. `StandingsQuery`) stays a plain class; extract the interface when the second implementation appears.
+- **The cue for a pattern is branching on a kind that will grow.** An `if/else` chain, a `switch`, or `typeof` / `kind ===` checks over a type, status or metric is the tip that a Strategy, State or polymorphism may fit. A lone `if` that will not grow is not a reason.
+- **Strategy is fine with one implementation today when the variants are known.** Win-metric scoring: only `minutes` is scored now, but pages, time, books and streak are coming, so one `ScoreStrategy` per `WinMetricType` is justified.
+- **Code we know is used once stays simple.** No Factory, Builder, Decorator, Command or interface for something built or used in a single place.
+- **An abstraction with no second implementation and no planned variant is a finding** (Suggestion): recommend removing it, not only adding patterns.
 
 ## Pattern catalog: what to recommend
 
-When you recommend a pattern, name it, say **why it fits this code**, and give a 5–20 line TypeScript sketch using our real names. Prefer the simplest pattern that solves the problem; do not stack patterns for the sake of it.
+When you recommend a pattern, name it, say **why it fits this code**, and give a 5–20 line TypeScript sketch using our real names. Prefer the simplest pattern that solves the problem; do not stack patterns for the sake of it, and apply R7 first.
 
 ### DDD tactical patterns
 
@@ -159,7 +169,7 @@ When you recommend a pattern, name it, say **why it fits this code**, and give a
 
 ### Substitution guidance
 
-Also look for code that **works but could be expressed better** with a pattern, and propose the swap:
+Also look for code that **works but could be expressed better** with a pattern, and propose the swap, but only when the branching is real or the variants are planned (R7):
 
 - `switch`/`if` chain on a status → **State**
 - `switch`/`if` chain on a kind or type → **Strategy** or polymorphism
@@ -171,7 +181,7 @@ Also look for code that **works but could be expressed better** with a pattern, 
 - External API response used directly in the domain → **Adapter / Anti-Corruption Layer**
 - Several saves that must succeed together → **Unit of Work**
 
-For each substitution, state the trade-off (extra classes vs clarity and extensibility). If the current code is simple and stable, say "no pattern needed". Over-engineering is also a finding.
+For each substitution, state the trade-off (extra classes vs clarity and extensibility). If the current code is simple and stable, say "no pattern needed". Over-engineering is also a finding (R7): an interface with one implementation, or a pattern for a case that will exist once.
 
 ## Example: what a good entity looks like
 

@@ -93,7 +93,7 @@ apps/backend/
 │   ├── api/               # router.ts wires each feature's service and mounts its routes; health route
 │   ├── config/            # env.ts: every setting read from the environment
 │   ├── middleware/        # CORS and the domain-error to HTTP status mapping
-│   ├── utils/             # DomainError families and the typed Uuid base
+│   ├── utils/             # DomainError families, the typed Uuid base and the Clock type
 │   ├── database/
 │   │   ├── migrations/    # Drizzle SQL migrations and journal metadata
 │   │   ├── schema.ts      # Tables for the query builder (source of the migrations)

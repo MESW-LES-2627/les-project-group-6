@@ -255,6 +255,17 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - Kept the app's name "Bookmarked" in the header and footer; the design screens still say "Marginalia".
 - Added view, router and helper tests.
 
+### 2026-10-31: PR #102 review fixes and a proportionality rule for the OOP/DDD skill
+
+- **One running session per reader under concurrency.** `ReadingSessionService.start` now runs its check-then-insert inside `IReadingSessionRepository.withReaderLock`, a database transaction holding `pg_advisory_xact_lock` on the reader, so two requests for one reader run one after the other. *Why:* a transaction alone does not stop it (under READ COMMITTED both requests see no running session and both insert), and Spring-style `@Transactional` does not exist here (no decorators or frameworks, R1). *Rejected for now:* a partial unique index on `reading_sessions (user_id) WHERE ended_at IS NULL`, which needs the first migration while stg shares the prod database; it stays the stronger follow-up. Checked on a freshly migrated scratch database: with the interleaving forced, 10 starts left 10 running sessions without the lock and 1 with it; covered by the new [repository integration test](../../../apps/backend/tests/integration/reading-session-repository.test.ts).
+- **`Clock` lives in [`utils/clock.ts`](../../../apps/backend/src/utils/clock.ts)** instead of being declared in both services.
+- **Leaderboard scoring is a `ScoreStrategy`** per `WinMetricType` ([`standings-query.ts`](../../../apps/backend/src/features/challenge-group/standings-query.ts)); `CountedMinutesScore` is the only one for now, and pages, books or streak add a class instead of editing the query. *Why a Strategy with one implementation:* the other metrics are known to come.
+- **`StandingsQuery` is a plain class**: its interface had one implementation and one caller, so it was removed (and `DrizzleStandingsQuery` renamed).
+- **Member roles are parsed** with `memberRoleOf` when a group is rebuilt from the database, instead of a cast to `MemberRole`.
+- **`ReadingSession.cancel` carries its own guard** (owner and still running); the shared private helper was inlined into `cancel` and `finish`.
+- Added **R7 (proportionality)** to the [`oop-ddd-review`](../../../.claude/skills/oop-ddd-review/SKILL.md) skill: no interface for a single implementation, a growing `if/else` or `switch` is the cue for a Strategy or State, a Strategy is fine with one implementation when the variants are known, and code used once stays simple.
+- **Open on the PR:** whether to add a `MetricGoal` value object (no existing one fits), and whether `ChallengeGroupService` should return the status instead of exposing its clock.
+
 ## Next steps
 
 - Review ADR-0005 with the team and mark it Accepted.
