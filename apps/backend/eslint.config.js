@@ -12,5 +12,24 @@ export default tseslint.config(
       globals: globals.node,
     },
   },
+  {
+    // Entities, value objects and services stay plain TypeScript: only the
+    // repositories, queries and routes of a feature may touch Drizzle, pg or Express.
+    files: ['src/features/**/*.ts'],
+    ignores: [
+      'src/features/**/*-repository.ts',
+      'src/features/**/*-query.ts',
+      'src/features/**/*-routes.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: ['drizzle-orm', 'pg', 'express'],
+          patterns: ['drizzle-orm/*', '**/database/*'],
+        },
+      ],
+    },
+  },
   prettier,
 );

@@ -9,6 +9,13 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('login');
   });
 
+  it('exposes the login screen without signed-in app chrome', async () => {
+    await router.push('/login');
+
+    expect(router.currentRoute.value.name).toBe('login');
+    expect(router.currentRoute.value.meta.hideAppChrome).toBe(true);
+  });
+
   it('routes to the home placeholder', async () => {
     await router.push('/home');
 
