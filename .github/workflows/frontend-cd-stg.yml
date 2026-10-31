@@ -30,6 +30,9 @@ jobs:
     name: deploy
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment:
+      name: frontend-stg
+      url: ${{ steps.check.outputs.url }}
     steps:
       - name: Check configuration
         env:
@@ -84,10 +87,12 @@ jobs:
           done
 
       - name: Smoke check
+        id: check
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: |
           url=$(curl -fsS "$RENDER_API/services/$SERVICE_ID" \
             -H "Authorization: Bearer $RENDER_API_KEY" | jq -r '.serviceDetails.url')
           curl -fsS -o /dev/null --retry 5 --retry-delay 10 --retry-all-errors "$url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "### Deployed \`${GITHUB_REF_NAME}\` to stg: $url" >> "$GITHUB_STEP_SUMMARY"

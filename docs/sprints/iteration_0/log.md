@@ -23,6 +23,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Backend domain model (OOP/DDD) | Rich entities with value objects, `ReadingStatus` lifecycle with the State pattern, use cases, Data Mappers and a library query object |
 | Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
 | Frontend routes (#64) | Initial routes implemented |
+| Authentication UI and Supabase skeleton | Reference-based `/login` forms and adapter/integration tests implemented; credentials, trusted username flow, provider UI and live session lifecycle pending |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
 | Library page prototype (#76) | Responsive `/library` UI with reusable card and shelves components, filters, tests, and API integration with user library endpoint |
 | Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels, and API reading status updates |
@@ -227,6 +228,15 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - The CI workflows run on PRs and are called by the prod CD workflows (`workflow_call`) instead of running on push. Created the [`v0.1.0` release](https://github.com/MESW-LES-2627/les-project-group-6/releases/tag/v0.1.0).
 - See the [README](../../../README.md#continuous-integration) for the setup (secrets, variables, Auto-Deploy off).
 
+### 2026-10-27: GitHub deployment environments per app
+
+- The deploy jobs record their deploys in GitHub environments named after the app: `backend` and `frontend` for prod, `backend-stg` and `frontend-stg` for stg, each with the live URL. Replaces the auto-created `production` and `production-frontend` environments, which were deleted. Why: one environment per app and stage keeps a separate deploy history and URL for each on the repository page.
+
+### 2026-10-27: Release workflow permission fix
+
+- [`release.yml`](../../../.github/workflows/release.yml) failed with HTTP 403 when listing the prod CD runs of the merged commit: its token had no `actions: read`. Added that permission.
+- It then failed in `actions/setup-node@v5` with "Unable to locate executable file: pnpm": v5 turns on the pnpm cache by itself from `packageManager` in the root `package.json`, and this job does not install pnpm. Set `package-manager-cache: false`.
+
 ## Next steps
 
 - Write an ADR restricting Drizzle to a query builder (decided in the OOP/DDD review entry above).
@@ -320,6 +330,7 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - Added database seed script [`apps/backend/src/infrastructure/database/seed.ts`](../../../apps/backend/src/infrastructure/database/seed.ts) (`pnpm db:seed`): seeds demo reader user (`demo_reader`), 6 books with high-resolution Open Library cover URLs, and initial `not-started` reading status entries linking the demo user to all seeded books so the library is immediately populated for vertical prototype testing.
 - Updated [`apps/backend/README.md`](../../../apps/backend/README.md) with reading status endpoints and seed documentation.
 
+
 ### 2026-10-23: Frontend and backend connection for library and reading status
 
 - Connected the responsive [`/library` view](../../../apps/frontend/src/views/LibraryView.vue) to `GET /user/:userId/library` through [`api.ts`](../../../apps/frontend/src/services/api.ts), fetching the demo user's seeded books and synchronizing shelf counts dynamically. Keeps seamless fallback to mock data when offline or in unit tests.
@@ -337,6 +348,8 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - **Decision: rename the `features/reading/` folder to `features/reading-status/`.** *Why:* every file inside, the `ReadingStatus` class, the `reading_status` table, the `/reading-status` endpoint and the docs already use "reading status"; a bare `reading` could be confused with the active reading session. *Rejected:* `book-status`, because the aggregate belongs to a user and a book together (each reader has their own status for the same book), and it would clash with any future catalogue status of a book itself.
 
 ## Next steps
+
+- Finish Supabase project configuration, trusted username authentication/uniqueness, OIDC UI approval, session callbacks/guards, logout, password recovery and onboarding (see frontend guide).
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
 - Prod CD setup (repo admin): add `PROD_DATABASE_URL`, `RENDER_BACKEND_PROD_SERVICE_ID` and `RENDER_FRONTEND_PROD_SERVICE_ID`, and turn Auto-Deploy off on both prod services.

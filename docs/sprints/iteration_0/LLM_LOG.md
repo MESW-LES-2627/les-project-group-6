@@ -515,6 +515,7 @@ out: photos and videos in chat, book recommendation system, user onboarding, ema
 #### Explanation of Changes
 Rewrote `mvp.md` with a short table of the 6 MVP features, user stories grouped under each feature, and an updated out-of-scope list.
 
+
 ### 2026-10-23: Frontend and backend connection for library and reading status
 
 - **Date:** 2026-10-23
@@ -627,3 +628,21 @@ well, the idea is to see running like we have in backend CD (stg). I want to see
 
 #### Explanation of Changes
 Added `backend-cd-prod.yml` (backend CI, prod migrations, Render deploy, wait until live, Render build log, `/health`) and `frontend-cd-prod.yml` (frontend CI, Render deploy, build log, smoke check), with the steps inline like the stg workflows. Added `release.yml`, which runs semantic-release (config in the root `package.json` `release` key) once every prod CD of a merge has succeeded, creating a `vX.Y.Z` tag and a GitHub Release of the same name; created the starting `v0.1.0` tag and release. Added `commitlint.yml` with `scripts/check-commits.sh`. The CI workflows became callable and no longer run on push; the old `migrate-production` job was removed. A first single `cd-prod.yml` with a shared composite action was replaced by the per-app workflows. Checked with actionlint, Prettier, a `semantic-release --dry-run` and the commit script on the repository history. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-27: Deployment environments per app
+
+- **Date:** 2026-10-27
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** infra
+
+#### Prompt
+```text
+why we have 2 deployments called production and production-frontend? who created this?
+rename to frontend and backend. can we do the same with frontend (stg) and backend (stg)?
+```
+
+#### Explanation of Changes
+Renamed the prod deploy environments to `backend` and `frontend`, and added `backend-stg` and `frontend-stg` environments with the live URL to the stg workflows. Deleted the old `production` and `production-frontend` environments. See the [iteration log](log.md) entry of the same date.
+
