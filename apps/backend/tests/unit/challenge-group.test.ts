@@ -6,7 +6,9 @@ import {
   GroupName,
   InvalidChallengePeriodError,
   InvalidGroupNameError,
+  InvalidMetricGoalError,
   InvalidWinMetricError,
+  MetricGoal,
   WinMetric,
   memberRoleOf,
 } from '../../src/features/challenge-group/challenge-group.js';
@@ -29,23 +31,7 @@ describe('ChallengeGroup', () => {
     assert.strictEqual(group.members.length, 1);
     assert.strictEqual(group.members[0]!.role, 'admin');
     assert.ok(group.isMember(admin));
-    assert.strictEqual(group.challenge.metricGoal, 0);
-  });
-
-  test('a negative or fractional metric goal is rejected', () => {
-    for (const metricGoal of [-1, 1.5]) {
-      assert.throws(
-        () =>
-          ChallengeGroup.create({
-            adminId: UserId.generate(),
-            name: GroupName.of('Sprint'),
-            period: ChallengePeriod.lasting('2026-11-01', 7),
-            winMetric: WinMetric.of('pages'),
-            metricGoal,
-          }),
-        InvalidValueError,
-      );
-    }
+    assert.ok(group.challenge.metricGoal.isOpen);
   });
 
   test('the status follows the challenge period', () => {
@@ -83,6 +69,15 @@ describe('Challenge value objects', () => {
       () => ChallengePeriod.of('2026-11-10', '2026-11-01'),
       InvalidChallengePeriodError,
     );
+  });
+
+  test('a metric goal is a whole number, 0 meaning no target', () => {
+    assert.strictEqual(MetricGoal.of(300).value, 300);
+    assert.ok(MetricGoal.none().isOpen);
+    assert.ok(MetricGoal.of(0).isOpen);
+    for (const raw of [-1, 1.5, '10', null]) {
+      assert.throws(() => MetricGoal.of(raw), InvalidMetricGoalError);
+    }
   });
 
   test('member roles are parsed, and an unknown stored role is rejected', () => {

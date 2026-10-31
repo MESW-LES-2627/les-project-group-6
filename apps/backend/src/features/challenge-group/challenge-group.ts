@@ -49,6 +49,33 @@ export class WinMetric {
   }
 }
 
+export class InvalidMetricGoalError extends InvalidValueError {
+  constructor(raw: unknown) {
+    super(`Metric goal must be a whole number >= 0, got ${String(raw)}`);
+  }
+}
+
+// What a member must reach to complete the challenge, in the unit of the win metric.
+export class MetricGoal {
+  private constructor(readonly value: number) {}
+
+  /** No target: whoever has the highest score wins. */
+  static none(): MetricGoal {
+    return new MetricGoal(0);
+  }
+
+  static of(raw: unknown): MetricGoal {
+    if (typeof raw !== 'number' || !Number.isInteger(raw) || raw < 0) {
+      throw new InvalidMetricGoalError(raw);
+    }
+    return new MetricGoal(raw);
+  }
+
+  get isOpen(): boolean {
+    return this.value === 0;
+  }
+}
+
 export class InvalidChallengePeriodError extends InvalidValueError {}
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -131,8 +158,7 @@ export interface Membership {
 export interface Challenge {
   period: ChallengePeriod;
   winMetric: WinMetric;
-  /** 0 means no target: whoever has the highest score wins. */
-  metricGoal: number;
+  metricGoal: MetricGoal;
 }
 
 export interface NewChallengeGroupProps {
@@ -141,7 +167,7 @@ export interface NewChallengeGroupProps {
   description?: string | null;
   period: ChallengePeriod;
   winMetric: WinMetric;
-  metricGoal?: number;
+  metricGoal?: MetricGoal;
 }
 
 export interface ChallengeGroupState {
@@ -176,17 +202,13 @@ export class ChallengeGroup {
   }
 
   static create(props: NewChallengeGroupProps, now: Date = new Date()): ChallengeGroup {
-    const goal = props.metricGoal ?? 0;
-    if (!Number.isInteger(goal) || goal < 0) {
-      throw new InvalidValueError(`Metric goal must be a whole number >= 0, got ${goal}`);
-    }
     return new ChallengeGroup({
       id: GroupId.generate(),
       name: props.name,
       description: props.description?.trim() ?? '',
       adminId: props.adminId,
       members: [{ userId: props.adminId, role: 'admin', joinedAt: now }],
-      challenge: { period: props.period, winMetric: props.winMetric, metricGoal: goal },
+      challenge: { period: props.period, winMetric: props.winMetric, metricGoal: props.metricGoal ?? MetricGoal.none() },
       createdAt: now,
     });
   }

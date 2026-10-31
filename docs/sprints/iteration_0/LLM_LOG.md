@@ -764,3 +764,20 @@ Now, answer all my pr questions and apply the fix I told you to do https://githu
 
 #### Explanation of Changes
 Added rule R7 (proportionality) to the `oop-ddd-review` skill. Applied the replies on PR #102: a per-reader advisory lock around starting a session (with an integration test), `Clock` moved to `utils/clock.ts`, a `ScoreStrategy` for the leaderboard metric, the single-use `StandingsQuery` interface removed, `memberRoleOf` instead of a cast, and the guard inlined into `ReadingSession.cancel`. See the [iteration log](log.md).
+
+### 2026-10-31: MetricGoal value object and status from the service (PR #102)
+
+- **Date:** 2026-10-31
+- **Author:** Robert Gleison
+- **Model:** Claude Sonnet 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, testing
+
+#### Prompt
+```text
+commit and push and post the replies
+yes
+```
+
+#### Explanation of Changes
+Committed and pushed the PR #102 review fixes and replied on each review thread. On the open threads, added a `MetricGoal` value object and made `ChallengeGroupService` return `{ group, status }` with a private clock. See the [iteration log](log.md).

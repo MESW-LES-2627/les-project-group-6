@@ -27,18 +27,21 @@ export interface ChallengeGroupDetailDto extends ChallengeGroupDto {
   standings: StandingView[];
 }
 
-export function toChallengeGroupDto(group: ChallengeGroup, now: Date): ChallengeGroupDto {
+export function toChallengeGroupDto(
+  group: ChallengeGroup,
+  status: ChallengeStatus,
+): ChallengeGroupDto {
   return {
     id: group.id.value,
     name: group.name.value,
     description: group.description,
     adminId: group.adminId.value,
-    status: group.statusAt(now),
+    status,
     challenge: {
       startDate: group.challenge.period.startDate,
       endDate: group.challenge.period.endDate,
       winMetric: group.challenge.winMetric.value,
-      metricGoal: group.challenge.metricGoal,
+      metricGoal: group.challenge.metricGoal.value,
     },
     members: group.members.map((m) => ({
       userId: m.userId.value,

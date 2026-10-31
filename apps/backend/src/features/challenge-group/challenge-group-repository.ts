@@ -7,6 +7,7 @@ import {
   ChallengePeriod,
   GroupId,
   GroupName,
+  MetricGoal,
   WinMetric,
   memberRoleOf,
 } from './challenge-group.js';
@@ -37,7 +38,7 @@ function toDomain(row: GroupRow, members: MemberRow[], challenge: ChallengeRow):
     challenge: {
       period: ChallengePeriod.of(challenge.startDate, challenge.endDate),
       winMetric: WinMetric.of(challenge.winMetric),
-      metricGoal: challenge.metricGoal,
+      metricGoal: MetricGoal.of(challenge.metricGoal),
     },
     createdAt: new Date(row.createdAt),
   });
@@ -81,7 +82,7 @@ export class DrizzleChallengeGroupRepository implements IChallengeGroupRepositor
         startDate: group.challenge.period.startDate,
         endDate: group.challenge.period.endDate,
         winMetric: group.challenge.winMetric.value,
-        metricGoal: group.challenge.metricGoal,
+        metricGoal: group.challenge.metricGoal.value,
       });
     });
   }

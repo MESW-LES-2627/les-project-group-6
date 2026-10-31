@@ -40,18 +40,18 @@ describe('ChallengeGroupService', () => {
   });
 
   test('creates the group with the reader as admin and lists it for them', async () => {
-    const group = await service.create(form);
+    const { group, status } = await service.create(form);
 
     assert.strictEqual(group.name.value, 'November Pages');
     assert.strictEqual(group.challenge.period.endDate, '2026-11-30');
-    assert.strictEqual(group.statusAt(service.now()), 'scheduled');
+    assert.strictEqual(status, 'scheduled');
 
     const mine = await service.forMember(USER_ID);
     assert.deepStrictEqual(
-      mine.map((g) => g.id.value),
+      mine.map((v) => v.group.id.value),
       [group.id.value],
     );
-    assert.ok((await service.get(group.id.value)).id.equals(group.id));
+    assert.ok((await service.get(group.id.value)).group.id.equals(group.id));
   });
 
   test('an unknown reader cannot create a group', async () => {

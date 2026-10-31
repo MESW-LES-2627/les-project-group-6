@@ -264,7 +264,8 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - **Member roles are parsed** with `memberRoleOf` when a group is rebuilt from the database, instead of a cast to `MemberRole`.
 - **`ReadingSession.cancel` carries its own guard** (owner and still running); the shared private helper was inlined into `cancel` and `finish`.
 - Added **R7 (proportionality)** to the [`oop-ddd-review`](../../../.claude/skills/oop-ddd-review/SKILL.md) skill: no interface for a single implementation, a growing `if/else` or `switch` is the cue for a Strategy or State, a Strategy is fine with one implementation when the variants are known, and code used once stays simple.
-- **Open on the PR:** whether to add a `MetricGoal` value object (no existing one fits), and whether `ChallengeGroupService` should return the status instead of exposing its clock.
+- **`MetricGoal` value object** replaces the raw number on a challenge (no existing value object fits: `PageCount` rejects 0, which means "no target", and `PageProgress` is a page). The `as number` cast and the inline check in `ChallengeGroup.create` are gone; an invalid goal raises `InvalidMetricGoalError`.
+- **`ChallengeGroupService` returns `{ group, status }`** and its clock is private, so the routes no longer read the time to build the DTO (`toChallengeGroupDto(group, status)`).
 
 ## Next steps
 
