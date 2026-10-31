@@ -1,7 +1,8 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import router from '@/router';
+import { createMemoryHistory, createRouter } from 'vue-router';
+
 import type { ApiBook, ApiReadingSession } from '@/services/api';
 import ActiveSessionView from '../ActiveSessionView.vue';
 
@@ -35,6 +36,18 @@ const book: ApiBook = {
   pageCount: 474,
   coverUrl: null,
 };
+
+// Stub pages: finishing or cancelling navigates away, and the app router would
+// lazy-load real views after the test file is torn down.
+const Stub = { template: '<div />' };
+const router = createRouter({
+  history: createMemoryHistory(),
+  routes: ['library', 'book-detail', 'profile'].map((name) => ({
+    name,
+    path: name === 'book-detail' ? '/library/:bookId' : `/${name}`,
+    component: Stub,
+  })),
+});
 
 function mountView() {
   return mount(ActiveSessionView, {
@@ -93,6 +106,7 @@ describe('ActiveSessionView with a server session', () => {
     await reloaded.get('.timer-button--stop').trigger('click');
     await flushPromises();
     expect(api.finishReadingSession).toHaveBeenCalledWith(SESSION_ID);
+    expect(router.currentRoute.value.name).toBe('profile');
     reloaded.unmount();
   });
 
@@ -105,6 +119,7 @@ describe('ActiveSessionView with a server session', () => {
     await flushPromises();
 
     expect(api.cancelReadingSession).toHaveBeenCalledWith(SESSION_ID);
+    expect(router.currentRoute.value.name).toBe('book-detail');
     expect(api.finishReadingSession).not.toHaveBeenCalled();
     wrapper.unmount();
   });
