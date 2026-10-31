@@ -571,3 +571,24 @@ rename to frontend and backend. can we do the same with frontend (stg) and backe
 
 #### Explanation of Changes
 Renamed the prod deploy environments to `backend` and `frontend`, and added `backend-stg` and `frontend-stg` environments with the live URL to the stg workflows. Deleted the old `production` and `production-frontend` environments. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-27: Group chat ADR
+
+- **Date:** 2026-10-27
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** architecture
+
+#### Prompt
+```text
+now create an ADR of the chat feature. Currently just with text messages. How can I implement the chat technically?
+why not websockets?
+ok, so, soon we must support videos and photos that will be stored to a bucket
+https://dev.to/ganesh_parella/how-to-design-a-real-time-chat-application-5go6 what do you think of this article approach?
+I still inclined to use websockets because is the standard
+yes, lets use socket.IO
+```
+
+#### Explanation of Changes
+Compared polling, SSE, WebSockets, Supabase Realtime and the article's large-scale design, then wrote ADR-0005 (Proposed): REST for writes, Socket.IO for push, seq cursor and client-id dedupe, and the direction for media uploads to a private bucket. Updated the ADR index and `infra.md`. See the [iteration log](log.md) entry of the same date.

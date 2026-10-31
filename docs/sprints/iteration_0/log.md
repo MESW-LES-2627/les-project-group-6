@@ -205,7 +205,14 @@ A running record of what the team did and decided in iteration 0. The [release n
 - [`release.yml`](../../../.github/workflows/release.yml) failed with HTTP 403 when listing the prod CD runs of the merged commit: its token had no `actions: read`. Added that permission.
 - It then failed in `actions/setup-node@v5` with "Unable to locate executable file: pnpm": v5 turns on the pnpm cache by itself from `packageManager` in the root `package.json`, and this job does not install pnpm. Set `package-manager-cache: false`.
 
+### 2026-10-27: Group chat ADR (proposed)
+
+- Wrote [ADR-0005](../../ADRs/0005-group-chat-realtime.md): REST stays the source of truth for sending and history, and Socket.IO only pushes `message:new` and `message:deleted` to the room of each group. Messages carry a `seq` cursor and a client id for dedupe; reconnecting fetches what was missed. Media will upload directly to a private bucket with signed URLs (details in a later ADR).
+- Why: real-time delivery for F-GRP-02 and room for later two-way features. Polling, SSE, plain `ws`, Supabase Realtime and a large-scale reference design were considered and rejected for the reasons in the ADR. Replaces the "polling or SSE" line in [`infra.md`](../../architecture/infra.md).
+
 ## Next steps
+
+- Review ADR-0005 (group chat) with the team and mark it Accepted.
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
 - Turn on branch protection on `main` (required `backend` check and one approval), and uncomment `frontend-ci.yml` when `apps/frontend` exists.
