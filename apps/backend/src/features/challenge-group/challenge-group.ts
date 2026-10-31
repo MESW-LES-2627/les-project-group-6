@@ -208,7 +208,11 @@ export class ChallengeGroup {
       description: props.description?.trim() ?? '',
       adminId: props.adminId,
       members: [{ userId: props.adminId, role: 'admin', joinedAt: now }],
-      challenge: { period: props.period, winMetric: props.winMetric, metricGoal: props.metricGoal ?? MetricGoal.none() },
+      challenge: {
+        period: props.period,
+        winMetric: props.winMetric,
+        metricGoal: props.metricGoal ?? MetricGoal.none(),
+      },
       createdAt: now,
     });
   }
