@@ -1,3 +1,4 @@
+import type { Clock } from '../../utils/clock.js';
 import { BusinessRuleViolationError, NotFoundError } from '../../utils/errors.js';
 import { BookId } from '../book/book.js';
 import type { IBookRepository } from '../book/book-repository.js';
@@ -26,8 +27,6 @@ export interface FinishReadingSessionCommand {
   userId: unknown;
 }
 
-export type Clock = () => Date;
-
 // Application service: one method per use case on the reader's timed sessions.
 export class ReadingSessionService {
   constructor(
@@ -47,15 +46,18 @@ export class ReadingSessionService {
     const book = await this.books.findById(bookId);
     if (!book) throw new NotFoundError('Book');
 
-    const active = await this.sessions.findActiveByUser(userId);
-    if (active) {
-      if (active.bookId.equals(bookId)) return active;
-      throw new AnotherSessionActiveError();
-    }
+    // Check-then-insert must not interleave for one reader (double click, two tabs).
+    return this.sessions.withReaderLock(userId, async (sessions) => {
+      const active = await sessions.findActiveByUser(userId);
+      if (active) {
+        if (active.bookId.equals(bookId)) return active;
+        throw new AnotherSessionActiveError();
+      }
 
-    const session = ReadingSession.start(userId, bookId, this.now());
-    await this.sessions.save(session);
-    return session;
+      const session = ReadingSession.start(userId, bookId, this.now());
+      await sessions.save(session);
+      return session;
+    });
   }
 
   /** Stops the timer and records the minutes measured by the server. */

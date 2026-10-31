@@ -1,5 +1,6 @@
 import { and, count, eq, isNotNull, isNull, sql } from 'drizzle-orm';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { NodePgQueryResultHKT } from 'drizzle-orm/node-postgres';
+import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { readingSessions } from '../../database/schema.js';
 import { BookId } from '../book/book.js';
 import { UserId } from '../user/user.js';
@@ -16,6 +17,14 @@ export interface IReadingSessionRepository {
   statsForUser(userId: UserId): Promise<ReadingStats>;
   save(session: ReadingSession): Promise<void>;
   delete(id: ReadingSessionId): Promise<void>;
+  /**
+   * Runs `work` in a transaction holding a lock on this reader, so two requests for
+   * the same reader run one after the other. `work` gets the repository to use inside it.
+   */
+  withReaderLock<T>(
+    userId: UserId,
+    work: (sessions: IReadingSessionRepository) => Promise<T>,
+  ): Promise<T>;
 }
 
 type ReadingSessionRow = typeof readingSessions.$inferSelect;
@@ -46,7 +55,7 @@ function toRow(session: ReadingSession): typeof readingSessions.$inferInsert {
 }
 
 export class DrizzleReadingSessionRepository implements IReadingSessionRepository {
-  constructor(private readonly db: NodePgDatabase) {}
+  constructor(private readonly db: PgDatabase<NodePgQueryResultHKT>) {}
 
   async findById(id: ReadingSessionId): Promise<ReadingSession | null> {
     const rows = await this.db
@@ -96,5 +105,17 @@ export class DrizzleReadingSessionRepository implements IReadingSessionRepositor
 
   async delete(id: ReadingSessionId): Promise<void> {
     await this.db.delete(readingSessions).where(eq(readingSessions.id, id.value));
+  }
+
+  async withReaderLock<T>(
+    userId: UserId,
+    work: (sessions: IReadingSessionRepository) => Promise<T>,
+  ): Promise<T> {
+    return this.db.transaction(async (tx) => {
+      // Released at commit or rollback. A second request for the same reader waits here,
+      // then sees the session the first one inserted.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${userId.value}))`);
+      return work(new DrizzleReadingSessionRepository(tx));
+    });
   }
 }

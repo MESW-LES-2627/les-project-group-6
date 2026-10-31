@@ -87,6 +87,14 @@ export class InMemoryReadingSessionRepository implements IReadingSessionReposito
   async delete(id: ReadingSessionId): Promise<void> {
     this.sessions.delete(id.value);
   }
+
+  // Readers are served one at a time here, so there is nothing to lock.
+  async withReaderLock<T>(
+    _userId: UserId,
+    work: (sessions: IReadingSessionRepository) => Promise<T>,
+  ): Promise<T> {
+    return work(this);
+  }
 }
 
 export class InMemoryUserRepository implements IUserRepository {
