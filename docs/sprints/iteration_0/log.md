@@ -386,6 +386,10 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 
 - Wrote [ADR-0005](../../ADRs/0005-server-timed-reading-sessions.md) (Proposed): sessions are timed by the server clock with start and finish requests, resume on reload, can be cancelled and have no pause; one finished session counts for every minutes challenge whose period contains it and once on the profile. *Rejected:* client-sent durations, heartbeats (for now) and linking a session to one group. Added it to the [docs index](../../README.md) and the step-by-step request and database flow to PR #102.
 
+### 2026-10-31: Books on the challenge leaderboard
+
+- Each leaderboard standing now lists the books its minutes were read in (`books: [{ bookId, title, minutes }]`), since a reader can read several books in one challenge. The [standings query](../../../apps/backend/src/features/challenge-group/standings-query.ts) groups finished sessions by member **and** book and joins `books` for the title; the score is their sum. The [leaderboard](../../../apps/frontend/src/components/groups/GroupLeaderboard.vue) shows them under each member, most minutes first. Checked against a migrated database: 10 + 12 min of Emma and 15 min of The Midnight Library give a score of 37, and a session finished before the challenge is excluded.
+
 ## Next steps
 
 - Review ADR-0005 with the team and mark it Accepted.

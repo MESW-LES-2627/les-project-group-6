@@ -310,6 +310,8 @@ export interface ApiStanding {
   role: string;
   /** Null when the metric is not tracked yet (only minutes is). */
   score: number | null;
+  /** What the score was read in, most minutes first. */
+  books: { bookId: string; title: string; minutes: number }[];
 }
 
 export interface ApiChallengeGroupDetail extends ApiChallengeGroup {
@@ -396,6 +398,7 @@ export function mapApiGroupToChallengeDetail(
       rank,
       score: tracked ? `${s.score} ${unit}`.trim() : '—',
       note: s.role === 'admin' ? 'Admin' : 'Member',
+      books: s.books.map((b) => ({ title: b.title, score: `${b.minutes} min` })),
     };
   });
 

@@ -35,6 +35,14 @@ const apiGroup: ApiChallengeGroupDetail = {
       username: 'demo_reader',
       role: 'admin',
       score: 40,
+      books: [
+        { bookId: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01', title: 'Emma', minutes: 25 },
+        {
+          bookId: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02',
+          title: 'The Midnight Library',
+          minutes: 15,
+        },
+      ],
     },
   ],
 };
@@ -119,6 +127,13 @@ describe('GroupDetailView', () => {
     expect(wrapper.get('h1').text()).toBe('Halloween Sprint');
     expect(wrapper.findAll('.board > li')).toHaveLength(1);
     expect(wrapper.get('.board').text()).toContain('40 min');
+    const books = wrapper
+      .findAll('.board .books li')
+      .map((li) => [li.get('.book-title').text(), li.get('.book-score').text()]);
+    expect(books).toEqual([
+      ['Emma', '25 min'],
+      ['The Midnight Library', '15 min'],
+    ]);
     expect(wrapper.text()).not.toContain('Last month’s result');
   });
 

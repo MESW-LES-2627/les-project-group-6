@@ -23,6 +23,16 @@ defineProps<{
           <p class="note">
             <span v-if="entry.finished" aria-hidden="true">✓ </span>{{ entry.note }}
           </p>
+          <ul
+            v-if="entry.books?.length"
+            class="books"
+            :aria-label="`Books read by ${entry.member.name}`"
+          >
+            <li v-for="book in entry.books" :key="book.title">
+              <span class="book-title">{{ book.title }}</span>
+              <span class="book-score">{{ book.score }}</span>
+            </li>
+          </ul>
         </div>
         <span class="score">{{ entry.score }}</span>
       </div>
@@ -71,6 +81,31 @@ defineProps<{
 .name,
 .note {
   margin: 0;
+}
+
+.books {
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.books li {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+.book-title {
+  overflow: hidden;
+  font-style: italic;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-score {
+  flex-shrink: 0;
 }
 
 .name {

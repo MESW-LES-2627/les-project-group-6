@@ -41,7 +41,7 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | `DELETE` | `/reading-sessions/:id` | Cancels a running session started by mistake; nothing is counted (`204`; `409` if already finished) |
 | `GET` | `/user/:userId/reading-sessions/active` | Returns the running session with server-measured `elapsedSeconds` (`200` or `204`) |
 | `POST` | `/groups/challenges` | Creates a challenge group (`name`, `startDate`, `durationDays`, `winMetric`); the creator is admin and first member (`201`) |
-| `GET` | `/groups/challenges/:id` | Returns the group, its challenge and `standings` (counted minutes of sessions finished in the period) (`200` or `404`) |
+| `GET` | `/groups/challenges/:id` | Returns the group, its challenge and `standings` (counted minutes of sessions finished in the period, split by book in `books`) (`200` or `404`) |
 | `GET` | `/user/:userId/groups` | Lists the challenge groups the user belongs to (`200 OK`) |
 | `GET` | `/user/:userId/reading-stats` | Returns `{ totalMinutes, sessionsCount }` over finished sessions (`200 OK`) |
 

@@ -730,3 +730,19 @@ can we add this stats in the profile page?
 
 #### Explanation of Changes
 The profile's reading time now shows both values from `GET /user/:userId/reading-stats`: total counted minutes and, below it, the number of finished sessions. Added a `ProfileView` test for the API values, the empty state and the mock fallback. See the [iteration log](log.md).
+
+### 2026-10-31: Books on the challenge leaderboard
+
+- **Date:** 2026-10-31
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, frontend, testing
+
+#### Prompt
+```text
+can we also add the name of the book read in the leaderboard? ok, we read 1 min, but which book? we need to know. we can read more than one book concurrently, so, in this case it can be 1 min to book A and 1 to book B...
+```
+
+#### Explanation of Changes
+The standings query now groups counted minutes by member and book (joining `books` for the title) and returns a `books` list per standing; the leaderboard shows each book and its minutes under the member. Updated the group page test and checked the SQL against a migrated database. See the [iteration log](log.md).
