@@ -15,8 +15,8 @@ const importedNote = computed(
     <h2 id="reading-time-title" class="section-title">Reading time</h2>
     <div class="row">
       <p class="total">
-        <span class="number">{{ stats.countedHours }}</span>
-        <span class="muted unit">{{ stats.countedHours === 1 ? 'hour' : 'hours' }}</span>
+        <span class="number">{{ stats.countedMinutes }}</span>
+        <span class="muted unit">{{ stats.countedMinutes === 1 ? 'minute' : 'minutes' }}</span>
       </p>
       <p v-if="stats.importedHours > 0" class="note">
         <svg
@@ -36,7 +36,7 @@ const importedNote = computed(
         <span>{{ importedNote }}</span>
       </p>
     </div>
-    <p v-if="stats.countedHours === 0" class="muted hint">
+    <p v-if="stats.countedMinutes === 0" class="muted hint">
       Start a reading session and the minutes add up here.
     </p>
   </section>

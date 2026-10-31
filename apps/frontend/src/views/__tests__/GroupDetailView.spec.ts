@@ -1,8 +1,43 @@
-import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { flushPromises, mount } from '@vue/test-utils';
+import { describe, expect, it, vi } from 'vitest';
 
 import router from '@/router';
+import { DEMO_USER_ID, type ApiChallengeGroupDetail } from '@/services/api';
 import GroupDetailView from '../GroupDetailView.vue';
+
+const getChallengeGroup = vi.hoisted(() =>
+  vi.fn<(groupId: string) => Promise<ApiChallengeGroupDetail>>(),
+);
+
+vi.mock('@/services/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/api')>()),
+  getChallengeGroup,
+}));
+
+const apiGroup: ApiChallengeGroupDetail = {
+  id: 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
+  name: 'Halloween Sprint',
+  description: '',
+  adminId: DEMO_USER_ID,
+  status: 'active',
+  challenge: {
+    startDate: '2026-10-31',
+    endDate: '2026-11-06',
+    winMetric: 'minutes',
+    metricGoal: 0,
+  },
+  members: [{ userId: DEMO_USER_ID, role: 'admin', joinedAt: '2026-10-31T10:00:00Z' }],
+  createdAt: '2026-10-31T10:00:00Z',
+  standings: [
+    {
+      userId: DEMO_USER_ID,
+      displayName: 'Demo Reader',
+      username: 'demo_reader',
+      role: 'admin',
+      score: 40,
+    },
+  ],
+};
 
 function mountGroup(groupId: string) {
   return mount(GroupDetailView, { props: { groupId }, global: { plugins: [router] } });
@@ -75,9 +110,23 @@ describe('GroupDetailView', () => {
     expect(wrapper.findAll('.options > li')).toHaveLength(4);
   });
 
-  it('explains when a group has no page in the prototype', () => {
-    const wrapper = mountGroup('winter-classics');
+  it('loads a created challenge group from the API with its minutes leaderboard', async () => {
+    getChallengeGroup.mockResolvedValueOnce(apiGroup);
+    const wrapper = mountGroup(apiGroup.id);
+    await flushPromises();
 
-    expect(wrapper.get('h1').text()).toContain('not part of the prototype');
+    expect(getChallengeGroup).toHaveBeenCalledWith(apiGroup.id);
+    expect(wrapper.get('h1').text()).toBe('Halloween Sprint');
+    expect(wrapper.findAll('.board > li')).toHaveLength(1);
+    expect(wrapper.get('.board').text()).toContain('40 min');
+    expect(wrapper.text()).not.toContain('Last month’s result');
+  });
+
+  it('explains when a group cannot be found', async () => {
+    getChallengeGroup.mockRejectedValueOnce(new Error('HTTP 404'));
+    const wrapper = mountGroup('winter-classics');
+    await flushPromises();
+
+    expect(wrapper.get('h1').text()).toBe('This group could not be found.');
   });
 });

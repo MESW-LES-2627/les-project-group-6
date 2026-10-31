@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import GroupCard from '@/components/groups/GroupCard.vue';
 import GroupsPageHeader from '@/components/groups/GroupsPageHeader.vue';
 import InfoNote from '@/components/groups/InfoNote.vue';
 import { mockGroups, mockInvitation } from '@/mocks/groups';
+import { getUserGroups, mapApiGroupToSummary } from '@/services/api';
 import type { GroupSummary } from '@/types/groups';
 
-// Mock data until the groups API exists. Accepting or declining only changes this page.
+// Challenge groups the reader created come from the API, listed before the mock
+// groups. Accepting or declining the mock invitation only changes this page.
 type FilterId = 'all' | 'challenge' | 'book-club' | 'active' | 'scheduled' | 'completed';
 
 const groups = ref<GroupSummary[]>([...mockGroups]);
@@ -40,6 +42,15 @@ const visible = computed(() =>
     return group.status === filter.value;
   }),
 );
+
+onMounted(async () => {
+  try {
+    const mine = (await getUserGroups()).map((group) => mapApiGroupToSummary(group));
+    groups.value = [...mine, ...groups.value];
+  } catch {
+    // Keep the mock groups when the API is unreachable
+  }
+});
 
 function acceptInvitation() {
   if (!invitation.value) return;

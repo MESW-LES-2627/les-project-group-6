@@ -9,13 +9,20 @@ import MemberAvatar from '@/components/groups/MemberAvatar.vue';
 import { mockCurrentMemberId } from '@/mocks/groups';
 import type { ChallengeDetail } from '@/types/groups';
 
-const props = defineProps<{ challenge: ChallengeDetail }>();
+const props = withDefaults(
+  defineProps<{
+    challenge: ChallengeDetail;
+    /** The viewing reader's member id; the mock pages use Eleanor. */
+    meId?: string;
+  }>(),
+  { meId: mockCurrentMemberId },
+);
 
 type Tab = 'chat' | 'members' | 'history';
 
 const tab = ref<Tab>('chat');
 const rematchStarted = ref(false);
-const me = props.challenge.members.find((m) => m.id === mockCurrentMemberId)!;
+const me = props.challenge.members.find((m) => m.id === props.meId) ?? props.challenge.members[0]!;
 
 const tabs = [
   { id: 'chat', label: 'Chat' },
@@ -69,14 +76,14 @@ const tabs = [
             </button>
           </div>
           <p class="lede">Counted minutes · tied scores share a rank</p>
-          <GroupLeaderboard :entries="challenge.leaderboard" :me-id="mockCurrentMemberId" />
+          <GroupLeaderboard :entries="challenge.leaderboard" :me-id="meId" />
           <InfoNote class="fair" title="A fair finish">
             At the end, results freeze. All tied leaders win. We use shared ranks for tied scores;
             the next distinct score gets the next rank.
           </InfoNote>
         </section>
 
-        <section class="panel result" aria-labelledby="last-title">
+        <section v-if="challenge.lastResult" class="panel result" aria-labelledby="last-title">
           <h2 id="last-title" class="panel-heading">Last month’s result</h2>
           <p class="eyebrow muted">{{ challenge.lastResult.label }}</p>
           <p class="result-summary">{{ challenge.lastResult.summary }}</p>

@@ -1,24 +1,26 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
+// No pause: a session is finished and a new one started instead, so the
+// server can time it from start to finish.
 const props = withDefaults(
   defineProps<{
     /** Time already spent reading when the screen opens, in seconds. */
     initialSeconds?: number;
     /** The design shows an already-running session. */
     autoStart?: boolean;
+    /** The session is being saved or cancelled; the actions are disabled. */
+    busy?: boolean;
   }>(),
-  { initialSeconds: 0, autoStart: true },
+  { initialSeconds: 0, autoStart: true, busy: false },
 );
 
 const emit = defineEmits<{
-  pause: [];
-  resume: [];
   stop: [];
+  cancel: [];
 }>();
 
 const elapsedSeconds = ref(props.initialSeconds);
-const running = ref(false);
 let interval: number | undefined;
 
 const formattedTime = computed(() => {
@@ -30,8 +32,6 @@ const formattedTime = computed(() => {
   return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
 });
 
-const statusLabel = computed(() => (running.value ? 'Active' : 'Paused'));
-
 function clearTimer() {
   if (interval !== undefined) {
     window.clearInterval(interval);
@@ -41,33 +41,18 @@ function clearTimer() {
 
 function startTimer() {
   clearTimer();
-  running.value = true;
   interval = window.setInterval(() => {
     elapsedSeconds.value += 1;
   }, 1000);
 }
 
-function pauseTimer() {
-  if (!running.value) return;
-  clearTimer();
-  running.value = false;
-  emit('pause');
-}
-
-function toggleTimer() {
-  if (running.value) {
-    pauseTimer();
-    return;
-  }
-
-  startTimer();
-  emit('resume');
-}
-
 function stopSession() {
   clearTimer();
-  running.value = false;
   emit('stop');
+}
+
+function cancelSession() {
+  emit('cancel');
 }
 
 onMounted(() => {
@@ -87,36 +72,25 @@ onBeforeUnmount(clearTimer);
 
     <p class="timer-status">
       <span class="status-dot" aria-hidden="true"></span>
-      {{ statusLabel }} <span aria-hidden="true">•</span> Timer pauses exclude reading time
+      Active <span aria-hidden="true">•</span> Finish and start a new session to take a break
     </p>
 
     <div class="timer-actions">
-      <button type="button" class="timer-button timer-button--pause" @click="toggleTimer">
-        <svg
-          v-if="running"
-          width="10"
-          height="12"
-          viewBox="0 0 10 12"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <rect x="1" y="1" width="2.6" height="10" rx="0.8" />
-          <rect x="6.4" y="1" width="2.6" height="10" rx="0.8" />
-        </svg>
-        <svg
-          v-else
-          width="11"
-          height="12"
-          viewBox="0 0 12 12"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path d="M2 1.4v9.2c0 .5.5.8.9.5l7-4.6a.6.6 0 0 0 0-1L2.9.9a.6.6 0 0 0-.9.5Z" />
-        </svg>
-        {{ running ? 'Pause' : 'Resume' }}
+      <button
+        type="button"
+        class="timer-button timer-button--cancel"
+        :disabled="busy"
+        @click="cancelSession"
+      >
+        Cancel session
       </button>
 
-      <button type="button" class="timer-button timer-button--stop" @click="stopSession">
+      <button
+        type="button"
+        class="timer-button timer-button--stop"
+        :disabled="busy"
+        @click="stopSession"
+      >
         <svg
           width="12"
           height="12"
@@ -133,7 +107,7 @@ onBeforeUnmount(clearTimer);
       </button>
     </div>
 
-    <p class="timer-hint">When paused, this control becomes Resume. Your book stays selected.</p>
+    <p class="timer-hint">Cancelling discards this session; no minutes are saved.</p>
   </section>
 </template>
 
@@ -212,14 +186,14 @@ onBeforeUnmount(clearTimer);
     border-color var(--duration-fast);
 }
 
-.timer-button--pause {
+.timer-button--cancel {
   min-width: 90px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
 }
 
-.timer-button--pause:hover {
+.timer-button--cancel:hover {
   border-color: var(--color-accent);
   background: var(--color-surface-hover);
 }
@@ -229,6 +203,11 @@ onBeforeUnmount(clearTimer);
   border: 1px solid var(--color-primary);
   background: var(--color-primary);
   color: var(--color-on-primary-strong);
+}
+
+.timer-button:disabled {
+  cursor: progress;
+  opacity: 0.6;
 }
 
 .timer-button--stop:hover {

@@ -83,7 +83,8 @@ export interface ChallengeDetail {
   messages: ChatMessage[];
   members: GroupMember[];
   history: PastResult[];
-  lastResult: PastResult;
+  /** Absent for a group's first challenge */
+  lastResult?: PastResult;
   rules: FairRule[];
   rulesNote: string;
 }

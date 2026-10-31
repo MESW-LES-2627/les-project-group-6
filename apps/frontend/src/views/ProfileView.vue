@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 import ProfileBookplate from '@/components/profile/ProfileBookplate.vue';
@@ -13,10 +13,26 @@ import ReadingTime from '@/components/profile/ReadingTime.vue';
 import BookShelf from '@/components/profile/BookShelf.vue';
 import StreakCalendar from '@/components/profile/StreakCalendar.vue';
 import { mockNewUserProfile, mockProfile } from '@/mocks/profile';
+import { getReadingStats } from '@/services/api';
 
 // Mock data until the profile API exists. `/profile?state=new` shows the empty states.
+// Reading time already comes from the server-timed sessions.
 const route = useRoute();
-const profile = computed(() => (route.query.state === 'new' ? mockNewUserProfile : mockProfile));
+const countedMinutes = ref<number | null>(null);
+
+const profile = computed(() => {
+  const base = route.query.state === 'new' ? mockNewUserProfile : mockProfile;
+  if (countedMinutes.value === null) return base;
+  return { ...base, readingTime: { ...base.readingTime, countedMinutes: countedMinutes.value } };
+});
+
+onMounted(async () => {
+  try {
+    countedMinutes.value = (await getReadingStats()).totalMinutes;
+  } catch {
+    // Keep the mock reading time when the API is unreachable
+  }
+});
 </script>
 
 <template>
