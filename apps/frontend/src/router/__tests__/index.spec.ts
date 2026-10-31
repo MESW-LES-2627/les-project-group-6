@@ -53,4 +53,16 @@ describe('router', () => {
 
     expect(router.currentRoute.value.name).toBe('not-found');
   });
+
+  it('routes to the groups pages', async () => {
+    await router.push('/groups');
+    expect(router.currentRoute.value.name).toBe('groups');
+
+    await router.push('/groups/new');
+    expect(router.currentRoute.value.name).toBe('group-create');
+
+    await router.push('/groups/october-sprint');
+    expect(router.currentRoute.value.name).toBe('group-detail');
+    expect(router.currentRoute.value.params.groupId).toBe('october-sprint');
+  });
 });

@@ -52,7 +52,7 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 
 The application source code. Each app is a pnpm workspace with its own `package.json`, `tsconfig.json` (extending the root base) and ESLint config. Tooling shared by every app lives in the repository root (see [Root config](#root-config)).
 
-- `apps/frontend/`: the Vue 3 web client with shared CSS tokens, Home backend health status, a profile page prototype with mock data, router and component tests, ESLint, Prettier, vue-tsc and Vitest. See [apps/frontend/README.md](apps/frontend/README.md) for commands and production API routing.
+- `apps/frontend/`: the Vue 3 web client with shared CSS tokens, Home backend health status, a profile page prototype and a groups prototype (list, create, challenge, book club), both with mock data, router and component tests, ESLint, Prettier, vue-tsc and Vitest. See [apps/frontend/README.md](apps/frontend/README.md) for commands and production API routing.
   Authentication is at `/login`: the reference-based login/sign-up screen, an SDK-backed Supabase skeleton in `src/services/auth.ts`, integration tests, and the reference photo in `src/assets/auth/`. See the frontend guide for credentials and remaining integration work.
 - `apps/backend/`: the server, API and business logic (TypeScript, Node.js, Express). See [apps/backend/README.md](apps/backend/README.md) for how to run it.
 

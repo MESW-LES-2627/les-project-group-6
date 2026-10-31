@@ -28,6 +28,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Library page prototype (#76) | Responsive `/library` UI with reusable card and shelves components, filters, tests, and API integration with user library endpoint |
 | Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels, and API reading status updates |
 | Active reading session | Responsive `/session/:bookId` with a separate timer, progress editor, session notes and group-counting rail; save wiring still to do |
+| Groups pages prototype | `/groups`, `/groups/new` and `/groups/:groupId` (challenge and book club) built from design screens 12 to 15 with mock data; no backend yet |
 | Profile page prototype | `/profile` with app header and footer, mock data and empty states, built on the #64 skeleton |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
 | Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
@@ -236,6 +237,17 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 
 - [`release.yml`](../../../.github/workflows/release.yml) failed with HTTP 403 when listing the prod CD runs of the merged commit: its token had no `actions: read`. Added that permission.
 - It then failed in `actions/setup-node@v5` with "Unable to locate executable file: pnpm": v5 turns on the pnpm cache by itself from `packageManager` in the root `package.json`, and this job does not install pnpm. Set `package-manager-cache: false`.
+
+### 2026-10-27: Groups pages prototype (screens 12 to 15)
+
+- Built the groups area of the frontend with mock data, from the design screens [12](../../design/screens/12-groups.png), [13](../../design/screens/13-challenge.png), [14](../../design/screens/14-book-club.png) and [15](../../design/screens/15-create-group.png) and the group requirements (F-GRP-01 to F-GRP-08, F-READ-03):
+  - [`/groups`](../../../apps/frontend/src/views/GroupsView.vue): invitation (accept adds the group, decline hides it), filters by kind and status, group cards with rematch buttons.
+  - [`/groups/new`](../../../apps/frontend/src/views/CreateGroupView.vue): the four-step form (scene, challenge or club settings, fair-reading rules, friends) with a live "at a glance" preview and name validation.
+  - `/groups/:groupId`: [challenge page](../../../apps/frontend/src/views/ChallengeGroupView.vue) (stats, leaderboard with shared ranks, chat, members and history tabs, rules) and [book club page](../../../apps/frontend/src/views/BookClubGroupView.vue) (round, progress, chat, voting). Only `october-sprint` and `classics` have a full page; other groups show a short "not in the prototype" message.
+- Mock data in [`mocks/groups.ts`](../../../apps/frontend/src/mocks/groups.ts); chat messages, votes and invitations only change local state. Creating a group returns to `/groups` without saving it.
+- The header "Groups" link now points to `/groups` and nav links stay highlighted on nested routes. Added shared `.panel`, `.button-outline`, `.eyebrow` and `.tag` classes to `main.css`.
+- Kept the app's name "Bookmarked" in the header and footer; the design screens still say "Marginalia".
+- Added view, router and helper tests.
 
 ## Next steps
 
