@@ -11,7 +11,7 @@ pnpm dev:backend
 pnpm --filter @bookmarked/frontend dev
 ```
 
-Open the Vite URL (normally http://localhost:5173), then visit `/home`. The profile prototype is at `/profile` (mock data); `/profile?state=new` shows every section's empty state. The placeholder initially shows “Checking backend…” and then the backend result (normally “Backend status: ok”) or an error. It remains available in production as a connection smoke check.
+Open the Vite URL (normally http://localhost:5173), then visit `/home` for the home prototype (mock data, from design screen 05). The profile prototype is at `/profile` (mock data); `/profile?state=new` shows every section's empty state.
 
 The groups prototype (mock data only) is at `/groups`: the list, `/groups/new` to create a group, and `/groups/october-sprint` (challenge) and `/groups/classics` (book club).
 
@@ -29,7 +29,7 @@ Build with `pnpm --filter @bookmarked/frontend build` and deploy `dist/`. Config
 
 Alternatively, set `VITE_API_BASE_URL` to the public backend URL **at build time** (e.g. on Render's Environment settings). The Express backend configures permissive CORS headers to support cross-origin requests. Do not put secrets in `VITE_*` variables, which are public in the bundle.
 
-After deployment, open `/home` and check for “Backend status: ok” and a successful `/health` request in browser network tools. Production verification requires a deployed frontend/backend and host routing.
+After deployment, open `/library` and check for a successful library API request in browser network tools (the home page uses mock data only). Production verification requires a deployed frontend/backend and host routing.
 
 ## Checks
 
@@ -49,7 +49,7 @@ Lint uses Oxlint and ESLint with `eslint-plugin-vue`. Formatting uses the root P
 
 - `src/assets/styles/tokens.css`: brand colors, semantic aliases, typography, spacing, radii and layout/motion tokens. Use the `--font-size-*` scale for font sizes.
 - `src/assets/styles/main.css`: global styles and shared classes (`.page-column`, `.button`, `.text-link`, `.book-link`, `.progress-bar`, `.section-title`, `.sr-only`).
-- `src/views/`: the authentication screen, Home and not-found placeholders, the profile, library, book-detail and active-session prototypes, and the groups pages (`GroupsView`, `CreateGroupView`, `GroupDetailView`, which shows `ChallengeGroupView` or `BookClubGroupView`); view tests live in `__tests__/`.
+- `src/views/`: the authentication screen, the home page prototype (`HomeView`, mock data in `src/mocks/home.ts`), the not-found placeholder, the profile, library, book-detail and active-session prototypes, and the groups pages (`GroupsView`, `CreateGroupView`, `GroupDetailView`, which shows `ChallengeGroupView` or `BookClubGroupView`); view tests live in `__tests__/`.
 - `src/components/layout/`: `AppHeader` and `AppFooter`, hidden on routes with `meta.hideAppChrome` (Login).
 - `src/components/library/`: reusable book card, shelves sidebar and book-detail panels.
 - `src/components/groups/`: the groups building blocks (`GroupCard`, `GroupLeaderboard`, `GroupChat`, `GroupsPageHeader`, `InfoNote`, `ToggleSwitch`, `MemberAvatar`).

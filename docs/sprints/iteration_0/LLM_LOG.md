@@ -661,3 +661,21 @@ use the docs/design/screens 12, 13, 14, 15. Implement them using mocks in front 
 
 #### Explanation of Changes
 Added the `/groups`, `/groups/new` and `/groups/:groupId` pages (groups list, create group, challenge and book club) with mock data, shared group components, tests and the header link. Checked with typecheck, lint, tests, build and headless screenshots against the design. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-27: Home page prototype
+
+- **Date:** 2026-10-27
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend
+
+#### Prompt
+```text
+Can you create another mocked page to @docs/design/screens/05-home.png and @docs/design/screens/16-profile.png ? this way we will have all mocked pages. Add into a new pr
+actually, create just the home apge
+the home page is is mocked for now, no need to access backend
+```
+
+#### Explanation of Changes
+Replaced the Home placeholder with the `/home` page from design screen 05 using mock data (`mocks/home.ts`, `types/home.ts`) with no backend calls (the old health status was removed), and added view tests. Checked with tests, lint and typecheck. See the [iteration log](log.md) entry of the same date.

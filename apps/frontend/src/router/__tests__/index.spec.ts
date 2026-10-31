@@ -16,7 +16,7 @@ describe('router', () => {
     expect(router.currentRoute.value.meta.hideAppChrome).toBe(true);
   });
 
-  it('routes to the home placeholder', async () => {
+  it('routes to the home page', async () => {
     await router.push('/home');
 
     expect(router.currentRoute.value.name).toBe('home');
