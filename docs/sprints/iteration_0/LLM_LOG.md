@@ -679,3 +679,21 @@ the home page is is mocked for now, no need to access backend
 
 #### Explanation of Changes
 Replaced the Home placeholder with the `/home` page from design screen 05 using mock data (`mocks/home.ts`, `types/home.ts`) with no backend calls (the old health status was removed), and added view tests. Checked with tests, lint and typecheck. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-31: Server-timed reading sessions and profile minutes
+
+- **Date:** 2026-10-31
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, frontend, testing
+
+#### Prompt
+```text
+we still don't have the integration between supabase auth and the app, so, we are using the table users? because I want to build the function of create a challenge group, start a reading session that is basically a timer, link a book that I am reading and save the timer to my profile stats when I click on finish timer. The number of minutes read will be in the profile page.
+In my opinion, we can send 2 requests and the time of the reading session can be validated in the server. This way we avoid users to manipulate the time in frontend
+first of all, we don't need a pause button, just finish a session and start another one. be sure we have unit tests to ensure the page reaload will use the same reading session. We need to have a way to cancel the reading session too, maybe someone clicked by mistake. After that you can go ahead and follow with the implementation
+```
+
+#### Explanation of Changes
+Added the backend `reading-session` feature (aggregate, repository with stats, service, DTO, routes) where the server clock measures the session, with unit tests; removed the timer's pause, added cancel, added page-reload tests, and wired the active session page to start, finish and cancel it and the profile page to show counted minutes. Checked with typecheck, lint, unit tests, frontend tests and a manual curl run against a freshly migrated database. Then added challenge group creation: backend `challenge-group` feature (aggregate over `groups`, `member`, `challenges`; minutes standings from finished reading sessions), the create form saving through the API, the groups list and group page loading real groups, with unit and view tests and a manual curl run against a migrated database. See the [iteration log](log.md) entry of the same date.

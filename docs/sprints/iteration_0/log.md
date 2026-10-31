@@ -27,9 +27,9 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
 | Library page prototype (#76) | Responsive `/library` UI with reusable card and shelves components, filters, tests, and API integration with user library endpoint |
 | Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels, and API reading status updates |
-| Active reading session | Responsive `/session/:bookId` with a separate timer, progress editor, session notes and group-counting rail; save wiring still to do |
+| Active reading session | `/session/:bookId` starts, finishes or cancels a server-timed session for real books (`/reading-sessions`); counted minutes show on `/profile`. Page progress on finish and group counting still to do |
 | Home page prototype | `/home` built from design screen 05 with mock data only, no backend calls; no home API yet |
-| Groups pages prototype | `/groups`, `/groups/new` and `/groups/:groupId` (challenge and book club) built from design screens 12 to 15 with mock data; no backend yet |
+| Groups pages prototype | `/groups`, `/groups/new` and `/groups/:groupId` built from design screens 12 to 15; creating a challenge group is saved through the API with a minutes leaderboard; book clubs, invites and fair-reading settings still mock |
 | Profile page prototype | `/profile` with app header and footer, mock data and empty states, built on the #64 skeleton |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
 | Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
@@ -365,8 +365,25 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - Updated the [backend README](../../../apps/backend/README.md#folder-layout) and the [`oop-ddd-review`](../../../.claude/skills/oop-ddd-review/SKILL.md) skill layout. No behaviour change: the JSON contract is the same and the 58 tests pass.
 - **Decision: rename the `features/reading/` folder to `features/reading-status/`.** *Why:* every file inside, the `ReadingStatus` class, the `reading_status` table, the `/reading-status` endpoint and the docs already use "reading status"; a bare `reading` could be confused with the active reading session. *Rejected:* `book-status`, because the aggregate belongs to a user and a book together (each reader has their own status for the same book), and it would clash with any future catalogue status of a book itself.
 
+### 2026-10-31: Server-timed reading sessions and profile minutes
+
+- Added the [`reading-session`](../../../apps/backend/src/features/reading-session/) backend feature on the existing `reading_sessions` table: `POST /reading-sessions` starts (or resumes) a session, `PATCH /reading-sessions/:id/finish` stops it, `GET /user/:userId/reading-sessions/active` and `GET /user/:userId/reading-stats` read it. Endpoints listed in the [backend README](../../../apps/backend/README.md).
+- **Decision: the server clock measures the session, not the client.** The client sends two requests (start, finish) and never a duration, so a user cannot inflate minutes. *Rejected:* one `POST` on finish with the client's elapsed time, because the client controls it. Consequences: there is no pause (to take a break, finish and start a new session; the Pause button was removed), only one session runs per user (`409`), and counted minutes are capped at 12 h per session for forgotten timers.
+- [`ActiveSessionView`](../../../apps/frontend/src/views/ActiveSessionView.vue) loads real books by UUID, starts the session on open, seeds the timer from the server's `elapsedSeconds` (a reload resumes it) and finishes it on "Stop & save", then opens `/profile`. Mock books (`emma`) keep the design data.
+- [`/profile`](../../../apps/frontend/src/views/ProfileView.vue) reading time is now in minutes (`ReadingTimeStats.countedMinutes`) and comes from `/reading-stats`, falling back to the mock.
+- Added **Cancel session** (`DELETE /reading-sessions/:id`, after a confirm dialog) for a session started by mistake: the row is deleted and nothing counts. Tests cover a page reload reusing the same session (backend service and a view test with a fake server) and cancel.
+- User identity is still the seeded demo user (`DEMO_USER_ID`) sent in the body or path until Supabase Auth is wired; then a middleware will read it from the token.
+
+### 2026-10-31: Create a challenge group
+
+- Added the [`challenge-group`](../../../apps/backend/src/features/challenge-group/) backend feature: a `ChallengeGroup` aggregate stored across the existing `groups`, `member` and `challenges` tables in one transaction, with `GroupName`, `WinMetric` and `ChallengePeriod` value objects. `POST /groups/challenges`, `GET /groups/challenges/:id` and `GET /user/:userId/groups` are listed in the [backend README](../../../apps/backend/README.md).
+- The leaderboard is a read-side `StandingsQuery`: for the `minutes` metric it sums the counted minutes of each member's reading sessions finished inside the challenge period (UTC days), so the reading-session timer feeds the challenge. Pages, books and streak return no score yet.
+- [`/groups/new`](../../../apps/frontend/src/views/CreateGroupView.vue) saves a challenge and opens its page; [`/groups`](../../../apps/frontend/src/views/GroupsView.vue) lists the reader's real groups before the mocks; [`/groups/:groupId`](../../../apps/frontend/src/views/GroupDetailView.vue) loads non-mock ids from the API.
+- **Not stored yet**, because the schema has no place for them: the fair-reading settings (daily cap, end page, still-reading checks), friend invites (the friends list is mock data) and book clubs. `metric_goal` is saved as `0` (highest score wins) since the form has no goal field.
+
 ## Next steps
 
+- Decide where the challenge fair-reading settings live (new columns on `challenges` or a rules table) and add invites once friendships use real users.
 - Finish Supabase project configuration, trusted username authentication/uniqueness, OIDC UI approval, session callbacks/guards, logout, password recovery and onboarding (see frontend guide).
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).
@@ -374,7 +391,7 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - Require the `commitlint` check on `main` with branch protection.
 - Create the Render stg service (Auto-Deploy off), create the Render stg static site for the frontend, add the `RENDER_API_KEY` secret and the `RENDER_BACKEND_STG_SERVICE_ID` and `RENDER_FRONTEND_STG_SERVICE_ID` variables (repo admin), and use a separate Supabase project for stg.
 - Turn on branch protection on `main` (required `backend` check and one approval), add the Postgres service to the backend workflow when the database lands. Frontend CI is now enabled.
-- Implement folder and card menu actions on the library page, wire session persistence for the active reading session, and replace remaining static review/club mock data.
+- Implement folder and card menu actions on the library page, save the end page when a reading session finishes, and replace remaining static review/club mock data.
 - Review the feature scope with the team, then update the MoSCoW tags in the requirements to match.
 - Review the Core issues (#6 to #69) and answer their open questions, then add them to the Project board.
 - Create the issues for Extras once Core is under way.
