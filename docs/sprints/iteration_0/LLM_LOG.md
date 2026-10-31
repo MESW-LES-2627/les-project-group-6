@@ -697,3 +697,19 @@ first of all, we don't need a pause button, just finish a session and start anot
 
 #### Explanation of Changes
 Added the backend `reading-session` feature (aggregate, repository with stats, service, DTO, routes) where the server clock measures the session, with unit tests; removed the timer's pause, added cancel, added page-reload tests, and wired the active session page to start, finish and cancel it and the profile page to show counted minutes. Checked with typecheck, lint, unit tests, frontend tests and a manual curl run against a freshly migrated database. Then added challenge group creation: backend `challenge-group` feature (aggregate over `groups`, `member`, `challenges`; minutes standings from finished reading sessions), the create form saving through the API, the groups list and group page loading real groups, with unit and view tests and a manual curl run against a migrated database. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-31: ADR-0005 and PR flow description for reading sessions
+
+- **Date:** 2026-10-31
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs, architecture
+
+#### Prompt
+```text
+ok, so, commit everything. Add in PR description the cronological sequence that happens to add a reding session and save then, all the requests made, which info is saved to the database and etc. Also create and ADR to explain how this works
+```
+
+#### Explanation of Changes
+Wrote ADR-0005 (server-timed reading sessions counted by challenge period, with options considered and consequences), added it to the docs index and the iteration log, and rewrote the PR #102 description with the chronological request and database flow. See the [iteration log](log.md) entry of the same date.

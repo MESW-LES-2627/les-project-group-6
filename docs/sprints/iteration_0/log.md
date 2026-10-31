@@ -257,6 +257,7 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 
 ## Next steps
 
+- Review ADR-0005 with the team and mark it Accepted.
 - Write an ADR restricting Drizzle to a query builder (decided in the OOP/DDD review entry above).
 - Show the 400/409 messages from `PUT /reading-status` in the book reading panel.
 
@@ -368,7 +369,7 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 ### 2026-10-31: Server-timed reading sessions and profile minutes
 
 - Added the [`reading-session`](../../../apps/backend/src/features/reading-session/) backend feature on the existing `reading_sessions` table: `POST /reading-sessions` starts (or resumes) a session, `PATCH /reading-sessions/:id/finish` stops it, `GET /user/:userId/reading-sessions/active` and `GET /user/:userId/reading-stats` read it. Endpoints listed in the [backend README](../../../apps/backend/README.md).
-- **Decision: the server clock measures the session, not the client.** The client sends two requests (start, finish) and never a duration, so a user cannot inflate minutes. *Rejected:* one `POST` on finish with the client's elapsed time, because the client controls it. Consequences: there is no pause (to take a break, finish and start a new session; the Pause button was removed), only one session runs per user (`409`), and counted minutes are capped at 12 h per session for forgotten timers.
+- **Decision: the server clock measures the session, not the client** (recorded in [ADR-0005](../../ADRs/0005-server-timed-reading-sessions.md)). The client sends two requests (start, finish) and never a duration, so a user cannot inflate minutes. *Rejected:* one `POST` on finish with the client's elapsed time, because the client controls it. Consequences: there is no pause (to take a break, finish and start a new session; the Pause button was removed), only one session runs per user (`409`), and counted minutes are capped at 12 h per session for forgotten timers.
 - [`ActiveSessionView`](../../../apps/frontend/src/views/ActiveSessionView.vue) loads real books by UUID, starts the session on open, seeds the timer from the server's `elapsedSeconds` (a reload resumes it) and finishes it on "Stop & save", then opens `/profile`. Mock books (`emma`) keep the design data.
 - [`/profile`](../../../apps/frontend/src/views/ProfileView.vue) reading time is now in minutes (`ReadingTimeStats.countedMinutes`) and comes from `/reading-stats`, falling back to the mock.
 - Added **Cancel session** (`DELETE /reading-sessions/:id`, after a confirm dialog) for a session started by mistake: the row is deleted and nothing counts. Tests cover a page reload reusing the same session (backend service and a view test with a fake server) and cancel.
@@ -381,8 +382,13 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - [`/groups/new`](../../../apps/frontend/src/views/CreateGroupView.vue) saves a challenge and opens its page; [`/groups`](../../../apps/frontend/src/views/GroupsView.vue) lists the reader's real groups before the mocks; [`/groups/:groupId`](../../../apps/frontend/src/views/GroupDetailView.vue) loads non-mock ids from the API.
 - **Not stored yet**, because the schema has no place for them: the fair-reading settings (daily cap, end page, still-reading checks), friend invites (the friends list is mock data) and book clubs. `metric_goal` is saved as `0` (highest score wins) since the form has no goal field.
 
+### 2026-10-31: ADR-0005 for reading sessions
+
+- Wrote [ADR-0005](../../ADRs/0005-server-timed-reading-sessions.md) (Proposed): sessions are timed by the server clock with start and finish requests, resume on reload, can be cancelled and have no pause; one finished session counts for every minutes challenge whose period contains it and once on the profile. *Rejected:* client-sent durations, heartbeats (for now) and linking a session to one group. Added it to the [docs index](../../README.md) and the step-by-step request and database flow to PR #102.
+
 ## Next steps
 
+- Review ADR-0005 with the team and mark it Accepted.
 - Decide where the challenge fair-reading settings live (new columns on `challenges` or a rules table) and add invites once friendships use real users.
 - Finish Supabase project configuration, trusted username authentication/uniqueness, OIDC UI approval, session callbacks/guards, logout, password recovery and onboarding (see frontend guide).
 
