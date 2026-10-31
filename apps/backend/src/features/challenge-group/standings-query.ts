@@ -1,7 +1,7 @@
 import { and, eq, gte, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { books, readingSessions, users } from '../../database/schema.js';
-import type { ChallengeGroup } from './challenge-group.js';
+import type { ChallengeGroup, WinMetricType } from './challenge-group.js';
 
 // Read side (CQRS): the leaderboard joins members, users, reading sessions and
 // books, which does not fit one aggregate, so it is served by a query returning views.
@@ -22,12 +22,19 @@ export interface StandingView {
   books: BookMinutesView[];
 }
 
-export interface StandingsQuery {
-  forGroup(group: ChallengeGroup): Promise<StandingView[]>;
+/** How one win metric scores a challenge; a new metric (pages, books, streak) is a new class. */
+export interface ScoreStrategy {
+  /** What each member read in the challenge period, per book, keyed by user id. */
+  byBook(group: ChallengeGroup, memberIds: string[]): Promise<Map<string, BookMinutesView[]>>;
 }
 
-export class DrizzleStandingsQuery implements StandingsQuery {
-  constructor(private readonly db: NodePgDatabase) {}
+export class StandingsQuery {
+  constructor(
+    private readonly db: NodePgDatabase,
+    private readonly strategies: Partial<Record<WinMetricType, ScoreStrategy>> = {
+      minutes: new CountedMinutesScore(db),
+    },
+  ) {}
 
   async forGroup(group: ChallengeGroup): Promise<StandingView[]> {
     const ids = group.members.map((m) => m.userId.value);
@@ -36,32 +43,33 @@ export class DrizzleStandingsQuery implements StandingsQuery {
       .from(users)
       .where(inArray(users.id, ids));
 
-    const minutes =
-      group.challenge.winMetric.value === 'minutes' ? await this.minutesByBook(group, ids) : null;
+    const strategy = this.strategies[group.challenge.winMetric.value];
+    const scored = strategy ? await strategy.byBook(group, ids) : null;
 
     const views = group.members.map((m) => {
       const person = people.find((p) => p.id === m.userId.value);
-      const read = minutes?.get(m.userId.value) ?? [];
+      const read = scored?.get(m.userId.value) ?? [];
       return {
         userId: m.userId.value,
         displayName: person?.displayName ?? 'Unknown reader',
         username: person?.username ?? '',
         role: m.role,
-        score: minutes ? read.reduce((sum, b) => sum + b.minutes, 0) : null,
+        score: scored ? read.reduce((sum, b) => sum + b.minutes, 0) : null,
         books: read,
       };
     });
     return views.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   }
+}
+
+export class CountedMinutesScore implements ScoreStrategy {
+  constructor(private readonly db: NodePgDatabase) {}
 
   /**
    * Counted minutes of sessions finished inside the challenge period, per member
    * and book: a reader can read several books in the same challenge.
    */
-  private async minutesByBook(
-    group: ChallengeGroup,
-    ids: string[],
-  ): Promise<Map<string, BookMinutesView[]>> {
+  async byBook(group: ChallengeGroup, ids: string[]): Promise<Map<string, BookMinutesView[]>> {
     const { period } = group.challenge;
     const rows = await this.db
       .select({
