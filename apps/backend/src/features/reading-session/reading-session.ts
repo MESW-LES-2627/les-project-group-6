@@ -104,7 +104,8 @@ export class ReadingSession {
 
   /** Stops the timer; the duration comes from the server clock, never the client. */
   finish(by: UserId, now: Date): void {
-    this.assertRunningFor(by);
+    if (!this.userId.equals(by)) throw new NotSessionOwnerError();
+    if (!this.isActive) throw new SessionAlreadyFinishedError();
 
     this._durationSeconds = this.elapsedSecondsAt(now);
     this._countedMinutes = Math.floor(Math.min(this._durationSeconds, MAX_COUNTED_SECONDS) / 60);
@@ -113,11 +114,7 @@ export class ReadingSession {
 
   /** Checks the reader may discard this session (e.g. started by mistake); nothing is counted. */
   cancel(by: UserId): void {
-    this.assertRunningFor(by);
-  }
-
-  private assertRunningFor(reader: UserId): void {
-    if (!this.userId.equals(reader)) throw new NotSessionOwnerError();
+    if (!this.userId.equals(by)) throw new NotSessionOwnerError();
     if (!this.isActive) throw new SessionAlreadyFinishedError();
   }
 }

@@ -8,6 +8,7 @@ import {
   InvalidGroupNameError,
   InvalidWinMetricError,
   WinMetric,
+  memberRoleOf,
 } from '../../src/features/challenge-group/challenge-group.js';
 import { UserId } from '../../src/features/user/user.js';
 import { InvalidValueError } from '../../src/utils/errors.js';
@@ -82,5 +83,11 @@ describe('Challenge value objects', () => {
       () => ChallengePeriod.of('2026-11-10', '2026-11-01'),
       InvalidChallengePeriodError,
     );
+  });
+
+  test('member roles are parsed, and an unknown stored role is rejected', () => {
+    assert.strictEqual(memberRoleOf('admin'), 'admin');
+    assert.strictEqual(memberRoleOf('member'), 'member');
+    assert.throws(() => memberRoleOf('owner'), InvalidValueError);
   });
 });

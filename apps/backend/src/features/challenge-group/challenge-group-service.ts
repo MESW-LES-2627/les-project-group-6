@@ -1,3 +1,4 @@
+import type { Clock } from '../../utils/clock.js';
 import { NotFoundError } from '../../utils/errors.js';
 import type { IUserRepository } from '../user/user-repository.js';
 import { UserId } from '../user/user.js';
@@ -19,8 +20,6 @@ export interface CreateChallengeGroupCommand {
   winMetric: unknown;
   metricGoal?: unknown;
 }
-
-export type Clock = () => Date;
 
 // Application service: one method per use case on challenge groups.
 export class ChallengeGroupService {

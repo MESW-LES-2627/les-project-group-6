@@ -109,7 +109,18 @@ export class ChallengePeriod {
   }
 }
 
-export type MemberRole = 'admin' | 'member';
+export const MEMBER_ROLES = ['admin', 'member'] as const;
+export type MemberRole = (typeof MEMBER_ROLES)[number];
+
+function isMemberRole(raw: string): raw is MemberRole {
+  return MEMBER_ROLES.some((role) => role === raw);
+}
+
+/** Parses the role stored for a member; a value outside the known roles is corrupt data. */
+export function memberRoleOf(raw: string): MemberRole {
+  if (!isMemberRole(raw)) throw new InvalidValueError(`Unknown member role: ${raw}`);
+  return raw;
+}
 
 export interface Membership {
   userId: UserId;

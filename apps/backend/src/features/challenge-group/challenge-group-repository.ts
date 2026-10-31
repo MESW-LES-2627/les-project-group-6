@@ -8,7 +8,7 @@ import {
   GroupId,
   GroupName,
   WinMetric,
-  type MemberRole,
+  memberRoleOf,
 } from './challenge-group.js';
 
 export interface IChallengeGroupRepository {
@@ -31,7 +31,7 @@ function toDomain(row: GroupRow, members: MemberRow[], challenge: ChallengeRow):
     adminId: UserId.of(row.adminId),
     members: members.map((m) => ({
       userId: UserId.of(m.userId),
-      role: m.role as MemberRole,
+      role: memberRoleOf(m.role),
       joinedAt: new Date(m.joinedAt),
     })),
     challenge: {
