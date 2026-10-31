@@ -713,3 +713,20 @@ ok, so, commit everything. Add in PR description the cronological sequence that 
 
 #### Explanation of Changes
 Wrote ADR-0005 (server-timed reading sessions counted by challenge period, with options considered and consequences), added it to the docs index and the iteration log, and rewrote the PR #102 description with the chronological request and database flow. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-31: Reading stats on the profile page
+
+- **Date:** 2026-10-31
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, testing
+
+#### Prompt
+```text
+do we have a endpoint to the the user stats?
+can we add this stats in the profile page?
+```
+
+#### Explanation of Changes
+The profile's reading time now shows both values from `GET /user/:userId/reading-stats`: total counted minutes and, below it, the number of finished sessions. Added a `ProfileView` test for the API values, the empty state and the mock fallback. See the [iteration log](log.md).

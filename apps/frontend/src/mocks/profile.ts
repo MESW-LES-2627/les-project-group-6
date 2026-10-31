@@ -200,7 +200,7 @@ export const mockProfile: Profile = {
     longest: 21,
     freezesLeft: 2,
   },
-  readingTime: { countedMinutes: 4260, importedHours: 13 },
+  readingTime: { countedMinutes: 4260, sessionsCount: 96, importedHours: 13 },
   challengesWon: 3,
   folders: [
     {
@@ -252,7 +252,7 @@ export const mockNewUserProfile: Profile = {
   recentlyAdded: [],
   chapter: { number: 'I', title: 'The First Page', nextNumber: 'II', xp: 0, xpToNext: 100 },
   streak: { days: lastFourWeeks(MOCK_TODAY, [], true), current: 0, longest: 0, freezesLeft: 2 },
-  readingTime: { countedMinutes: 0, importedHours: 0 },
+  readingTime: { countedMinutes: 0, sessionsCount: 0, importedHours: 0 },
   challengesWon: 0,
   folders: [],
   recap: null,
