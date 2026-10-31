@@ -33,6 +33,7 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 ├── scripts/
 ├── .github/
 ├── .agents/
+├── .claude/skills/            # project skills for Claude Code (e.g. oop-ddd-review)
 ├── AGENTS.md
 ├── Makefile
 ├── package.json
@@ -139,6 +140,7 @@ A pull request must be green before review. Run `make check` locally to run the 
 
 Configuration and instructions for AI coding agents working on this repository.
 
+- `.claude/skills/oop-ddd-review/SKILL.md`: reviews `apps/backend` for raw OOP, DDD and design-pattern usage (no ORM-driven design, rich domain model, value objects, aggregates, layering) and recommends which OOP/DDD/GoF pattern to add or substitute.
 
 ## Getting started
 

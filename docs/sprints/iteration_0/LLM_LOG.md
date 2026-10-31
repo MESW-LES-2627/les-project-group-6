@@ -152,6 +152,8 @@ Moved the Node, editor and Prettier config back to the repository root and resto
 the files are inconsistent?
 how can we solve this? what is the lts version
 yes
+cant we have the release version? the release version will be the same as tag
+well, the idea is to see running like we have in backend CD (stg). I want to see the steps of migration, deploy, upload of the image and etc
 ```
 
 #### Explanation of Changes
@@ -533,6 +535,77 @@ Hey, let's connect the frontend to the backend for the vertical prototype:
 
 #### Explanation of Changes
 Connected the Vue frontend (`/library` and `/library/:bookId`) to the Express backend API. Added API service functions (`getUserLibrary`, `getBook`, `updateReadingStatus`) in `apps/frontend/src/services/api.ts` with demo reader mappings. Updated `LibraryView.vue` to fetch real seeded books and dynamically synchronize shelf counts. Added an interactive reading status and current page editor in `BookReadingPanel.vue` with `PUT /reading-status` updates. Added Express CORS middleware in `apps/backend/src/app.ts` to support cross-origin API calls on deployed environments. Updated backend and frontend READMEs and iteration logs.
+
+### 2026-10-25: OOP/DDD review skill
+
+- **Date:** 2026-10-25
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** architecture, backend, docs
+
+#### Prompt
+```text
+I want to create a SKILL.md that is responsible to analyze the backend code and ensure that we are using OOP, DDD concepts raw and not letting the abstractions do this for us. [...] Add this into a SKILL.md inside this repo. Also, in this skill you must review these patterns but also ensure that we can add or replace the code with any OOP pattern or DDD pattern. The skill must recommend.
+```
+
+#### Explanation of Changes
+Discussed why ORMs condition the domain model and reviewed the current backend (Drizzle used as a query builder behind hand-written repositories, but with anemic entities and an enabled relational API). Created `.claude/skills/oop-ddd-review/SKILL.md` with mechanical checks, rules R1–R6 (persistence ignorance, rich domain model, value objects, aggregates, layering, SOLID), a DDD/PoEAA/GoF pattern catalog with substitution guidance, and a report format. Updated README and the iteration log.
+
+### 2026-10-25: Backend OOP/DDD refactor
+
+- **Date:** 2026-10-25
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database, architecture, testing
+
+#### Prompt
+```text
+use oop-ddd-review
+create an commit for each fix
+```
+
+#### Explanation of Changes
+Ran the `oop-ddd-review` skill on `apps/backend` (13 findings: unused Drizzle relations, anemic entities, primitive obsession, business rules in `app.ts`, a non-atomic reading status save, a read model in the write repository, no domain errors) and then applied the fixes, one commit each: removed the relational API, added a unique constraint with an atomic upsert, introduced value objects and domain errors, made `Book`/`User` rich entities with Data Mappers, modelled `ReadingStatus` with the State pattern behind use cases, moved the library join into a query object, and split the HTTP layer into routers with a single error handler. Added unit and integration tests (18 → 58). See the [iteration log](log.md) entry of the same date for the commit list.
+
+### 2026-10-25: Backend folders by feature
+
+- **Date:** 2026-10-25
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, architecture
+
+#### Prompt
+```text
+in the stacked PR, I have some opinions about the oop/dd patterns: - I think maybe we are with a lot of files without the need. Example: why we have a backend/database and backend/src/application/infrastructure/database? why we have src/application/book and serc/domain/book? can't we have just a single folder book with everything about books? we also have: get-book.ts, register-book.ts, remove-book.ts and search-book.ts. These files can't be in the same file?
+
+yes, lets follow this, however, inside src/ we can have: features/book,user,etc... , api/, config/, middleware/, utils/. the database can't be outisde the backend folder?
+```
+
+#### Explanation of Changes
+Restructured `apps/backend/src` from layer folders (`domain/`, `application/`, `infrastructure/`, `http/`) into `features/<name>/` plus `api/`, `config/`, `middleware/`, `utils/` and `database/`. Merged each feature's value objects into its entity file, the mappers into the repository files, the DTOs into the routes, and the use case classes into one service per feature (`BookService`, `ReadingStatusService`). Moved the SQL migrations into `src/database/migrations`, added `config/env.ts`, and added an ESLint `no-restricted-imports` rule so entities and services cannot import Drizzle, `pg` or Express. Updated the tests' imports, the backend README, ADR-0004 and the `oop-ddd-review` skill. Typecheck, lint, format, build and the 58 tests pass. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-25: DTOs split from the routes and reading-status folder
+
+- **Date:** 2026-10-25
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend
+
+#### Prompt
+```text
+Can we split the DTOs from routes? Create a book-dto.ts
+same for the other features, split the dtos from routes
+what is the reading feature? reading is the best name we can have here?
+maybe book-status?
+lets keep reading-status, commit and push
+```
+
+#### Explanation of Changes
+Moved `BookDto`/`toBookDto` into `features/book/book-dto.ts` and `ReadingStatusDto`/`toReadingStatusDto` into `features/reading/reading-status-dto.ts`; the routes files import them. Renamed `features/reading/` to `features/reading-status/` to match the class, table, endpoint and docs (`book-status` was rejected because the status belongs to a user and a book, not to the book). Updated the backend README and the `oop-ddd-review` skill layout. Typecheck, lint, format and the 58 tests pass. See the [iteration log](log.md) entry of the same date.
 
 ### 2026-10-27: Production CD pipeline, version tags and commit message check
 

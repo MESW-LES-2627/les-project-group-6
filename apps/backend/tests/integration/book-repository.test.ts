@@ -1,8 +1,8 @@
 import { test, describe, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDb } from '../../src/infrastructure/database/pool.js';
-import { DrizzleBookRepository } from '../../src/infrastructure/repositories/drizzle-book-repository.js';
-import { Book } from '../../src/domain/book.js';
+import { createDb } from '../../src/database/pool.js';
+import { DrizzleBookRepository } from '../../src/features/book/book-repository.js';
+import { Book, BookId } from '../../src/features/book/book.js';
 import { createTestPool, truncateTables } from '../helpers/test-db.js';
 
 describe('DrizzleBookRepository Integration', () => {
@@ -20,8 +20,7 @@ describe('DrizzleBookRepository Integration', () => {
   });
 
   test('saves and finds book by ID', async () => {
-    const book = new Book({
-      id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
+    const book = Book.create({
       title: 'Dune',
       description: 'A science fiction masterpiece',
       isbn13: '9780441172719',
@@ -34,23 +33,21 @@ describe('DrizzleBookRepository Integration', () => {
 
     const found = await repo.findById(book.id);
     assert.ok(found, 'Book should be found in database');
-    assert.strictEqual(found.id, book.id);
-    assert.strictEqual(found.title, 'Dune');
+    assert.ok(found.id.equals(book.id));
+    assert.strictEqual(found.title.value, 'Dune');
     assert.strictEqual(found.description, 'A science fiction masterpiece');
-    assert.strictEqual(found.isbn13, '9780441172719');
-    assert.strictEqual(found.pageCount, 688);
+    assert.strictEqual(found.isbn13?.value, '9780441172719');
+    assert.strictEqual(found.pageCount?.value, 688);
     assert.strictEqual(found.coverUrl, 'https://example.com/dune.jpg');
     assert.strictEqual(found.isCommunityAdded, true);
   });
 
   test('finds books by title', async () => {
-    const book1 = new Book({
-      id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a34',
+    const book1 = Book.create({
       title: 'The Hobbit',
       pageCount: 310,
     });
-    const book2 = new Book({
-      id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a35',
+    const book2 = Book.create({
       title: 'The Fellowship of the Ring',
       pageCount: 423,
     });
@@ -60,7 +57,7 @@ describe('DrizzleBookRepository Integration', () => {
 
     const hobbitMatches = await repo.findByTitle('Hobbit');
     assert.strictEqual(hobbitMatches.length, 1);
-    assert.strictEqual(hobbitMatches[0]?.title, 'The Hobbit');
+    assert.strictEqual(hobbitMatches[0]?.title.value, 'The Hobbit');
 
     const theMatches = await repo.findByTitle('The');
     assert.strictEqual(theMatches.length, 2);
@@ -72,13 +69,12 @@ describe('DrizzleBookRepository Integration', () => {
   });
 
   test('returns null when book is not found by ID', async () => {
-    const notFound = await repo.findById('00000000-0000-0000-0000-000000000000');
+    const notFound = await repo.findById(BookId.of('00000000-0000-0000-0000-000000000000'));
     assert.strictEqual(notFound, null);
   });
 
   test('deletes book by ID', async () => {
-    const book = new Book({
-      id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a36',
+    const book = Book.create({
       title: 'Temporary Book',
     });
 

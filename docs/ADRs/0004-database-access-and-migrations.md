@@ -17,7 +17,7 @@ We will use:
 
 1. **Local Database:** **PostgreSQL 17** running via Docker Compose (`docker-compose.yml`), listening on port `5432`.
 2. **Production Database:** **Supabase PostgreSQL 17**, fed by the same base schema and accessed as plain Postgres using connection pooling (`pg.Pool`). No Supabase client library or Row Level Security (RLS) is used in the backend.
-3. **Migration & Schema Tooling:** **Drizzle Kit** (`drizzle-kit`) to manage migrations and schema file generation from the locally hosted database. Migration files are stored in `apps/backend/database/migrations/`.
+3. **Migration & Schema Tooling:** **Drizzle Kit** (`drizzle-kit`) to manage migrations and schema file generation from the locally hosted database. Migration files are stored in `apps/backend/src/database/migrations/`.
 4. **Runtime Access & Queries:** **Drizzle ORM** (`drizzle-orm`) with `pg` to handle runtime database access, transactions, and querying.
 
 This decision was chosen directly based on:
@@ -29,7 +29,7 @@ This decision was chosen directly based on:
 
 ### Positive
 
-- Standard `.sql` migrations are committed and versioned in `apps/backend/database/migrations/`.
+- Standard `.sql` migrations are committed and versioned in `apps/backend/src/database/migrations/`.
 - Local development runs with a single command (`docker compose up -d db`).
 - Runtime queries are type-safe without hiding underlying SQL behavior.
 - Drizzle Studio provides an accessible web interface for local database inspection.

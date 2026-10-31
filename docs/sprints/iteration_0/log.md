@@ -20,6 +20,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Feature scope (Core / Extras / Optional) | Draft v0.1, to review with the team |
 | Infrastructure | PostgreSQL 17 Docker Compose setup + local connection pooling done; prod CD with migrations, version tags and commit message check |
 | Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
+| Backend domain model (OOP/DDD) | Rich entities with value objects, `ReadingStatus` lifecycle with the State pattern, use cases, Data Mappers and a library query object |
 | Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
 | Frontend routes (#64) | Initial routes implemented |
 | Authentication UI and Supabase skeleton | Reference-based `/login` forms and adapter/integration tests implemented; credentials, trusted username flow, provider UI and live session lifecycle pending |
@@ -189,6 +190,36 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Rewrote [`mvp.md`](mvp.md): it now opens with the 6 MVP features (authentication, clubs and challenges with real-time text chat and leaderboard, library, search, gamification, friends) followed by 14 user stories. Out of scope: photos and videos in the chat, recommendations, onboarding and email notifications.
 - **Decision:** one-to-one messages, reading statistics and user-created challenges left the MVP list, and "reading session" was dropped as a separate story (the streak counts days with reading logged). *Why:* they were not in the feature list agreed by the team. The MoSCoW tags in the requirements may need to follow.
 
+### 2026-10-25: OOP/DDD review skill
+
+- Added the project skill [`oop-ddd-review`](../../../.claude/skills/oop-ddd-review/SKILL.md) to review `apps/backend` for raw OOP, DDD and design patterns, following the teacher's advice to avoid ORMs and frameworks that make design decisions for us.
+- Decided: keep Drizzle **only as a query builder** inside `infrastructure/`. Repositories and Data Mappers stay hand-written, the relational API (`relations.ts`, `db.query`, `with:`) is forbidden, and related data is loaded with explicit SQL joins. Rejected: full ORMs (Prisma, TypeORM, Sequelize, MikroORM) because they shape the domain model. Switching to raw `pg` is still open.
+- The skill flags anemic entities, primitive obsession, aggregate boundary and layering violations, and recommends DDD, PoEAA and GoF patterns (State, Strategy, Observer, Specification and others) to add or substitute.
+
+### 2026-10-25: Backend OOP/DDD refactor
+
+Applied the fixes found by the first `oop-ddd-review` run, one commit each. The [backend README](../../../apps/backend/README.md#folder-layout) has the new folder layout.
+
+- `d4f4601` Removed `relations.ts` and stopped passing the schema to `drizzle()`, so the relational API can no longer be used.
+- `7c991a5` Added a `UNIQUE (user_id, book_id)` constraint to `reading_status` ([migration 0001](../../../apps/backend/src/database/migrations/0001_reading_status_user_book_unique.sql) removes older duplicates first) and made `save()` a single atomic upsert. *Why:* find-then-insert could create duplicate rows under concurrent requests.
+- `c7c39f5` Added `DomainError` families and value objects (`BookId`, `UserId`, `ReadingStatusId`, `BookTitle`, `Isbn13` with check digit, `PageCount`, `PageProgress`, `Email`, `Username`).
+- `94d74b0`, `9ba953f` Made `Book` and `User` rich entities with a private constructor, `create`/`register` and `reconstitute` factories, plus `BookMapper` and `UserMapper` Data Mappers. The API returns DTOs, so the JSON contract used by the frontend is unchanged. Clients can no longer choose a book's id.
+- `d314f0b` Modelled the reading lifecycle with the **State** pattern (`NotStarted`, `InProgress`, `Finished`, `DidNotFinish`). Each state owns its transitions and its effect on page progress: finishing jumps to the last page, re-reading a finished book restarts at page 0, abandoning keeps the page, and pages cannot exceed the book's page count. The rules moved from `app.ts` into the `SetReadingStatus` and `UpdateReadingStatus` use cases, and the overloaded repository `update()` was removed. *Rejected:* a plain transition table, because progress handling already depends on the state.
+- `2dec36d` Moved the library page join out of the write repository into a `LibraryQuery` (CQRS read side) returning plain views.
+- `b5425a3` Split `app.ts` into routers per resource backed by book use cases. `createApp()` is the composition root (manual DI, no container), and one error handler maps domain errors to 400/404/409.
+- Tests went from 18 to 58: new unit tests for value objects, entities, the reading lifecycle and the use cases (with in-memory repositories), plus integration tests for the reading status repository and API.
+- Frontend impact: `PUT /reading-status` now answers 409 for forbidden moves (e.g. `not-started` → `did-not-finish`) and 400 for pages beyond the book's page count. When the target status is `finished` or `not-started`, the page is ignored.
+
+### 2026-10-25: Backend folders by feature
+
+`1634e8f` (PR #90).
+
+- **Decision: group the backend by feature, not by layer.** `src/` now has `features/` (`book`, `reading`, `user`, `library`), `api/`, `config/`, `middleware/`, `utils/` and `database/`. Each feature folder holds the entity file (entity plus its value objects), the repository file (interface, Drizzle implementation and mapper), one service and the routes with their DTO. *Why:* changing books meant opening `domain/`, `application/`, `infrastructure/` and `http/`, and the 46 files were mostly 10–25 line wrappers. `src/` now has 27 TypeScript files. The [backend README](../../../apps/backend/README.md#folder-layout) has the layout.
+- **Decision: one application service per feature instead of one class per use case.** `BookService` has `register`, `get`, `search` and `remove`; `ReadingStatusService` has `set` and `update`. *Why:* the use case classes had the same constructor and a single `execute`. One can be split out again if it grows its own dependencies.
+- **Decision: the database lives in `src/database/`** (schema, pool, migrate, seed and the SQL migrations), replacing the separate `apps/backend/database/` folder. *Rejected:* a root-level `database/` package, because only the backend talks to Postgres.
+- The DDD rule that entities and services do not know Drizzle, `pg` or Express is now enforced by ESLint (`no-restricted-imports` in [`eslint.config.js`](../../../apps/backend/eslint.config.js)) instead of by the folder tree. The [`oop-ddd-review`](../../../.claude/skills/oop-ddd-review/SKILL.md) skill was updated to the new paths.
+- No behaviour change: the API and its JSON contract are the same, and the 58 tests pass.
+
 ### 2026-10-27: Production CD, version tags and commit message check (#6)
 
 - Added [`backend-cd-prod.yml`](../../../.github/workflows/backend-cd-prod.yml) and [`frontend-cd-prod.yml`](../../../.github/workflows/frontend-cd-prod.yml): on every merge to `main` that changes the app, they run its CI, apply the migrations to the production database (backend), deploy that commit to Render through the API, wait until live, print the Render build log and check the service. They replace Render Auto-Deploy on prod and the `migrate-production` job of `backend-ci.yml`. Why: migrations run before the code that needs them, and a failed deploy is visible as a red run with each step listed, like the stg workflows. Rejected: one `cd-prod.yml` for both apps (no per-app entry in Actions), a Render pre-deploy command (paid instances only), and building the image in Actions and pushing it to GHCR (would need the prod service recreated as an image service).
@@ -207,6 +238,9 @@ A running record of what the team did and decided in iteration 0. The [release n
 - It then failed in `actions/setup-node@v5` with "Unable to locate executable file: pnpm": v5 turns on the pnpm cache by itself from `packageManager` in the root `package.json`, and this job does not install pnpm. Set `package-manager-cache: false`.
 
 ## Next steps
+
+- Write an ADR restricting Drizzle to a query builder (decided in the OOP/DDD review entry above).
+- Show the 400/409 messages from `PUT /reading-status` in the book reading panel.
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner), and add `apps/frontend` as a new workspace (it needs its own `package.json`, `tsconfig.json` extending the root base, and ESLint config) when the frontend starts.
 - Turn on branch protection on `main` (required `backend` check and one approval), and uncomment `frontend-ci.yml` when `apps/frontend` exists.
@@ -305,6 +339,13 @@ A running record of what the team did and decided in iteration 0. The [release n
 - Added Express CORS middleware in [`apps/backend/src/app.ts`](../../../apps/backend/src/app.ts) with `Access-Control-Allow-Origin: *` and preflight `OPTIONS` handling to support cross-origin API calls from the deployed frontend static site.
 - Updated [`apps/frontend/README.md`](../../../apps/frontend/README.md) and [`apps/backend/README.md`](../../../apps/backend/README.md).
 
+### 2026-10-25: DTOs in their own files and the reading-status folder
+
+`dc75f99` (DTOs), `a44c823` (folder rename).
+
+- Moved each feature's DTO and its mapper out of the routes file into `<name>-dto.ts`: [`book-dto.ts`](../../../apps/backend/src/features/book/book-dto.ts) (`BookDto`, `toBookDto`) and [`reading-status-dto.ts`](../../../apps/backend/src/features/reading-status/reading-status-dto.ts) (`ReadingStatusDto`, `toReadingStatusDto`). The routes files now only translate HTTP to service calls. `library` already returns the plain views of its query, and `user` has no routes, so neither got a DTO file.
+- Updated the [backend README](../../../apps/backend/README.md#folder-layout) and the [`oop-ddd-review`](../../../.claude/skills/oop-ddd-review/SKILL.md) skill layout. No behaviour change: the JSON contract is the same and the 58 tests pass.
+- **Decision: rename the `features/reading/` folder to `features/reading-status/`.** *Why:* every file inside, the `ReadingStatus` class, the `reading_status` table, the `/reading-status` endpoint and the docs already use "reading status"; a bare `reading` could be confused with the active reading session. *Rejected:* `book-status`, because the aggregate belongs to a user and a book together (each reader has their own status for the same book), and it would clash with any future catalogue status of a book itself.
 
 ## Next steps
 
