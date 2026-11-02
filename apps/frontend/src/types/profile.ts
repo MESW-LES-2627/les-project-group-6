@@ -63,8 +63,10 @@ export interface Streak {
 }
 
 export interface ReadingTimeStats {
-  /** Hours counted from sessions in the app */
-  countedHours: number;
+  /** Minutes counted from finished sessions in the app, measured by the server */
+  countedMinutes: number;
+  /** Finished sessions those minutes come from */
+  sessionsCount: number;
   /** Hours imported from before the user joined, these do not earn XP */
   importedHours: number;
 }

@@ -3,7 +3,11 @@ import { env } from './config/env.js';
 import { DatabaseHealthCheck } from './database/health-check.js';
 import { createPool, createDb } from './database/pool.js';
 import { DrizzleBookRepository } from './features/book/book-repository.js';
+import { DrizzleChallengeGroupRepository } from './features/challenge-group/challenge-group-repository.js';
+import { StandingsQuery } from './features/challenge-group/standings-query.js';
+import { DrizzleUserRepository } from './features/user/user-repository.js';
 import { DrizzleLibraryQuery } from './features/library/library-query.js';
+import { DrizzleReadingSessionRepository } from './features/reading-session/reading-session-repository.js';
 import { DrizzleReadingStatusRepository } from './features/reading-status/reading-status-repository.js';
 
 const pool = createPool();
@@ -14,6 +18,10 @@ const server = createApp({
   bookRepository: new DrizzleBookRepository(db),
   readingStatusRepository: new DrizzleReadingStatusRepository(db),
   libraryQuery: new DrizzleLibraryQuery(db),
+  readingSessionRepository: new DrizzleReadingSessionRepository(db),
+  userRepository: new DrizzleUserRepository(db),
+  challengeGroupRepository: new DrizzleChallengeGroupRepository(db),
+  standingsQuery: new StandingsQuery(db),
 }).listen(env.port, () => {
   console.log(`Backend listening on http://localhost:${env.port}`);
 });

@@ -36,6 +36,14 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | `PATCH` | `/reading-status/:id` | Edits an existing reading status by ID (`200 OK` or `404 Not Found`) |
 | `PATCH` | `/reading-status` | Edits an existing reading status by ID or userId + bookId (`200 OK` or `404 Not Found`) |
 | `GET` | `/user/:userId/library` | Returns user's library with progress, supports `?status=` (`200 OK`) |
+| `POST` | `/reading-sessions` | Starts a timed session on a book, or resumes the one running on it (`201`; `409` if another book's session is running) |
+| `PATCH` | `/reading-sessions/:id/finish` | Finishes the session; duration and counted minutes come from the server clock (`200`; `409` if already finished) |
+| `DELETE` | `/reading-sessions/:id` | Cancels a running session started by mistake; nothing is counted (`204`; `409` if already finished) |
+| `GET` | `/user/:userId/reading-sessions/active` | Returns the running session with server-measured `elapsedSeconds` (`200` or `204`) |
+| `POST` | `/groups/challenges` | Creates a challenge group (`name`, `startDate`, `durationDays`, `winMetric`); the creator is admin and first member (`201`) |
+| `GET` | `/groups/challenges/:id` | Returns the group, its challenge and `standings` (counted minutes of sessions finished in the period, split by book in `books`) (`200` or `404`) |
+| `GET` | `/user/:userId/groups` | Lists the challenge groups the user belongs to (`200 OK`) |
+| `GET` | `/user/:userId/reading-stats` | Returns `{ totalMinutes, sessionsCount }` over finished sessions (`200 OK`) |
 
 CORS middleware is enabled globally (`Access-Control-Allow-Origin: *`) with preflight `OPTIONS` support for cross-origin browser clients.
 
@@ -78,12 +86,14 @@ apps/backend/
 │   │   │                  # book-service.ts (get/register/search/remove), book-dto.ts (JSON shape + mapper),
 │   │   │                  # book-routes.ts (routes)
 │   │   ├── reading-status/ # ReadingStatus aggregate, ReadingState (State pattern) + PageProgress, repository, service, DTO, routes
+│   │   ├── challenge-group/ # ChallengeGroup aggregate (groups + member + challenges), repository, standings query, service, DTO, routes
+│   │   ├── reading-session/ # ReadingSession aggregate (server-timed), repository + stats, service, DTO, routes
 │   │   ├── user/          # User entity + value objects (UserId, Email, Username), repository
 │   │   └── library/       # Read-side query (CQRS) and the library route
 │   ├── api/               # router.ts wires each feature's service and mounts its routes; health route
 │   ├── config/            # env.ts: every setting read from the environment
 │   ├── middleware/        # CORS and the domain-error to HTTP status mapping
-│   ├── utils/             # DomainError families and the typed Uuid base
+│   ├── utils/             # DomainError families, the typed Uuid base and the Clock type
 │   ├── database/
 │   │   ├── migrations/    # Drizzle SQL migrations and journal metadata
 │   │   ├── schema.ts      # Tables for the query builder (source of the migrations)

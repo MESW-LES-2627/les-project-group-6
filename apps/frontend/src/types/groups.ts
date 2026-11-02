@@ -56,6 +56,8 @@ export interface LeaderboardEntry {
   /** 0 to 100, only for book clubs */
   progress?: number;
   finished?: boolean;
+  /** Challenges only: what the score was read in, most minutes first */
+  books?: { title: string; score: string }[];
 }
 
 export interface FairRule {
@@ -83,7 +85,8 @@ export interface ChallengeDetail {
   messages: ChatMessage[];
   members: GroupMember[];
   history: PastResult[];
-  lastResult: PastResult;
+  /** Absent for a group's first challenge */
+  lastResult?: PastResult;
   rules: FairRule[];
   rulesNote: string;
 }

@@ -8,7 +8,7 @@ describe('ReadingTimer', () => {
     vi.useRealTimers();
   });
 
-  it('ticks from the elapsed time and can pause and resume', async () => {
+  it('ticks from the elapsed time and has no pause control', async () => {
     vi.useFakeTimers();
     const wrapper = mount(ReadingTimer, { props: { initialSeconds: 28 * 60 + 14 } });
 
@@ -17,22 +17,7 @@ describe('ReadingTimer', () => {
     vi.advanceTimersByTime(1000);
     await wrapper.vm.$nextTick();
     expect(wrapper.get('.timer-time').text()).toBe('00:28:15');
-
-    await wrapper.get('.timer-button--pause').trigger('click');
-    expect(wrapper.get('.timer-status').text()).toContain('Paused');
-    expect(wrapper.get('.timer-button--pause').text()).toContain('Resume');
-    expect(wrapper.emitted('pause')).toHaveLength(1);
-
-    vi.advanceTimersByTime(3000);
-    await wrapper.vm.$nextTick();
-    expect(wrapper.get('.timer-time').text()).toBe('00:28:15');
-
-    await wrapper.get('.timer-button--pause').trigger('click');
-    expect(wrapper.emitted('resume')).toHaveLength(1);
-
-    vi.advanceTimersByTime(1000);
-    await wrapper.vm.$nextTick();
-    expect(wrapper.get('.timer-time').text()).toBe('00:28:16');
+    expect(wrapper.text()).not.toContain('Pause');
 
     wrapper.unmount();
   });
@@ -43,6 +28,23 @@ describe('ReadingTimer', () => {
     await wrapper.get('.timer-button--stop').trigger('click');
 
     expect(wrapper.emitted('stop')).toHaveLength(1);
+    wrapper.unmount();
+  });
+
+  it('emits cancel when the session is cancelled', async () => {
+    const wrapper = mount(ReadingTimer, { props: { autoStart: false } });
+
+    await wrapper.get('.timer-button--cancel').trigger('click');
+
+    expect(wrapper.emitted('cancel')).toHaveLength(1);
+    wrapper.unmount();
+  });
+
+  it('disables both actions while busy', () => {
+    const wrapper = mount(ReadingTimer, { props: { autoStart: false, busy: true } });
+
+    expect(wrapper.get('.timer-button--stop').attributes('disabled')).toBeDefined();
+    expect(wrapper.get('.timer-button--cancel').attributes('disabled')).toBeDefined();
     wrapper.unmount();
   });
 });

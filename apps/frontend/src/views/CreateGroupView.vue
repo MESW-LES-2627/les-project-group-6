@@ -6,10 +6,12 @@ import GroupsPageHeader from '@/components/groups/GroupsPageHeader.vue';
 import InfoNote from '@/components/groups/InfoNote.vue';
 import ToggleSwitch from '@/components/groups/ToggleSwitch.vue';
 import { mockFriends } from '@/mocks/groups';
+import { createChallengeGroup } from '@/services/api';
 import type { GroupKind, WinMetric } from '@/types/groups';
 import { endDate, formatLongDate, formatPeriod } from '@/utils/groups';
 
-// Nothing is saved yet: the form only validates and returns to /groups.
+// Challenges are saved through the API; book clubs and invites are not stored yet,
+// so those only validate and return to /groups.
 const router = useRouter();
 
 const metrics: { id: WinMetric; label: string; winner: string }[] = [
@@ -36,6 +38,8 @@ const endPage = ref(true);
 const friendQuery = ref('');
 const invited = ref<string[]>(['mayareads', 'priyapages']);
 const submitted = ref(false);
+const saving = ref(false);
+const saveError = ref<string | null>(null);
 
 const isChallenge = computed(() => kind.value === 'challenge');
 const nameError = computed(() => submitted.value && !name.value.trim());
@@ -74,10 +78,29 @@ function onPicture(event: Event) {
   picture.value = file?.name ?? '';
 }
 
-function submit() {
+async function submit() {
   submitted.value = true;
+  saveError.value = null;
   if (!name.value.trim()) return;
-  void router.push({ name: 'groups' });
+  if (!isChallenge.value) {
+    void router.push({ name: 'groups' });
+    return;
+  }
+
+  saving.value = true;
+  try {
+    const group = await createChallengeGroup({
+      name: name.value.trim(),
+      startDate: startDate.value,
+      durationDays: duration.value,
+      winMetric: metric.value,
+    });
+    void router.push({ name: 'group-detail', params: { groupId: group.id } });
+  } catch (error) {
+    saveError.value = (error as Error).message;
+  } finally {
+    saving.value = false;
+  }
 }
 </script>
 
@@ -287,8 +310,11 @@ function submit() {
           <p class="hint">Invitations are friends-only. Readers choose whether to join.</p>
         </section>
 
+        <p v-if="saveError" class="error" role="alert">{{ saveError }}</p>
         <div class="submit-row">
-          <button type="submit" class="button">{{ inviteLabel }}</button>
+          <button type="submit" class="button" :disabled="saving">
+            {{ saving ? 'Creating…' : inviteLabel }}
+          </button>
           <RouterLink class="button-outline" :to="{ name: 'groups' }">Save for later</RouterLink>
         </div>
       </div>

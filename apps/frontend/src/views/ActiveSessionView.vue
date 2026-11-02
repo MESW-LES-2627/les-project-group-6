@@ -1,16 +1,56 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect } from 'vue';
+import { computed, onMounted, ref, watchEffect } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 
 import ReadingTimer from '@/components/session/ReadingTimer.vue';
 import { mockLibrary } from '@/mocks/library';
 import { getActiveSession } from '@/mocks/session';
+import {
+  cancelReadingSession,
+  finishReadingSession,
+  getBook,
+  mapApiBookToLibraryBook,
+  startReadingSession,
+  type ApiReadingSession,
+} from '@/services/api';
+import type { LibraryBook } from '@/types/library';
 
 const props = defineProps<{ bookId: string }>();
 
 const router = useRouter();
-const book = computed(() => mockLibrary.books.find((item) => item.id === props.bookId) ?? null);
-const session = computed(() => (book.value ? getActiveSession(book.value) : null));
+const apiBook = ref<LibraryBook | null>(null);
+const book = computed(
+  () => apiBook.value ?? mockLibrary.books.find((item) => item.id === props.bookId) ?? null,
+);
+
+// Mock books keep the design data; real books get a session timed by the server.
+const serverSession = ref<ApiReadingSession | null>(null);
+const sessionError = ref<string | null>(null);
+const busy = ref(false);
+
+const session = computed(() => {
+  if (!book.value) return null;
+  const base = getActiveSession(book.value);
+  if (!serverSession.value) return base;
+  const startedAt = new Date(serverSession.value.startedAt);
+  const time = startedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return {
+    ...base,
+    startedAtLabel: `Started at ${time}`,
+    startTimeLabel: time,
+    elapsedSeconds: serverSession.value.elapsedSeconds,
+  };
+});
+
+onMounted(async () => {
+  if (mockLibrary.books.some((item) => item.id === props.bookId)) return;
+  try {
+    apiBook.value = mapApiBookToLibraryBook(await getBook(props.bookId));
+    serverSession.value = await startReadingSession(props.bookId);
+  } catch (error) {
+    if (apiBook.value) sessionError.value = (error as Error).message;
+  }
+});
 
 const currentPage = ref(0);
 const percentage = ref(0);
@@ -41,9 +81,45 @@ function updateFromPercentage() {
   currentPage.value = Math.round((percent / 100) * book.value.pages);
 }
 
-function stopSession() {
+async function stopSession() {
   if (!book.value) return;
-  void router.push({ name: 'book-detail', params: { bookId: book.value.id } });
+  if (!serverSession.value) {
+    void router.push({ name: 'book-detail', params: { bookId: book.value.id } });
+    return;
+  }
+
+  await whileBusy(async () => {
+    await finishReadingSession(serverSession.value!.id);
+    void router.push({ name: 'profile' });
+  });
+}
+
+/** Discards a session started by mistake; nothing is saved to the profile. */
+async function cancelSession() {
+  if (!book.value) return;
+  const bookRoute = { name: 'book-detail', params: { bookId: book.value.id } };
+  if (!serverSession.value) {
+    void router.push(bookRoute);
+    return;
+  }
+  if (!window.confirm('Cancel this session? The time will not be saved.')) return;
+
+  await whileBusy(async () => {
+    await cancelReadingSession(serverSession.value!.id);
+    void router.push(bookRoute);
+  });
+}
+
+async function whileBusy(action: () => Promise<void>) {
+  busy.value = true;
+  sessionError.value = null;
+  try {
+    await action();
+  } catch (error) {
+    sessionError.value = (error as Error).message;
+  } finally {
+    busy.value = false;
+  }
 }
 </script>
 
@@ -93,7 +169,15 @@ function stopSession() {
                 </div>
               </div>
 
-              <ReadingTimer :initial-seconds="session.elapsedSeconds" @stop="stopSession" />
+              <p v-if="sessionError" class="session-error" role="alert">{{ sessionError }}</p>
+
+              <ReadingTimer
+                :key="serverSession?.id ?? 'mock'"
+                :initial-seconds="session.elapsedSeconds"
+                :busy="busy"
+                @stop="stopSession"
+                @cancel="cancelSession"
+              />
 
               <div class="progress-editor">
                 <label class="page-field">
@@ -161,8 +245,8 @@ function stopSession() {
                 </p>
                 <p class="note-body">
                   Started at {{ session.startTimeLabel }} <span aria-hidden="true">•</span> Closing
-                  the tab doesn't stop your session. You're back at the timer now: pause or stop and
-                  save above. Only one session can run at a time.
+                  the tab doesn't stop your session. You're back at the timer now: stop and save, or
+                  cancel above. Only one session can run at a time.
                 </p>
               </div>
             </aside>
@@ -249,6 +333,12 @@ function stopSession() {
 </template>
 
 <style scoped>
+.session-error {
+  margin: 16px 0 0;
+  color: #6f1d1b;
+  font-size: 0.875rem;
+}
+
 .session-view {
   padding: 10px 0 30px;
 }

@@ -5,6 +5,11 @@ import type { ReadingTimeStats } from '@/types/profile';
 
 const props = defineProps<{ stats: ReadingTimeStats }>();
 
+const sessionsNote = computed(() => {
+  const count = props.stats.sessionsCount;
+  return `across ${count} ${count === 1 ? 'session' : 'sessions'}`;
+});
+
 const importedNote = computed(
   () => `+${props.stats.importedHours} h imported from before you joined, these don't earn XP`,
 );
@@ -15,8 +20,9 @@ const importedNote = computed(
     <h2 id="reading-time-title" class="section-title">Reading time</h2>
     <div class="row">
       <p class="total">
-        <span class="number">{{ stats.countedHours }}</span>
-        <span class="muted unit">{{ stats.countedHours === 1 ? 'hour' : 'hours' }}</span>
+        <span class="number">{{ stats.countedMinutes }}</span>
+        <span class="muted unit">{{ stats.countedMinutes === 1 ? 'minute' : 'minutes' }}</span>
+        <span v-if="stats.sessionsCount > 0" class="muted unit sessions">{{ sessionsNote }}</span>
       </p>
       <p v-if="stats.importedHours > 0" class="note">
         <svg
@@ -36,7 +42,7 @@ const importedNote = computed(
         <span>{{ importedNote }}</span>
       </p>
     </div>
-    <p v-if="stats.countedHours === 0" class="muted hint">
+    <p v-if="stats.countedMinutes === 0" class="muted hint">
       Start a reading session and the minutes add up here.
     </p>
   </section>
@@ -74,6 +80,12 @@ const importedNote = computed(
 
 .unit {
   font-size: var(--font-size-md);
+}
+
+.sessions {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--font-size-sm);
 }
 
 .note {

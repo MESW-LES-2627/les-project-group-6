@@ -679,3 +679,105 @@ the home page is is mocked for now, no need to access backend
 
 #### Explanation of Changes
 Replaced the Home placeholder with the `/home` page from design screen 05 using mock data (`mocks/home.ts`, `types/home.ts`) with no backend calls (the old health status was removed), and added view tests. Checked with tests, lint and typecheck. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-31: Server-timed reading sessions and profile minutes
+
+- **Date:** 2026-10-31
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, frontend, testing
+
+#### Prompt
+```text
+we still don't have the integration between supabase auth and the app, so, we are using the table users? because I want to build the function of create a challenge group, start a reading session that is basically a timer, link a book that I am reading and save the timer to my profile stats when I click on finish timer. The number of minutes read will be in the profile page.
+In my opinion, we can send 2 requests and the time of the reading session can be validated in the server. This way we avoid users to manipulate the time in frontend
+first of all, we don't need a pause button, just finish a session and start another one. be sure we have unit tests to ensure the page reaload will use the same reading session. We need to have a way to cancel the reading session too, maybe someone clicked by mistake. After that you can go ahead and follow with the implementation
+```
+
+#### Explanation of Changes
+Added the backend `reading-session` feature (aggregate, repository with stats, service, DTO, routes) where the server clock measures the session, with unit tests; removed the timer's pause, added cancel, added page-reload tests, and wired the active session page to start, finish and cancel it and the profile page to show counted minutes. Checked with typecheck, lint, unit tests, frontend tests and a manual curl run against a freshly migrated database. Then added challenge group creation: backend `challenge-group` feature (aggregate over `groups`, `member`, `challenges`; minutes standings from finished reading sessions), the create form saving through the API, the groups list and group page loading real groups, with unit and view tests and a manual curl run against a migrated database. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-31: ADR-0005 and PR flow description for reading sessions
+
+- **Date:** 2026-10-31
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs, architecture
+
+#### Prompt
+```text
+ok, so, commit everything. Add in PR description the cronological sequence that happens to add a reding session and save then, all the requests made, which info is saved to the database and etc. Also create and ADR to explain how this works
+```
+
+#### Explanation of Changes
+Wrote ADR-0005 (server-timed reading sessions counted by challenge period, with options considered and consequences), added it to the docs index and the iteration log, and rewrote the PR #102 description with the chronological request and database flow. See the [iteration log](log.md) entry of the same date.
+
+### 2026-10-31: Reading stats on the profile page
+
+- **Date:** 2026-10-31
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, testing
+
+#### Prompt
+```text
+do we have a endpoint to the the user stats?
+can we add this stats in the profile page?
+```
+
+#### Explanation of Changes
+The profile's reading time now shows both values from `GET /user/:userId/reading-stats`: total counted minutes and, below it, the number of finished sessions. Added a `ProfileView` test for the API values, the empty state and the mock fallback. See the [iteration log](log.md).
+
+### 2026-10-31: Books on the challenge leaderboard
+
+- **Date:** 2026-10-31
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, frontend, testing
+
+#### Prompt
+```text
+can we also add the name of the book read in the leaderboard? ok, we read 1 min, but which book? we need to know. we can read more than one book concurrently, so, in this case it can be 1 min to book A and 1 to book B...
+```
+
+#### Explanation of Changes
+The standings query now groups counted minutes by member and book (joining `books` for the title) and returns a `books` list per standing; the leaderboard shows each book and its minutes under the member. Updated the group page test and checked the SQL against a migrated database. See the [iteration log](log.md).
+
+### 2026-10-31: PR #102 review fixes and a proportionality rule for the OOP/DDD skill
+
+- **Date:** 2026-10-31
+- **Author:** Robert Gleison
+- **Model:** Claude Sonnet 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, testing, docs
+
+#### Prompt
+```text
+i think you need to add the following thing in ddd skill we have. We want to use ddd and oop patern yes, but we don't want to overuse. We don't need an interface if we currently have just one implementation of the interface. For cases like: ScoringMetric, yes, we need an strategy because we have just the minutes score metrics, but we can also have pages, time, etc.. For cases that we know we will use just once we can simplify things. If we have if else statements, swtich cases and etc, this could be a tip of use interfaces and strategies and etc
+
+Now, answer all my pr questions and apply the fix I told you to do https://github.com/MESW-LES-2627/les-project-group-6/pull/102
+```
+
+#### Explanation of Changes
+Added rule R7 (proportionality) to the `oop-ddd-review` skill. Applied the replies on PR #102: a per-reader advisory lock around starting a session (with an integration test), `Clock` moved to `utils/clock.ts`, a `ScoreStrategy` for the leaderboard metric, the single-use `StandingsQuery` interface removed, `memberRoleOf` instead of a cast, and the guard inlined into `ReadingSession.cancel`. See the [iteration log](log.md).
+
+### 2026-10-31: MetricGoal value object and status from the service (PR #102)
+
+- **Date:** 2026-10-31
+- **Author:** Robert Gleison
+- **Model:** Claude Sonnet 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, testing
+
+#### Prompt
+```text
+commit and push and post the replies
+yes
+```
+
+#### Explanation of Changes
+Committed and pushed the PR #102 review fixes and replied on each review thread. On the open threads, added a `MetricGoal` value object and made `ChallengeGroupService` return `{ group, status }` with a private clock. See the [iteration log](log.md).
