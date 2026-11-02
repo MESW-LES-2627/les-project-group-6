@@ -11,6 +11,8 @@ import {
   check,
   date,
   primaryKey,
+  bigserial,
+  index,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -678,5 +680,44 @@ export const leaderboardEntries = pgTable(
       name: 'leaderboard_entries_user_id_fkey',
     }).onDelete('cascade'),
     primaryKey({ columns: [table.leaderboardId, table.userId], name: 'leaderboard_entries_pkey' }),
+  ],
+);
+
+// Group chat (ADR-0006). `seq` orders messages and is the catch-up cursor;
+// (author_id, client_id) makes a retried send idempotent.
+export const groupMessages = pgTable(
+  'group_messages',
+  {
+    id: uuid().primaryKey().notNull(),
+    seq: bigserial({ mode: 'number' }).notNull(),
+    groupId: uuid('group_id').notNull(),
+    authorId: uuid('author_id'),
+    clientId: uuid('client_id'),
+    kind: varchar({ length: 10 }).notNull(),
+    body: text().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.groupId],
+      foreignColumns: [groups.id],
+      name: 'group_messages_group_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.authorId],
+      foreignColumns: [users.id],
+      name: 'group_messages_author_id_fkey',
+    }).onDelete('cascade'),
+    unique('group_messages_seq_key').on(table.seq),
+    unique('group_messages_author_id_client_id_key').on(table.authorId, table.clientId),
+    index('group_messages_group_id_seq_idx').on(table.groupId, table.seq),
+    check('group_messages_kind_check', sql`${table.kind} IN ('text', 'system')`),
+    check(
+      'group_messages_author_check',
+      sql`(${table.kind} = 'system') = (${table.authorId} IS NULL AND ${table.clientId} IS NULL)`,
+    ),
   ],
 );

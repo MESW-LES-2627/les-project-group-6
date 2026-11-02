@@ -16,7 +16,14 @@ import type {
 import type {
   ChallengeGroup,
   GroupId,
+  MemberRole,
 } from '../../src/features/challenge-group/challenge-group.js';
+import { ChatMessage, type MessageId } from '../../src/features/group-chat/chat-message.js';
+import type {
+  IChatMessageRepository,
+  MessageCursor,
+} from '../../src/features/group-chat/chat-message-repository.js';
+import type { GroupMembership } from '../../src/features/group-chat/group-membership-query.js';
 import type { IChallengeGroupRepository } from '../../src/features/challenge-group/challenge-group-repository.js';
 import type { IUserRepository } from '../../src/features/user/user-repository.js';
 import type { User, UserId, Username } from '../../src/features/user/user.js';
@@ -126,5 +133,64 @@ export class InMemoryChallengeGroupRepository implements IChallengeGroupReposito
 
   async add(group: ChallengeGroup): Promise<void> {
     this.groups.set(group.id.value, group);
+  }
+}
+
+export class InMemoryChatMessageRepository implements IChatMessageRepository {
+  private readonly messages: ChatMessage[] = [];
+  private nextSeq = 1;
+
+  async append(message: ChatMessage): Promise<{ message: ChatMessage; created: boolean }> {
+    const existing = this.messages.find(
+      (m) =>
+        message.clientId !== null &&
+        m.clientId?.equals(message.clientId) &&
+        m.authorId?.equals(message.authorId!),
+    );
+    if (existing) return { message: existing, created: false };
+    const stored = ChatMessage.reconstitute({
+      id: message.id,
+      seq: this.nextSeq++,
+      groupId: message.groupId,
+      authorId: message.authorId,
+      clientId: message.clientId,
+      kind: message.kind,
+      body: message.body,
+      createdAt: message.createdAt,
+      deletedAt: message.deletedAt,
+    });
+    this.messages.push(stored);
+    return { message: stored, created: true };
+  }
+
+  async findById(groupId: GroupId, id: MessageId): Promise<ChatMessage | null> {
+    return this.messages.find((m) => m.groupId.equals(groupId) && m.id.equals(id)) ?? null;
+  }
+
+  async page(groupId: GroupId, cursor: MessageCursor, limit: number): Promise<ChatMessage[]> {
+    const inGroup = this.messages.filter((m) => m.groupId.equals(groupId));
+    if (cursor.after !== undefined) {
+      return inGroup.filter((m) => m.seq! > cursor.after!).slice(0, limit);
+    }
+    const older =
+      cursor.before !== undefined ? inGroup.filter((m) => m.seq! < cursor.before!) : inGroup;
+    return older.slice(-limit);
+  }
+
+  async markDeleted(message: ChatMessage): Promise<void> {
+    const i = this.messages.findIndex((m) => m.id.equals(message.id));
+    this.messages[i] = message;
+  }
+}
+
+export class InMemoryGroupMembership implements GroupMembership {
+  private readonly roles = new Map<string, MemberRole>();
+
+  add(groupId: GroupId, userId: UserId, role: MemberRole = 'member'): void {
+    this.roles.set(`${groupId.value}:${userId.value}`, role);
+  }
+
+  async roleOf(groupId: GroupId, userId: UserId): Promise<MemberRole | null> {
+    return this.roles.get(`${groupId.value}:${userId.value}`) ?? null;
   }
 }

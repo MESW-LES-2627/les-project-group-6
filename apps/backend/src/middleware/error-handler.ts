@@ -1,5 +1,10 @@
 import type { ErrorRequestHandler } from 'express';
-import { BusinessRuleViolationError, InvalidValueError, NotFoundError } from '../utils/errors.js';
+import {
+  BusinessRuleViolationError,
+  ForbiddenError,
+  InvalidValueError,
+  NotFoundError,
+} from '../utils/errors.js';
 
 // Maps domain error families to HTTP status codes. Express 5 forwards rejected
 // async handlers here, so routes can simply let domain errors propagate.
@@ -8,6 +13,8 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
     next(error);
   } else if (error instanceof InvalidValueError) {
     res.status(400).json({ error: error.message });
+  } else if (error instanceof ForbiddenError) {
+    res.status(403).json({ error: error.message });
   } else if (error instanceof NotFoundError) {
     res.status(404).json({ error: error.message });
   } else if (error instanceof BusinessRuleViolationError) {
