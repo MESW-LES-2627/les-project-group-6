@@ -267,9 +267,18 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - **`MetricGoal` value object** replaces the raw number on a challenge (no existing value object fits: `PageCount` rejects 0, which means "no target", and `PageProgress` is a page). The `as number` cast and the inline check in `ChallengeGroup.create` are gone; an invalid goal raises `InvalidMetricGoalError`.
 - **`ChallengeGroupService` returns `{ group, status }`** and its clock is private, so the routes no longer read the time to build the DTO (`toChallengeGroupDto(group, status)`).
 
+### 2026-11-02: Group chat (text) with REST and Socket.IO
+
+- Implemented the group chat ADR from PR #101 (renumbered **ADR-0006** in code, since PR #102 already uses 0005 for reading sessions), on top of PR #102:
+  - Backend [`group-chat`](../../../apps/backend/src/features/group-chat/) feature: `ChatMessage` entity (author or admin may delete, system messages cannot be), `ChatService` as the only writer (store first, then notify), `POST/GET/DELETE /groups/:groupId/messages` with a `seq` cursor and `clientId` idempotency, a `group_messages` table ([migration 0002](../../../apps/backend/src/database/migrations/0002_group_messages.sql)), and a Socket.IO adapter that pushes `message:new` / `message:deleted` to `group:<id>` rooms joined only by members. Creating a challenge posts a system message.
+  - Frontend: [`GroupChat`](../../../apps/frontend/src/components/groups/GroupChat.vue) is live for API groups (history, push, catch-up after reconnect, optimistic send with retry, delete); the mock groups keep the static chat. The Vite proxy forwards WebSockets.
+- Until Supabase Auth lands, the user id comes from the body/query and the socket `auth` payload, like the other endpoints. Media (photos, videos) is left for the later ADR.
+- Tests: domain and service unit tests, an integration test over REST and a real socket, and a `GroupChat` component spec.
+
 ## Next steps
 
 - Review ADR-0005 with the team and mark it Accepted.
+- Renumber the group chat ADR (PR #101) to 0006 and mark it Accepted; switch the chat socket and endpoints to the Supabase JWT when auth lands.
 - Write an ADR restricting Drizzle to a query builder (decided in the OOP/DDD review entry above).
 - Show the 400/409 messages from `PUT /reading-status` in the book reading panel.
 

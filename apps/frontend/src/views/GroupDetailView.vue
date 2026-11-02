@@ -33,7 +33,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <ChallengeGroupView v-if="challenge" :key="challenge.id" :challenge="challenge" :me-id="meId" />
+  <ChallengeGroupView
+    v-if="challenge"
+    :key="challenge.id"
+    :challenge="challenge"
+    :me-id="meId"
+    :live="challenge === apiChallenge"
+  />
   <BookClubGroupView v-else-if="club" :key="club.id" :club="club" />
   <main v-else-if="loading" class="page-column missing" aria-busy="true">
     <p class="eyebrow">Groups</p>
