@@ -269,7 +269,7 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 
 ### 2026-11-02: Group chat (text) with REST and Socket.IO
 
-- Implemented the group chat ADR from PR #101 (renumbered **ADR-0006** in code, since PR #102 already uses 0005 for reading sessions), on top of PR #102:
+- Added [ADR-0006](../../ADRs/0006-group-chat-realtime.md) (Proposed), moved here from PR #101 (closed) and renumbered because PR #102 already uses 0005; it replaces the "polling or SSE" line in [`infra.md`](../../architecture/infra.md). Implemented it on top of PR #102:
   - Backend [`group-chat`](../../../apps/backend/src/features/group-chat/) feature: `ChatMessage` entity (author or admin may delete, system messages cannot be), `ChatService` as the only writer (store first, then notify), `POST/GET/DELETE /groups/:groupId/messages` with a `seq` cursor and `clientId` idempotency, a `group_messages` table ([migration 0002](../../../apps/backend/src/database/migrations/0002_group_messages.sql)), and a Socket.IO adapter that pushes `message:new` / `message:deleted` to `group:<id>` rooms joined only by members. Creating a challenge posts a system message.
   - Frontend: [`GroupChat`](../../../apps/frontend/src/components/groups/GroupChat.vue) is live for API groups (history, push, catch-up after reconnect, optimistic send with retry, delete); the mock groups keep the static chat. The Vite proxy forwards WebSockets.
 - Until Supabase Auth lands, the user id comes from the body/query and the socket `auth` payload, like the other endpoints. Media (photos, videos) is left for the later ADR.
@@ -278,7 +278,7 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 ## Next steps
 
 - Review ADR-0005 with the team and mark it Accepted.
-- Renumber the group chat ADR (PR #101) to 0006 and mark it Accepted; switch the chat socket and endpoints to the Supabase JWT when auth lands.
+- Review ADR-0006 (group chat) with the team and mark it Accepted; switch the chat socket and endpoints to the Supabase JWT when auth lands.
 - Write an ADR restricting Drizzle to a query builder (decided in the OOP/DDD review entry above).
 - Show the 400/409 messages from `PUT /reading-status` in the book reading panel.
 

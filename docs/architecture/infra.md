@@ -101,7 +101,7 @@ Creating our user row: right after sign-up, the frontend calls `POST /me { usern
 - **REST with JSON over HTTPS** between the frontend and the backend.
 - The frontend and the backend are on different domains, so the backend allows the frontend origin with **CORS**.
 - **Reading timer:** starting a session saves `started_at` on the server, and stopping it calculates the duration on the server. The client only displays a ticking clock. This is what lets a session survive a closed tab (F-READ-01), and it prevents the client from sending made-up durations.
-- **No real-time or WebSockets in Core.** Text chat (Extras) starts with polling every few seconds, or Server-Sent Events.
+- **Group chat:** REST for sending and history, Socket.IO to push new messages to members with the group open. See [ADR-0006](../ADRs/0006-group-chat-realtime.md).
 
 ## Environments
 
