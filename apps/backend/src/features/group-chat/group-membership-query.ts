@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { member } from '../../database/schema.js';
-import { memberRoleOf, type GroupId, type MemberRole } from '../challenge-group/challenge-group.js';
+import { memberRoleOf, type GroupId, type MemberRole } from '../group/group.js';
 import type { UserId } from '../user/user.js';
 
 // Port: who belongs to a group, for any kind of group (challenge or book club).

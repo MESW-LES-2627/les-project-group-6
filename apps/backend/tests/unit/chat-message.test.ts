@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GroupId } from '../../src/features/challenge-group/challenge-group.js';
+import { GroupId } from '../../src/features/group/group.js';
 import {
   ChatMessage,
   ClientMessageId,

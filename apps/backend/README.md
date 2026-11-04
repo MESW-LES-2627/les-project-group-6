@@ -25,28 +25,39 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 
 ## API Endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/health` | Health check returning `{ "status": "ok", "db": "ok" }` |
-| `POST` | `/book` | Creates a new book (`201 Created`, requires `title`) |
-| `GET` | `/book?title=...` | Lists books or filters by title substring (`200 OK`) |
-| `GET` | `/book/:id` | Returns a single book by UUID (`200 OK` or `404 Not Found`) |
-| `DELETE` | `/book/:id` | Deletes a book by UUID (`204 No Content` or `404 Not Found`) |
-| `PUT` | `/reading-status` | Sets reading status and page progress for a book (`200 OK`) |
-| `PATCH` | `/reading-status/:id` | Edits an existing reading status by ID (`200 OK` or `404 Not Found`) |
-| `PATCH` | `/reading-status` | Edits an existing reading status by ID or userId + bookId (`200 OK` or `404 Not Found`) |
-| `GET` | `/user/:userId/library` | Returns user's library with progress, supports `?status=` (`200 OK`) |
-| `POST` | `/reading-sessions` | Starts a timed session on a book, or resumes the one running on it (`201`; `409` if another book's session is running) |
-| `PATCH` | `/reading-sessions/:id/finish` | Finishes the session; duration and counted minutes come from the server clock (`200`; `409` if already finished) |
-| `DELETE` | `/reading-sessions/:id` | Cancels a running session started by mistake; nothing is counted (`204`; `409` if already finished) |
-| `GET` | `/user/:userId/reading-sessions/active` | Returns the running session with server-measured `elapsedSeconds` (`200` or `204`) |
-| `POST` | `/groups/challenges` | Creates a challenge group (`name`, `startDate`, `durationDays`, `winMetric`); the creator is admin and first member (`201`) |
-| `GET` | `/groups/challenges/:id` | Returns the group, its challenge and `standings` (counted minutes of sessions finished in the period, split by book in `books`) (`200` or `404`) |
-| `GET` | `/user/:userId/groups` | Lists the challenge groups the user belongs to (`200 OK`) |
-| `POST` | `/groups/:groupId/messages` | Sends a chat message (`userId`, `clientId` UUID, `body`); members only. A retry with the same `clientId` returns the stored message (`201` new, `200` retry, `403` not a member) |
-| `GET` | `/groups/:groupId/messages?userId=&after=&before=&limit=` | Chat history in `seq` order: the latest page, newer than `after` (catch-up) or older than `before` (`200`, `403`) |
-| `DELETE` | `/groups/:groupId/messages/:messageId` | Soft-deletes a message; its author or the group admin (`204`, `403`, `404`) |
-| `GET` | `/user/:userId/reading-stats` | Returns `{ totalMinutes, sessionsCount }` over finished sessions (`200 OK`) |
+| Method   | Path                                                      | Description                                                                                                                                                                                               |
+| -------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/health`                                                 | Health check returning `{ "status": "ok", "db": "ok" }`                                                                                                                                                   |
+| `POST`   | `/book`                                                   | Creates a new book (`201 Created`, requires `title`)                                                                                                                                                      |
+| `GET`    | `/book?title=...`                                         | Lists books or filters by title substring (`200 OK`)                                                                                                                                                      |
+| `GET`    | `/book/:id`                                               | Returns a single book by UUID (`200 OK` or `404 Not Found`)                                                                                                                                               |
+| `DELETE` | `/book/:id`                                               | Deletes a book by UUID (`204 No Content` or `404 Not Found`)                                                                                                                                              |
+| `PUT`    | `/reading-status`                                         | Sets reading status and page progress for a book (`200 OK`)                                                                                                                                               |
+| `PATCH`  | `/reading-status/:id`                                     | Edits an existing reading status by ID (`200 OK` or `404 Not Found`)                                                                                                                                      |
+| `PATCH`  | `/reading-status`                                         | Edits an existing reading status by ID or userId + bookId (`200 OK` or `404 Not Found`)                                                                                                                   |
+| `GET`    | `/user/:userId/library`                                   | Returns user's library with progress, supports `?status=` (`200 OK`)                                                                                                                                      |
+| `POST`   | `/reading-sessions`                                       | Starts a timed session on a book, or resumes the one running on it (`201`; `409` if another book's session is running)                                                                                    |
+| `PATCH`  | `/reading-sessions/:id/finish`                            | Finishes the session; duration and counted minutes come from the server clock (`200`; `409` if already finished)                                                                                          |
+| `DELETE` | `/reading-sessions/:id`                                   | Cancels a running session started by mistake; nothing is counted (`204`; `409` if already finished)                                                                                                       |
+| `GET`    | `/user/:userId/reading-sessions/active`                   | Returns the running session with server-measured `elapsedSeconds` (`200` or `204`)                                                                                                                        |
+| `POST`   | `/groups/challenges`                                      | Creates a challenge group (`name`, `startDate`, `durationDays`, `winMetric`); the creator is admin and first member (`201`)                                                                               |
+| `GET`    | `/groups/challenges/:id`                                  | Returns the group, its challenge and `standings` (counted minutes of sessions finished in the period, split by book in `books`) (`200` or `404`)                                                          |
+| `GET`    | `/user/:userId/groups`                                    | Lists the challenge groups the user belongs to (`200 OK`)                                                                                                                                                 |
+| `POST`   | `/groups/book-clubs`                                      | Creates a book club (`name`, `bookId`, `deadline`); the creator is admin, round 1 starts today and the book goes to their library (`201`)                                                                 |
+| `GET`    | `/groups/book-clubs/:id?userId=`                          | Returns the club, its current `round` (outcome, finished/expected, days left), `standings` (minutes on the round book inside the round, page %, finished), `history` and the open `poll` (`200` or `404`) |
+| `GET`    | `/user/:userId/book-clubs`                                | Lists the book clubs the user belongs to (`200`)                                                                                                                                                          |
+| `POST`   | `/groups/book-clubs/:id/rounds`                           | The admin starts the next round with a new book and deadline once the current one is over (`201`; `403` if not the admin, `409` while the round is active)                                                |
+| `POST`   | `/groups/book-clubs/:id/poll`                             | The admin opens a vote on the next book (`closesAt`, `anonymous`) (`201`; `409` if one is open)                                                                                                           |
+| `POST`   | `/groups/book-clubs/:id/poll/proposals`                   | A member proposes a book, one per member (`201`)                                                                                                                                                          |
+| `PUT`    | `/groups/book-clubs/:id/poll/vote`                        | A member votes for a proposal; voting again moves the vote (`200`)                                                                                                                                        |
+| `POST`   | `/groups/:id/invites`                                     | The admin of any group invites a friend (`inviteeId`) (`201`; `403` if not the admin, `409` if not a friend, a member or already invited)                                                                 |
+| `GET`    | `/user/:userId/group-invites`                             | Pending invites with group name, kind and inviter (`200`)                                                                                                                                                 |
+| `POST`   | `/group-invites/:id/accept` · `/decline`                  | The invitee answers; accepting adds them to the group (`200`)                                                                                                                                             |
+| `GET`    | `/user/:userId/friends`                                   | Accepted friends (`200`)                                                                                                                                                                                  |
+| `POST`   | `/groups/:groupId/messages`                               | Sends a chat message (`userId`, `clientId` UUID, `body`); members only. A retry with the same `clientId` returns the stored message (`201` new, `200` retry, `403` not a member)                          |
+| `GET`    | `/groups/:groupId/messages?userId=&after=&before=&limit=` | Chat history in `seq` order: the latest page, newer than `after` (catch-up) or older than `before` (`200`, `403`)                                                                                         |
+| `DELETE` | `/groups/:groupId/messages/:messageId`                    | Soft-deletes a message; its author or the group admin (`204`, `403`, `404`)                                                                                                                               |
+| `GET`    | `/user/:userId/reading-stats`                             | Returns `{ totalMinutes, sessionsCount }` over finished sessions (`200 OK`)                                                                                                                               |
 
 **Group chat socket** (ADR-0006): Socket.IO on the same port, path `/socket.io`. Connect with `auth: { userId }` (the Supabase JWT once auth lands), emit `group:join` with a group id (ack `{ ok }`, members only), then receive `message:new` (a message as above) and `message:deleted` (`{ id, groupId, seq }`). Clients never write through the socket; on reconnect they call `GET …/messages?after=<last seq>`.
 
@@ -56,18 +67,18 @@ CORS middleware is enabled globally (`Access-Control-Allow-Origin: *`) with pref
 
 Run them inside `apps/backend`, or from the root with `pnpm --filter @bookmarked/backend <script>`.
 
-| Script | What it does |
-|---|---|
-| `dev` | Starts the server with `tsx` in watch mode (restarts on save) |
-| `build` | Compiles `src/` to JavaScript in `dist/` with `tsc` |
-| `start` | Runs the compiled server (`pnpm build` first) |
-| `lint` | Runs ESLint |
-| `typecheck` | Type-checks without emitting files |
-| `test` | Runs `tests/**/*.test.ts` with the Node.js test runner (through `tsx`) |
-| `db:generate` | Generates SQL migrations from schema using `drizzle-kit` |
-| `db:migrate` | Applies pending migrations to the database |
-| `db:seed` | Populates database with demo user, books, and reading statuses |
-| `db:studio` | Opens Drizzle Studio local database viewer |
+| Script        | What it does                                                           |
+| ------------- | ---------------------------------------------------------------------- |
+| `dev`         | Starts the server with `tsx` in watch mode (restarts on save)          |
+| `build`       | Compiles `src/` to JavaScript in `dist/` with `tsc`                    |
+| `start`       | Runs the compiled server (`pnpm build` first)                          |
+| `lint`        | Runs ESLint                                                            |
+| `typecheck`   | Type-checks without emitting files                                     |
+| `test`        | Runs `tests/**/*.test.ts` with the Node.js test runner (through `tsx`) |
+| `db:generate` | Generates SQL migrations from schema using `drizzle-kit`               |
+| `db:migrate`  | Applies pending migrations to the database                             |
+| `db:seed`     | Populates database with demo user, books, and reading statuses         |
+| `db:studio`   | Opens Drizzle Studio local database viewer                             |
 
 CI runs lint, format check, typecheck, test and build on every pull request (see [`.github/workflows/backend-ci.yml`](../../.github/workflows/backend-ci.yml)).
 
@@ -75,10 +86,10 @@ CI runs lint, format check, typecheck, test and build on every pull request (see
 
 Read from `apps/backend/.env` when it exists. See [`.env.example`](.env.example).
 
-| Variable | Default | Description |
-|---|---|---|
-| `PORT` | `3000` | Port the HTTP server listens on |
-| `DATABASE_URL` | `postgresql://postgres:password123@localhost:5432/bookmarked_dev` | PostgreSQL connection string |
+| Variable            | Default                                                            | Description                            |
+| ------------------- | ------------------------------------------------------------------ | -------------------------------------- |
+| `PORT`              | `3000`                                                             | Port the HTTP server listens on        |
+| `DATABASE_URL`      | `postgresql://postgres:password123@localhost:5432/bookmarked_dev`  | PostgreSQL connection string           |
 | `DATABASE_URL_TEST` | `postgresql://postgres:password123@localhost:5432/bookmarked_test` | PostgreSQL connection string for tests |
 
 ## Folder layout
@@ -92,8 +103,12 @@ apps/backend/
 │   │   │                  # book-routes.ts (routes)
 │   │   ├── reading-status/ # ReadingStatus aggregate, ReadingState (State pattern) + PageProgress, repository, service, DTO, routes
 │   │   ├── challenge-group/ # ChallengeGroup aggregate (groups + member + challenges), repository, standings query, service, DTO, routes
+│   │   ├── group/         # Shared kernel of every group: GroupId, GroupName, memberships, GroupRoster, MemberJoined event
+│   │   ├── group-invite/  # GroupInvite aggregate, repository, service, DTO, routes (any group)
+│   │   ├── book-club/     # BookClub aggregate (rounds), BookPoll aggregate (voting), progress query, services, DTO, routes
+│   │   ├── friend/        # Read-only friends list from accepted friendships
 │   │   ├── reading-session/ # ReadingSession aggregate (server-timed), repository + stats, service, DTO, routes
-│   │   ├── group-chat/    # ChatMessage entity, repository, membership query, ChatService, routes, Socket.IO notifier
+│   │   ├── group-chat/    # ChatMessage entity, repository, membership query, ChatService, routes, Socket.IO notifier, JoinAnnouncer
 │   │   ├── user/          # User entity + value objects (UserId, Email, Username), repository
 │   │   └── library/       # Read-side query (CQRS) and the library route
 │   ├── api/               # router.ts wires each feature's service and mounts its routes; health route

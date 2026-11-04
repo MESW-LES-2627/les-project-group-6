@@ -13,6 +13,7 @@ import {
   primaryKey,
   bigserial,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -240,6 +241,7 @@ export const bookClubRounds = pgTable(
     start: date().notNull(),
     deadline: date().notNull(),
     status: varchar({ length: 20 }).default('pending').notNull(),
+    bookId: uuid('book_id').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -250,6 +252,12 @@ export const bookClubRounds = pgTable(
       foreignColumns: [bookClubs.groupId],
       name: 'book_club_rounds_book_club_id_fkey',
     }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.bookId],
+      foreignColumns: [books.id],
+      name: 'book_club_rounds_book_id_fkey',
+    }).onDelete('restrict'),
+    unique('book_club_rounds_club_number_key').on(table.bookClubId, table.roundNumber),
   ],
 );
 
@@ -719,5 +727,122 @@ export const groupMessages = pgTable(
       'group_messages_author_check',
       sql`(${table.kind} = 'system') = (${table.authorId} IS NULL AND ${table.clientId} IS NULL)`,
     ),
+  ],
+);
+
+export const groupInvites = pgTable(
+  'group_invites',
+  {
+    id: uuid().primaryKey().notNull(),
+    groupId: uuid('group_id').notNull(),
+    inviteeId: uuid('invitee_id').notNull(),
+    inviterId: uuid('inviter_id').notNull(),
+    status: varchar({ length: 20 }).default('pending').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    respondedAt: timestamp('responded_at', { withTimezone: true, mode: 'string' }),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.groupId],
+      foreignColumns: [groups.id],
+      name: 'group_invites_group_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.inviteeId],
+      foreignColumns: [users.id],
+      name: 'group_invites_invitee_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.inviterId],
+      foreignColumns: [users.id],
+      name: 'group_invites_inviter_id_fkey',
+    }).onDelete('cascade'),
+    uniqueIndex('group_invites_one_pending_idx')
+      .on(table.groupId, table.inviteeId)
+      .where(sql`status = 'pending'`),
+  ],
+);
+
+export const bookClubPolls = pgTable(
+  'book_club_polls',
+  {
+    id: uuid().primaryKey().notNull(),
+    groupId: uuid('group_id').notNull(),
+    closesAt: timestamp('closes_at', { withTimezone: true, mode: 'string' }).notNull(),
+    anonymous: boolean().default(true).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    closedAt: timestamp('closed_at', { withTimezone: true, mode: 'string' }),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.groupId],
+      foreignColumns: [bookClubs.groupId],
+      name: 'book_club_polls_group_id_fkey',
+    }).onDelete('cascade'),
+  ],
+);
+
+export const bookClubProposals = pgTable(
+  'book_club_proposals',
+  {
+    id: uuid().primaryKey().notNull(),
+    pollId: uuid('poll_id').notNull(),
+    bookId: uuid('book_id').notNull(),
+    proposedBy: uuid('proposed_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.pollId],
+      foreignColumns: [bookClubPolls.id],
+      name: 'book_club_proposals_poll_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.bookId],
+      foreignColumns: [books.id],
+      name: 'book_club_proposals_book_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.proposedBy],
+      foreignColumns: [users.id],
+      name: 'book_club_proposals_proposed_by_fkey',
+    }).onDelete('cascade'),
+    unique('book_club_proposals_poll_book_key').on(table.pollId, table.bookId),
+  ],
+);
+
+export const bookClubVotes = pgTable(
+  'book_club_votes',
+  {
+    pollId: uuid('poll_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    proposalId: uuid('proposal_id').notNull(),
+    castAt: timestamp('cast_at', { withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.pollId],
+      foreignColumns: [bookClubPolls.id],
+      name: 'book_club_votes_poll_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: 'book_club_votes_user_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.proposalId],
+      foreignColumns: [bookClubProposals.id],
+      name: 'book_club_votes_proposal_id_fkey',
+    }).onDelete('cascade'),
+    primaryKey({ columns: [table.pollId, table.userId], name: 'book_club_votes_pkey' }),
   ],
 );

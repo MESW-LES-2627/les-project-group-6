@@ -17,14 +17,19 @@ const props = withDefaults(
     /** True when the group comes from the API: the chat is then live. */
     live?: boolean;
   }>(),
-  { meId: mockCurrentMemberId },
+  { meId: mockCurrentMemberId, live: false },
 );
 
 type Tab = 'chat' | 'members' | 'history';
 
 const tab = ref<Tab>('chat');
 const rematchStarted = ref(false);
-const me = props.challenge.members.find((m) => m.id === props.meId) ?? props.challenge.members[0]!;
+const me = props.challenge.members.find((m) => m.id === props.meId) ?? {
+  id: props.meId,
+  name: 'You',
+  initials: 'YO',
+  handle: '',
+};
 const isAdmin = props.challenge.leaderboard.some(
   (e) => e.member.id === me.id && e.note === 'Admin',
 );

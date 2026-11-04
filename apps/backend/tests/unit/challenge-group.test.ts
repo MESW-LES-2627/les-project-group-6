@@ -3,15 +3,13 @@ import assert from 'node:assert/strict';
 import {
   ChallengeGroup,
   ChallengePeriod,
-  GroupName,
   InvalidChallengePeriodError,
-  InvalidGroupNameError,
   InvalidMetricGoalError,
   InvalidWinMetricError,
   MetricGoal,
   WinMetric,
-  memberRoleOf,
 } from '../../src/features/challenge-group/challenge-group.js';
+import { GroupName, InvalidGroupNameError, memberRoleOf } from '../../src/features/group/group.js';
 import { UserId } from '../../src/features/user/user.js';
 import { InvalidValueError } from '../../src/utils/errors.js';
 

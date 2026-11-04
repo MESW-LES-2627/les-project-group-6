@@ -29,7 +29,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Book detail page | Responsive `/library/:bookId` with reading, edition, thoughts, reviews and reading-club panels, and API reading status updates |
 | Active reading session | `/session/:bookId` starts, finishes or cancels a server-timed session for real books (`/reading-sessions`); counted minutes show on `/profile`. Page progress on finish and group counting still to do |
 | Home page prototype | `/home` built from design screen 05 with mock data only, no backend calls; no home API yet |
-| Groups pages prototype | `/groups`, `/groups/new` and `/groups/:groupId` built from design screens 12 to 15; creating a challenge group is saved through the API with a minutes leaderboard; book clubs, invites and fair-reading settings still mock |
+| Groups pages | `/groups`, `/groups/new` and `/groups/:groupId` built from design screens 12 to 15. Challenges and book clubs are saved through the API, with leaderboards, friend invites, the live group chat and book club voting; fair-reading settings still mock |
 | Profile page prototype | `/profile` with app header and footer, mock data and empty states, built on the #64 skeleton |
 | Product issues created from the requirements | Core done (#6 to #69), to review and add to the board; Extras not started |
 | Backend skeleton (#62) | Runs: TypeScript + Express, `/health`, lint and typecheck; layering, errors and config still to do |
@@ -275,6 +275,20 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 - Until Supabase Auth lands, the user id comes from the body/query and the socket `auth` payload, like the other endpoints. Media (photos, videos) is left for the later ADR.
 - Tests: domain and service unit tests, an integration test over REST and a real socket, and a `GroupChat` component spec.
 
+### 2026-11-04: Book clubs and group invites
+
+`7a919bd` (shared group kernel), `7d9350c` (spec), `2f8830c` (backend), `394fe96` (frontend), then a merge of `main` that replaced this branch's own chat with the ADR-0006 group chat. Issue [#104](https://github.com/MESW-LES-2627/les-project-group-6/issues/104), split into sub-issues #105 to #110. Spec: [book clubs](../../specs/book-clubs.md) (new `docs/specs/` folder).
+
+- Added the [`book-club`](../../../apps/backend/src/features/book-club/) backend feature: a `BookClub` aggregate with `Round` and `RoundPeriod` over `groups`, `member`, `book_clubs` and `book_club_rounds`, and a `BookPoll` aggregate for voting on the next book (F-GRP-07, F-GRP-08). Creating a club or starting a round adds the book to each member's library as "Not started". Progress is a read-side `ClubProgressQuery`: counted minutes of finished sessions **on the round book inside the round**, page percent and finished.
+- Added [`group-invite`](../../../apps/backend/src/features/group-invite/) and a read-only [`friend`](../../../apps/backend/src/features/friend/) feature that work for **any group**, and moved `GroupId`, `GroupName` and memberships from the challenge feature to a shared [`group`](../../../apps/backend/src/features/group/group.ts) kernel (the chat now imports them from there). Not-admin and not-member errors are `ForbiddenError` (403). Endpoints are in the [backend README](../../../apps/backend/README.md).
+- **Chat: reuses the [ADR-0006](../../ADRs/0006-group-chat-realtime.md) group chat.** This branch first built its own chat (polling, on `conversations`/`posts`) because the local `main` did not have the 2026-11-02 chat yet. The merge dropped it: book clubs post their system messages (club started, round started, voting open) through the chat's `SystemMessages` port, and the club page passes its group id to the live `GroupChat`.
+- Migration `0003_book_clubs`: `book_club_rounds.book_id` and the `group_invites`, `book_club_polls`, `book_club_proposals` and `book_club_votes` tables. `schema.sql` mirrors it. The seed adds five friends for the demo reader and a "Sunday Classics" club with a pending invite for them.
+- **Decision: a "member joined" event (Observer).** Accepting an invite notifies listeners: a `JoinAnnouncer` posts "X joined the group" and the book club adds the round book to the new member's library. *Rejected:* the invite service calling the chat and library directly.
+- **Decision: the round outcome is computed on read**, like the challenge status: completed when every member who joined before the deadline finished the book in time, not completed after the deadline otherwise. *Rejected:* storing `book_club_rounds.status` and a job at the deadline. Known limit: "finished in time" uses `reading_status.updated_at`, which moves if a finished book is edited later.
+- **Decision: invites are sent after the group is created**, one request per friend, for challenges and clubs alike. *Rejected:* `inviteeIds` in the create body.
+- Frontend: a `BookPicker` (search the catalog or add a missing title), `/groups/new` creates book clubs and invites friends from the API, `/groups/:groupId` loads API book clubs (round card, progress, live chat, voting, past rounds, and an admin panel to invite friends, open a vote and start the next round), and `/groups` lists the reader's clubs and real pending invites. The mock `classics` club stays for the design demo.
+- Tests: backend unit tests for the new aggregates and services and an integration test for the repositories and progress query (140 backend tests with the chat's); frontend tests for the picker, create, club page and invites (91 tests). Checked the full flow against PostgreSQL and the club page against [design screen 14](../../design/screens/14-book-club.png).
+
 ## Next steps
 
 - Review ADR-0005 with the team and mark it Accepted.
@@ -414,7 +428,8 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 ## Next steps
 
 - Review ADR-0005 with the team and mark it Accepted.
-- Decide where the challenge fair-reading settings live (new columns on `challenges` or a rules table) and add invites once friendships use real users.
+- Decide where the group fair-reading settings live (new columns on `challenges` or a rules table).
+- Groups: leave a group and remove members (#55, #59), friend requests (#33, #36), images and videos in the chat, and badges when a club round completes.
 - Finish Supabase project configuration, trusted username authentication/uniqueness, OIDC UI approval, session callbacks/guards, logout, password recovery and onboarding (see frontend guide).
 
 - Create the issues for the backend parts cut from #62 (layering, errors, config, CORS, logging, the test runner, ADR-0004 for the layering).

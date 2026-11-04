@@ -16,12 +16,26 @@ import { challengeGroupRoutes } from '../features/challenge-group/challenge-grou
 import { ChallengeGroupService } from '../features/challenge-group/challenge-group-service.js';
 import type { StandingsQuery } from '../features/challenge-group/standings-query.js';
 import type { IUserRepository } from '../features/user/user-repository.js';
+import type { IBookClubRepository } from '../features/book-club/book-club-repository.js';
+import { bookClubRoutes } from '../features/book-club/book-club-routes.js';
+import { BookClubService } from '../features/book-club/book-club-service.js';
+import type { IBookPollRepository } from '../features/book-club/book-poll-repository.js';
+import { BookPollService } from '../features/book-club/book-poll-service.js';
+import type { ClubProgressQuery } from '../features/book-club/club-progress-query.js';
+import type { IFriendRepository } from '../features/friend/friend-repository.js';
+import { friendRoutes } from '../features/friend/friend-routes.js';
+import type { IGroupInviteRepository } from '../features/group-invite/group-invite-repository.js';
+import { groupInviteRoutes } from '../features/group-invite/group-invite-routes.js';
+import { GroupInviteService } from '../features/group-invite/group-invite-service.js';
+import type { IGroupRosterRepository } from '../features/group/group-roster-repository.js';
+import type { MemberJoinedListener } from '../features/group/group.js';
 import type { IChatMessageRepository } from '../features/group-chat/chat-message-repository.js';
 import type { ChatNotifier } from '../features/group-chat/chat-notifier.js';
 import { NoopChatNotifier } from '../features/group-chat/chat-notifier.js';
 import { chatRoutes } from '../features/group-chat/chat-routes.js';
 import { ChatService } from '../features/group-chat/chat-service.js';
 import type { GroupMembership } from '../features/group-chat/group-membership-query.js';
+import { JoinAnnouncer } from '../features/group-chat/join-announcer.js';
 import { healthRoutes } from './health-routes.js';
 
 export interface ApiDependencies {
@@ -33,6 +47,12 @@ export interface ApiDependencies {
   userRepository?: IUserRepository;
   challengeGroupRepository?: IChallengeGroupRepository;
   standingsQuery?: StandingsQuery;
+  groupRosterRepository?: IGroupRosterRepository;
+  friendRepository?: IFriendRepository;
+  groupInviteRepository?: IGroupInviteRepository;
+  bookClubRepository?: IBookClubRepository;
+  bookPollRepository?: IBookPollRepository;
+  clubProgressQuery?: ClubProgressQuery;
   chatMessageRepository?: IChatMessageRepository;
   groupMembership?: GroupMembership;
   /** Pushes chat events to sockets; defaults to no push (REST still works). */
@@ -54,6 +74,12 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
     userRepository,
     challengeGroupRepository,
     standingsQuery,
+    groupRosterRepository,
+    friendRepository,
+    groupInviteRepository,
+    bookClubRepository,
+    bookPollRepository,
+    clubProgressQuery,
     chatMessageRepository,
     groupMembership,
     chatNotifier = new NoopChatNotifier(),
@@ -92,6 +118,60 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
       challengeGroupRoutes(
         new ChallengeGroupService(challengeGroupRepository, userRepository, undefined, chat),
         standingsQuery,
+      ),
+    );
+  }
+
+  // Who reacts when a reader accepts an invite (Observer): the chat announces them and
+  // a book club adds its round book to their library.
+  const joinListeners: MemberJoinedListener[] = [];
+
+  if (userRepository && chat) {
+    joinListeners.push(new JoinAnnouncer(chat, userRepository));
+  }
+
+  if (
+    userRepository &&
+    bookRepository &&
+    readingStatusRepository &&
+    bookClubRepository &&
+    bookPollRepository &&
+    clubProgressQuery
+  ) {
+    const clubs = new BookClubService(
+      bookClubRepository,
+      userRepository,
+      bookRepository,
+      readingStatusRepository,
+      bookPollRepository,
+      undefined,
+      chat,
+    );
+    joinListeners.push(clubs);
+    const polls = new BookPollService(
+      bookPollRepository,
+      bookClubRepository,
+      bookRepository,
+      undefined,
+      chat,
+    );
+    router.use(bookClubRoutes(clubs, polls, clubProgressQuery));
+  }
+
+  if (friendRepository) {
+    router.use(friendRoutes(friendRepository));
+  }
+
+  if (userRepository && groupRosterRepository && friendRepository && groupInviteRepository) {
+    router.use(
+      groupInviteRoutes(
+        new GroupInviteService(
+          groupInviteRepository,
+          groupRosterRepository,
+          friendRepository,
+          userRepository,
+          joinListeners,
+        ),
       ),
     );
   }

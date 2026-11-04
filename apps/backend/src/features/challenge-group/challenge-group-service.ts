@@ -2,11 +2,10 @@ import type { Clock } from '../../utils/clock.js';
 import { NotFoundError } from '../../utils/errors.js';
 import type { IUserRepository } from '../user/user-repository.js';
 import { UserId } from '../user/user.js';
+import { GroupId, GroupName } from '../group/group.js';
 import {
   ChallengeGroup,
   ChallengePeriod,
-  GroupId,
-  GroupName,
   MetricGoal,
   WinMetric,
   type ChallengeStatus,

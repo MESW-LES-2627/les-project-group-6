@@ -13,17 +13,31 @@ import type {
   IReadingSessionRepository,
   ReadingStats,
 } from '../../src/features/reading-session/reading-session-repository.js';
+import type { ChallengeGroup } from '../../src/features/challenge-group/challenge-group.js';
+import {
+  GroupRoster,
+  type GroupId,
+  type MemberRole,
+  type Membership,
+} from '../../src/features/group/group.js';
+import type { IGroupRosterRepository } from '../../src/features/group/group-roster-repository.js';
+import type { BookClub } from '../../src/features/book-club/book-club.js';
+import type { IBookClubRepository } from '../../src/features/book-club/book-club-repository.js';
+import type { BookPoll } from '../../src/features/book-club/book-poll.js';
+import type { IBookPollRepository } from '../../src/features/book-club/book-poll-repository.js';
+import type { FriendView, IFriendRepository } from '../../src/features/friend/friend-repository.js';
+import type { GroupInvite, InviteId } from '../../src/features/group-invite/group-invite.js';
 import type {
-  ChallengeGroup,
-  GroupId,
-  MemberRole,
-} from '../../src/features/challenge-group/challenge-group.js';
+  IGroupInviteRepository,
+  PendingInvite,
+} from '../../src/features/group-invite/group-invite-repository.js';
 import { ChatMessage, type MessageId } from '../../src/features/group-chat/chat-message.js';
 import type {
   IChatMessageRepository,
   MessageCursor,
 } from '../../src/features/group-chat/chat-message-repository.js';
 import type { GroupMembership } from '../../src/features/group-chat/group-membership-query.js';
+import type { SystemMessages } from '../../src/features/group-chat/chat-service.js';
 import type { IChallengeGroupRepository } from '../../src/features/challenge-group/challenge-group-repository.js';
 import type { IUserRepository } from '../../src/features/user/user-repository.js';
 import type { User, UserId, Username } from '../../src/features/user/user.js';
@@ -136,6 +150,99 @@ export class InMemoryChallengeGroupRepository implements IChallengeGroupReposito
   }
 }
 
+export class InMemoryGroupRosterRepository implements IGroupRosterRepository {
+  private readonly rosters = new Map<string, GroupRoster>();
+
+  /** Registers a group, as creating a challenge or a club would. */
+  put(roster: GroupRoster): void {
+    this.rosters.set(roster.groupId.value, roster);
+  }
+
+  async findById(id: GroupId): Promise<GroupRoster | null> {
+    return this.rosters.get(id.value) ?? null;
+  }
+
+  async addMember(groupId: GroupId, membership: Membership): Promise<void> {
+    const r = this.rosters.get(groupId.value);
+    if (!r) return;
+    this.put(new GroupRoster(r.groupId, r.name, r.kind, r.adminId, [...r.members, membership]));
+  }
+}
+
+export class InMemoryFriendRepository implements IFriendRepository {
+  private readonly pairs = new Set<string>();
+
+  befriend(a: UserId, b: UserId): void {
+    this.pairs.add(`${a.value}:${b.value}`);
+    this.pairs.add(`${b.value}:${a.value}`);
+  }
+
+  async areFriends(a: UserId, b: UserId): Promise<boolean> {
+    return this.pairs.has(`${a.value}:${b.value}`);
+  }
+
+  async friendsOf(userId: UserId): Promise<FriendView[]> {
+    return [...this.pairs]
+      .filter((p) => p.startsWith(`${userId.value}:`))
+      .map((p) => ({ userId: p.split(':')[1]!, displayName: '', username: '' }));
+  }
+}
+
+export class InMemoryGroupInviteRepository implements IGroupInviteRepository {
+  private readonly invites = new Map<string, GroupInvite>();
+
+  async findById(id: InviteId): Promise<GroupInvite | null> {
+    return this.invites.get(id.value) ?? null;
+  }
+
+  async hasPending(groupId: GroupId, inviteeId: UserId): Promise<boolean> {
+    return [...this.invites.values()].some(
+      (i) => i.groupId.equals(groupId) && i.inviteeId.equals(inviteeId) && i.status === 'pending',
+    );
+  }
+
+  async pendingFor(inviteeId: UserId): Promise<PendingInvite[]> {
+    return [...this.invites.values()]
+      .filter((i) => i.inviteeId.equals(inviteeId) && i.status === 'pending')
+      .map((invite) => ({ invite, groupName: '', groupKind: 'book-club', inviterName: '' }));
+  }
+
+  async save(invite: GroupInvite): Promise<void> {
+    this.invites.set(invite.id.value, invite);
+  }
+}
+
+export class InMemoryBookClubRepository implements IBookClubRepository {
+  private readonly clubs = new Map<string, BookClub>();
+
+  async findById(id: GroupId): Promise<BookClub | null> {
+    return this.clubs.get(id.value) ?? null;
+  }
+
+  async findByMember(userId: UserId): Promise<BookClub[]> {
+    return [...this.clubs.values()].filter((c) => c.isMember(userId));
+  }
+
+  async save(club: BookClub): Promise<void> {
+    this.clubs.set(club.id.value, club);
+  }
+}
+
+export class InMemoryBookPollRepository implements IBookPollRepository {
+  private readonly polls: BookPoll[] = [];
+
+  async findCurrent(groupId: GroupId): Promise<BookPoll | null> {
+    return (
+      [...this.polls].reverse().find((p) => p.groupId.equals(groupId) && p.closedAt === null) ??
+      null
+    );
+  }
+
+  async save(poll: BookPoll): Promise<void> {
+    if (!this.polls.includes(poll)) this.polls.push(poll);
+  }
+}
+
 export class InMemoryChatMessageRepository implements IChatMessageRepository {
   private readonly messages: ChatMessage[] = [];
   private nextSeq = 1;
@@ -192,5 +299,18 @@ export class InMemoryGroupMembership implements GroupMembership {
 
   async roleOf(groupId: GroupId, userId: UserId): Promise<MemberRole | null> {
     return this.roles.get(`${groupId.value}:${userId.value}`) ?? null;
+  }
+}
+
+/** Records the system messages other features post, instead of a chat. */
+export class RecordingSystemMessages implements SystemMessages {
+  readonly posts: { groupId: GroupId; text: string }[] = [];
+
+  async postSystem(groupId: GroupId, text: string): Promise<void> {
+    this.posts.push({ groupId, text });
+  }
+
+  get texts(): string[] {
+    return this.posts.map((p) => p.text);
   }
 }

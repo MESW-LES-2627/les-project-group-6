@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 import { ForbiddenError, InvalidValueError } from '../../utils/errors.js';
 import { Uuid } from '../../utils/uuid.js';
-import type { GroupId } from '../challenge-group/challenge-group.js';
-import type { MemberRole } from '../challenge-group/challenge-group.js';
+import type { GroupId } from '../group/group.js';
+import type { MemberRole } from '../group/group.js';
 import type { UserId } from '../user/user.js';
 
 export class MessageId extends Uuid {

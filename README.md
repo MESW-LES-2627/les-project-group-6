@@ -28,6 +28,7 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 │   ├── design/
 │   ├── OOP_documents/
 │   ├── product/
+│   ├── specs/
 │   └── sprints/
 ├── infra/
 ├── scripts/
@@ -52,7 +53,7 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 
 The application source code. Each app is a pnpm workspace with its own `package.json`, `tsconfig.json` (extending the root base) and ESLint config. Tooling shared by every app lives in the repository root (see [Root config](#root-config)).
 
-- `apps/frontend/`: the Vue 3 web client with shared CSS tokens, a home page prototype, a profile page prototype and a groups prototype (list, create, challenge, book club), all with mock data, router and component tests, ESLint, Prettier, vue-tsc and Vitest. See [apps/frontend/README.md](apps/frontend/README.md) for commands and production API routing.
+- `apps/frontend/`: the Vue 3 web client with shared CSS tokens, a home page prototype, a profile page prototype and groups pages (list, create, challenge, book club) backed by the API with mock groups kept for the design demo, and other prototypes with mock data, router and component tests, ESLint, Prettier, vue-tsc and Vitest. See [apps/frontend/README.md](apps/frontend/README.md) for commands and production API routing.
   Authentication is at `/login`: the reference-based login/sign-up screen, an SDK-backed Supabase skeleton in `src/services/auth.ts`, integration tests, and the reference photo in `src/assets/auth/`. See the frontend guide for credentials and remaining integration work.
 - `apps/backend/`: the server, API and business logic (TypeScript, Node.js, Express). See [apps/backend/README.md](apps/backend/README.md) for how to run it.
 
@@ -78,6 +79,7 @@ All project documentation. See [docs/README.md](docs/README.md) for an index tha
 - `docs/ADRs/`: Architecture Decision Records. The technical decisions the team makes, with their context and consequences.
 - `docs/architecture/`: technical models of the system, such as the [database tables UML](docs/architecture/table_UML.md) and the [infrastructure](docs/architecture/infra.md).
 - `docs/design/`: UI design (Figma link, screen snapshots and the color palette).
+- `docs/specs/`: feature specs, the technical design of a feature written before it is built (for example [book clubs](docs/specs/book-clubs.md)).
 - `docs/OOP_documents/`: deliverables for the OOP classes (domain model, component diagrams, event storming, coupling analysis, patterns used, refactored code), organized by iteration (`iteration_0` to `iteration_4`).
 - `docs/product/`: documents about the business rules and design of the product, such as the [requirements](docs/product/requirements.md) and the [feature scope](docs/product/features_priority.md) (what is Core, Extra or Optional, and the sprint plan).
 - `docs/sprints/`: deliverables for the Software Engineering Lab classes (vision, MVP, vertical prototype, claims, release notes), organized by iteration (`iteration_0` to `iteration_4`). Each iteration can also have a `log.md`: a running record of what the team did and decided (see [iteration 0](docs/sprints/iteration_0/log.md)).

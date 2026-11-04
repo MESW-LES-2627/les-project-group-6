@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gt, lt } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { groupMessages } from '../../database/schema.js';
-import { GroupId } from '../challenge-group/challenge-group.js';
+import { GroupId } from '../group/group.js';
 import { UserId } from '../user/user.js';
 import {
   ChatMessage,

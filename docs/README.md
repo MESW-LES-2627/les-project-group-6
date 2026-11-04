@@ -10,6 +10,7 @@ Index of everything inside `docs/`: what each folder and file is for, and whethe
 |---|---|
 | What the product must do | `product/` |
 | How the UI looks | `design/` |
+| How a feature will be built (domain, data, API, UI) | `specs/` |
 | A technical decision and its reasons | `ADRs/` |
 | A technical model of the system (database tables, ...) | `architecture/` |
 | What the team did, day by day | `sprints/iteration_N/log.md` |
@@ -31,6 +32,14 @@ Tasks and bugs are not documented here: they live in GitHub Issues and on the Pr
 |---|---|---|
 | [`README.md`](design/README.md) | Link to the Figma file (source of truth), the color palette, Lora/Inter typography and frontend token links, and the screen snapshots with how to re-export them. | ✅ |
 | `screens/*.png` | 18 desktop screen snapshots exported from Figma, numbered by flow (`01-authentication.png` to `18-retrospective.png`). They can be out of date: check Figma. | ✅ |
+
+## `specs/`
+
+Feature specs: the technical design of a feature, written before it is built and linked from its parent issue.
+
+| File | Purpose | Status |
+|---|---|---|
+| [`book-clubs.md`](specs/book-clubs.md) | Book clubs (#104): rounds, progress, invites, the shared group chat and voting. Domain model, tables, API, frontend and decisions. | ✅ |
 
 ## `ADRs/`
 

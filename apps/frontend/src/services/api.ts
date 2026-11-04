@@ -1,12 +1,16 @@
 import type {
+  BookClubDetail,
   ChallengeDetail,
+  GroupKind,
+  GroupMember,
   GroupStatus,
   GroupSummary,
   LeaderboardEntry,
+  PastResult,
   WinMetric,
 } from '@/types/groups';
 import type { LibraryBook, ReadingStatus } from '@/types/library';
-import { formatPeriod, initialsOf } from '@/utils/groups';
+import { formatLongDate, formatPeriod, initialsOf } from '@/utils/groups';
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
 
@@ -567,4 +571,409 @@ export async function deleteGroupMessage(
 export function apiEndpoint(): { origin: string; path: string } {
   const url = new URL(baseUrl, window.location.origin);
   return { origin: url.origin, path: url.pathname.replace(/\/+$/, '') };
+}
+
+// ---------------------------------------------------------------------------
+// Shared helpers for JSON requests
+// ---------------------------------------------------------------------------
+
+async function getJson<T>(path: string, fallback: string): Promise<T> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) {
+    throw new Error(await errorMessage(response, `${fallback}: HTTP ${response.status}`));
+  }
+  return response.json() as Promise<T>;
+}
+
+async function sendJson<T>(
+  method: 'POST' | 'PUT',
+  path: string,
+  body: unknown,
+  fallback: string,
+): Promise<T> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) {
+    throw new Error(await errorMessage(response, `${fallback}: HTTP ${response.status}`));
+  }
+  return response.json() as Promise<T>;
+}
+
+const id = (value: string) => encodeURIComponent(value);
+
+function pad(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+// ---------------------------------------------------------------------------
+// Books catalog (used by the book picker)
+// ---------------------------------------------------------------------------
+
+export async function searchBooks(title: string): Promise<ApiBook[]> {
+  return getJson<ApiBook[]>(`/book?title=${encodeURIComponent(title)}`, 'Failed to search books');
+}
+
+/** Adds a missing book with only its title (F-BOOK-02). */
+export async function addBook(title: string): Promise<ApiBook> {
+  return sendJson<ApiBook>('POST', '/book', { title }, 'Failed to add the book');
+}
+
+export function authorOf(bookId: string): string {
+  return KNOWN_AUTHORS[bookId] ?? '';
+}
+
+// ---------------------------------------------------------------------------
+// Friends and group invites (any group)
+// ---------------------------------------------------------------------------
+
+export interface ApiFriend {
+  userId: string;
+  displayName: string;
+  username: string;
+}
+
+export interface ApiGroupInvite {
+  id: string;
+  groupId: string;
+  inviteeId: string;
+  inviterId: string;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: string;
+}
+
+export interface ApiPendingInvite extends ApiGroupInvite {
+  groupName: string;
+  groupKind: GroupKind;
+  inviterName: string;
+}
+
+export function mapApiFriend(friend: ApiFriend): GroupMember {
+  return {
+    id: friend.userId,
+    name: friend.displayName,
+    initials: initialsOf(friend.displayName),
+    handle: friend.username,
+  };
+}
+
+export async function getFriends(userId: string = DEMO_USER_ID): Promise<GroupMember[]> {
+  const friends = await getJson<ApiFriend[]>(
+    `/user/${id(userId)}/friends`,
+    'Failed to load friends',
+  );
+  return friends.map(mapApiFriend);
+}
+
+export async function inviteToGroup(
+  groupId: string,
+  inviteeId: string,
+  userId: string = DEMO_USER_ID,
+): Promise<ApiGroupInvite> {
+  return sendJson(
+    'POST',
+    `/groups/${id(groupId)}/invites`,
+    { userId, inviteeId },
+    'Failed to invite',
+  );
+}
+
+export async function getPendingInvites(
+  userId: string = DEMO_USER_ID,
+): Promise<ApiPendingInvite[]> {
+  return getJson(`/user/${id(userId)}/group-invites`, 'Failed to load invites');
+}
+
+export async function answerInvite(
+  inviteId: string,
+  answer: 'accept' | 'decline',
+  userId: string = DEMO_USER_ID,
+): Promise<ApiGroupInvite> {
+  return sendJson(
+    'POST',
+    `/group-invites/${id(inviteId)}/${answer}`,
+    { userId },
+    `Failed to ${answer}`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Book clubs
+// ---------------------------------------------------------------------------
+
+export type ApiRoundOutcome = 'active' | 'completed' | 'not-completed';
+
+export interface ApiClubBook {
+  id: string;
+  title: string;
+  pageCount: number | null;
+  coverUrl: string | null;
+}
+
+export interface ApiRound {
+  id: string;
+  number: number;
+  startDate: string;
+  deadline: string;
+  outcome: ApiRoundOutcome;
+  finished: number;
+  expected: number;
+  daysLeft: number;
+  book: ApiClubBook | null;
+}
+
+export interface ApiBookClub {
+  id: string;
+  name: string;
+  description: string;
+  adminId: string;
+  members: { userId: string; role: 'admin' | 'member'; joinedAt: string }[];
+  round: ApiRound;
+  createdAt: string;
+}
+
+export interface ApiClubStanding {
+  userId: string;
+  displayName: string;
+  username: string;
+  role: string;
+  minutes: number;
+  currentPage: number;
+  percent: number;
+  finished: boolean;
+}
+
+export interface ApiPoll {
+  id: string;
+  status: 'open' | 'closed';
+  closesAt: string;
+  anonymous: boolean;
+  proposals: {
+    id: string;
+    bookId: string;
+    title: string;
+    proposedBy: { userId: string; displayName: string } | null;
+    votes: number;
+  }[];
+  yourVote: string | null;
+  voted: number;
+  total: number;
+}
+
+export interface ApiBookClubDetail extends ApiBookClub {
+  standings: ApiClubStanding[];
+  history: ApiRound[];
+  poll: ApiPoll | null;
+}
+
+export interface CreateBookClubPayload {
+  name: string;
+  description?: string;
+  bookId: string;
+  deadline: string;
+}
+
+const OUTCOME_LABELS: Record<ApiRoundOutcome, string> = {
+  active: 'Active',
+  completed: 'Completed',
+  'not-completed': 'Not completed',
+};
+
+function clubStatus(round: ApiRound): GroupStatus {
+  return round.outcome === 'active' ? 'active' : 'completed';
+}
+
+export function mapApiClubToSummary(club: ApiBookClub): GroupSummary {
+  const { round } = club;
+  const title = round.book?.title ?? 'the club book';
+  const total = round.expected || club.members.length;
+  return {
+    id: club.id,
+    name: club.name,
+    kind: 'book-club',
+    status: clubStatus(round),
+    headline: `${round.finished} of ${total} finished`,
+    progress: total ? Math.round((round.finished / total) * 100) : 0,
+    detail:
+      round.outcome === 'active'
+        ? `Reading ${title} · ${round.daysLeft} ${round.daysLeft === 1 ? 'day' : 'days'} left`
+        : `Round ${round.number} ${OUTCOME_LABELS[round.outcome].toLowerCase()} · ${title}`,
+    meta: `Deadline ${formatLongDate(round.deadline)} · Every member must finish`,
+    memberInitials: [],
+    memberCount: club.members.length,
+    book: round.book
+      ? {
+          title: round.book.title,
+          author: authorOf(round.book.id),
+          cover: round.book.coverUrl ?? '',
+        }
+      : undefined,
+  };
+}
+
+function closesLabel(iso: string): string {
+  const date = new Date(iso);
+  return `${formatLongDate(`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`).replace(/ \d{4}$/, '')} at ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** Builds the club page from the API; `meId` is the reader viewing it. */
+export function mapApiClubToDetail(
+  club: ApiBookClubDetail,
+  meId: string = DEMO_USER_ID,
+): BookClubDetail {
+  const { round } = club;
+  const book = round.book;
+  const pages = book?.pageCount ?? 0;
+  const admin = club.standings.find((s) => s.userId === club.adminId);
+  const members: GroupMember[] = club.standings.map((s) => ({
+    id: s.userId,
+    name: s.displayName,
+    initials: initialsOf(s.displayName),
+    handle: s.username,
+  }));
+  const leaderboard: LeaderboardEntry[] = club.standings.map((s, i) => ({
+    member: members[i]!,
+    rank: i + 1,
+    score: `${s.minutes} min`,
+    note: s.finished ? 'Finished' : `${s.percent}% · In progress`,
+    progress: s.percent,
+    finished: s.finished,
+  }));
+  const me = club.standings.find((s) => s.userId === meId);
+  const history: PastResult[] = club.history
+    .slice(0, -1)
+    .reverse()
+    .map((r) => ({
+      label: `Round ${r.number} · ${OUTCOME_LABELS[r.outcome]}`,
+      summary: `${r.book?.title ?? 'Unknown book'} · ${r.finished} of ${r.expected} finished`,
+      note: `${formatLongDate(r.startDate)} to ${formatLongDate(r.deadline)}`,
+    }));
+  const poll = club.poll;
+
+  return {
+    id: club.id,
+    name: club.name,
+    title: club.name,
+    subtitle:
+      club.description ||
+      (book
+        ? `Round ${round.number}: ${book.title}${authorOf(book.id) ? ` by ${authorOf(book.id)}` : ''}.`
+        : ''),
+    round: {
+      label: `Round ${round.number} · ${OUTCOME_LABELS[round.outcome]}`,
+      book: {
+        id: book?.id ?? '',
+        title: book?.title ?? 'Unknown book',
+        author: authorOf(book?.id ?? ''),
+        pages,
+        cover: book?.coverUrl ?? '',
+      },
+    },
+    finished: { count: round.finished, total: round.expected },
+    deadline: formatLongDate(round.deadline),
+    daysLeft:
+      round.outcome === 'active'
+        ? `${round.daysLeft} ${round.daysLeft === 1 ? 'day' : 'days'} to turn the last page`
+        : `Round ${OUTCOME_LABELS[round.outcome].toLowerCase()}`,
+    yourProgress: { page: me?.finished ? pages : (me?.currentPage ?? 0), pages },
+    leaderboard,
+    messages: [],
+    voting: poll
+      ? {
+          status: poll.status,
+          closes: closesLabel(poll.closesAt),
+          options: poll.proposals.map((p) => ({
+            id: p.id,
+            title: p.title,
+            author: p.proposedBy ? `Proposed by ${p.proposedBy.displayName}` : authorOf(p.bookId),
+            votes: p.votes,
+          })),
+          yourVote: poll.yourVote,
+          voted: poll.voted,
+          total: poll.total,
+          anonymous: poll.anonymous,
+        }
+      : null,
+    members,
+    adminName: admin?.displayName ?? 'The admin',
+    isAdmin: club.adminId === meId,
+    roundOver: round.outcome !== 'active',
+    history,
+  };
+}
+
+export async function createBookClub(
+  payload: CreateBookClubPayload,
+  userId: string = DEMO_USER_ID,
+): Promise<ApiBookClub> {
+  return sendJson('POST', '/groups/book-clubs', { userId, ...payload }, 'Failed to create club');
+}
+
+export async function getBookClub(
+  groupId: string,
+  userId: string = DEMO_USER_ID,
+): Promise<ApiBookClubDetail> {
+  return getJson(`/groups/book-clubs/${id(groupId)}?userId=${id(userId)}`, 'Failed to load club');
+}
+
+export async function getUserBookClubs(userId: string = DEMO_USER_ID): Promise<ApiBookClub[]> {
+  return getJson(`/user/${id(userId)}/book-clubs`, 'Failed to load book clubs');
+}
+
+export async function startNextRound(
+  groupId: string,
+  payload: { bookId: string; deadline: string },
+  userId: string = DEMO_USER_ID,
+): Promise<ApiBookClub> {
+  return sendJson(
+    'POST',
+    `/groups/book-clubs/${id(groupId)}/rounds`,
+    { userId, ...payload },
+    'Failed to start the round',
+  );
+}
+
+export async function openPoll(
+  groupId: string,
+  payload: { closesAt: string; anonymous: boolean },
+  userId: string = DEMO_USER_ID,
+): Promise<ApiPoll> {
+  return sendJson(
+    'POST',
+    `/groups/book-clubs/${id(groupId)}/poll`,
+    { userId, ...payload },
+    'Failed to open the vote',
+  );
+}
+
+export async function proposeBook(
+  groupId: string,
+  bookId: string,
+  userId: string = DEMO_USER_ID,
+): Promise<ApiPoll> {
+  return sendJson(
+    'POST',
+    `/groups/book-clubs/${id(groupId)}/poll/proposals`,
+    { userId, bookId },
+    'Failed to propose',
+  );
+}
+
+export async function voteForProposal(
+  groupId: string,
+  proposalId: string,
+  userId: string = DEMO_USER_ID,
+): Promise<ApiPoll> {
+  return sendJson(
+    'PUT',
+    `/groups/book-clubs/${id(groupId)}/poll/vote`,
+    { userId, proposalId },
+    'Failed to vote',
+  );
 }

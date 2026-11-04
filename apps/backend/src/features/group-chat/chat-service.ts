@@ -1,6 +1,6 @@
 import type { Clock } from '../../utils/clock.js';
 import { ForbiddenError, InvalidValueError, NotFoundError } from '../../utils/errors.js';
-import { GroupId, type MemberRole } from '../challenge-group/challenge-group.js';
+import { GroupId, type MemberRole } from '../group/group.js';
 import { UserId } from '../user/user.js';
 import { ChatMessage, ClientMessageId, MessageBody, MessageId } from './chat-message.js';
 import type { IChatMessageRepository, MessageCursor } from './chat-message-repository.js';

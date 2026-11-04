@@ -2,15 +2,8 @@ import { desc, eq, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { challenges, groups, member } from '../../database/schema.js';
 import { UserId } from '../user/user.js';
-import {
-  ChallengeGroup,
-  ChallengePeriod,
-  GroupId,
-  GroupName,
-  MetricGoal,
-  WinMetric,
-  memberRoleOf,
-} from './challenge-group.js';
+import { GroupId, GroupName, memberRoleOf } from '../group/group.js';
+import { ChallengeGroup, ChallengePeriod, MetricGoal, WinMetric } from './challenge-group.js';
 
 export interface IChallengeGroupRepository {
   findById(id: GroupId): Promise<ChallengeGroup | null>;

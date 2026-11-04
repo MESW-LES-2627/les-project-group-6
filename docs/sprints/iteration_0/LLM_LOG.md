@@ -815,3 +815,26 @@ close the PR 101 and add the adr in 103
 
 #### Explanation of Changes
 Copied the group chat ADR from PR #101 as ADR-0006 (Proposed; 0005 is taken by reading sessions), added it to the ADR index, replaced the "polling or SSE" line in `infra.md`, and closed PR #101. The ADR was written with Claude in PR #101 (see the 2026-10-27 entry there). See the [iteration log](log.md).
+
+### 2026-11-04: Book clubs and group invites (#104)
+
+- **Date:** 2026-11-04
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs, database, backend, frontend, testing
+
+#### Prompt
+```text
+ok, so, We already implemented the challenge groups, now we need to create the book clubs. The requirements are in docs/product. the design are in [Image #1]. You can reus the chat implementation from challenge groups probably. Create a spec, issues and implement everything in this branch
+```
+
+#### Explanation of Changes
+Wrote the [book clubs spec](../../specs/book-clubs.md), created sub-issues #105 to #110 under #104, and implemented book clubs (rounds, progress, next round, voting), group invites and a friends list, with a migration, seed data, backend and frontend tests, and the wired-up book club, create and groups pages. See the [iteration log](log.md).
+
+#### Follow-up prompt
+```text
+yes
+```
+(Commit and open the PR.) `main` had gained the ADR-0006 group chat meanwhile, so the branch merged it, dropped its own chat, and made book clubs post their system messages through the chat's `SystemMessages` port; the migration became `0003_book_clubs`.
+
