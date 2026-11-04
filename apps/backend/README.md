@@ -43,7 +43,12 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | `POST` | `/groups/challenges` | Creates a challenge group (`name`, `startDate`, `durationDays`, `winMetric`); the creator is admin and first member (`201`) |
 | `GET` | `/groups/challenges/:id` | Returns the group, its challenge and `standings` (counted minutes of sessions finished in the period, split by book in `books`) (`200` or `404`) |
 | `GET` | `/user/:userId/groups` | Lists the challenge groups the user belongs to (`200 OK`) |
+| `POST` | `/groups/:groupId/messages` | Sends a chat message (`userId`, `clientId` UUID, `body`); members only. A retry with the same `clientId` returns the stored message (`201` new, `200` retry, `403` not a member) |
+| `GET` | `/groups/:groupId/messages?userId=&after=&before=&limit=` | Chat history in `seq` order: the latest page, newer than `after` (catch-up) or older than `before` (`200`, `403`) |
+| `DELETE` | `/groups/:groupId/messages/:messageId` | Soft-deletes a message; its author or the group admin (`204`, `403`, `404`) |
 | `GET` | `/user/:userId/reading-stats` | Returns `{ totalMinutes, sessionsCount }` over finished sessions (`200 OK`) |
+
+**Group chat socket** (ADR-0006): Socket.IO on the same port, path `/socket.io`. Connect with `auth: { userId }` (the Supabase JWT once auth lands), emit `group:join` with a group id (ack `{ ok }`, members only), then receive `message:new` (a message as above) and `message:deleted` (`{ id, groupId, seq }`). Clients never write through the socket; on reconnect they call `GET …/messages?after=<last seq>`.
 
 CORS middleware is enabled globally (`Access-Control-Allow-Origin: *`) with preflight `OPTIONS` support for cross-origin browser clients.
 
@@ -88,6 +93,7 @@ apps/backend/
 │   │   ├── reading-status/ # ReadingStatus aggregate, ReadingState (State pattern) + PageProgress, repository, service, DTO, routes
 │   │   ├── challenge-group/ # ChallengeGroup aggregate (groups + member + challenges), repository, standings query, service, DTO, routes
 │   │   ├── reading-session/ # ReadingSession aggregate (server-timed), repository + stats, service, DTO, routes
+│   │   ├── group-chat/    # ChatMessage entity, repository, membership query, ChatService, routes, Socket.IO notifier
 │   │   ├── user/          # User entity + value objects (UserId, Email, Username), repository
 │   │   └── library/       # Read-side query (CQRS) and the library route
 │   ├── api/               # router.ts wires each feature's service and mounts its routes; health route

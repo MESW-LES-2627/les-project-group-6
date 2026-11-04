@@ -12,6 +12,8 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
+        // The group chat socket (ADR-0006) is served under /api/socket.io.
+        ws: true,
         rewrite: (path) => path.replace(/^\/api(?=\/|$)/, ''),
       },
     },
