@@ -30,12 +30,14 @@ const isAdmin = props.challenge.leaderboard.some(
   (e) => e.member.id === me.id && e.note === 'Admin',
 );
 const myEntry = computed(() => props.challenge.leaderboard.find((e) => e.member.id === me.id));
+// Rank 0 means no scores are tracked yet, so there is no standing to show
+const ranked = computed(() => (myEntry.value?.rank ?? 0) > 0);
 </script>
 
 <template>
   <main class="challenge">
     <PagePlate :title="challenge.name" title-id="challenge-title">
-      <template v-if="myEntry" #leading>
+      <template v-if="myEntry && ranked" #leading>
         <div
           class="rank"
           role="img"
@@ -45,7 +47,10 @@ const myEntry = computed(() => props.challenge.leaderboard.find((e) => e.member.
           <span class="rank-of">of {{ challenge.leaderboard.length }}</span>
         </div>
       </template>
-      <p>Challenge · {{ challenge.period.label }} · {{ challenge.standing.label }}</p>
+      <p>
+        Challenge · {{ challenge.period.label }} ·
+        {{ ranked ? challenge.standing.label : 'Not ranked yet' }}
+      </p>
       <p class="lede">{{ challenge.tagline }}</p>
       <template #actions>
         <RouterLink class="plate-button" :to="{ name: 'library' }">Start a session</RouterLink>

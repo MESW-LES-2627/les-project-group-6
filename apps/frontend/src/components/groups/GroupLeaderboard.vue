@@ -13,7 +13,7 @@ defineProps<{
 <template>
   <ol :class="['board', { 'with-progress': withProgress }]">
     <li v-for="entry in entries" :key="entry.member.id" class="entry">
-      <span v-if="!withProgress" class="rank">{{ entry.rank }}</span>
+      <span v-if="!withProgress" class="rank">{{ entry.rank || '–' }}</span>
       <MemberAvatar :initials="entry.member.initials" :class="{ me: entry.member.id === meId }" />
       <div class="who">
         <div class="line">

@@ -235,6 +235,20 @@ describe('GroupDetailView', () => {
     expect(wrapper.text()).not.toContain('Last month’s result');
   });
 
+  it('shows no rank while the challenge has no scores yet', async () => {
+    const untracked = {
+      ...apiGroup,
+      standings: apiGroup.standings.map((s) => ({ ...s, score: null, books: [] })),
+    };
+    getChallengeGroup.mockResolvedValueOnce(untracked);
+    const wrapper = mountGroup(apiGroup.id);
+    await flushPromises();
+
+    expect(wrapper.find('.rank-number').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Not ranked yet');
+    expect(wrapper.text()).not.toContain('#0');
+  });
+
   it('loads a book club from the API with progress, history, vote and chat', async () => {
     getChallengeGroup.mockRejectedValueOnce(new Error('HTTP 404'));
     getBookClub.mockResolvedValue(apiClub);

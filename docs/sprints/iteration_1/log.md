@@ -31,3 +31,8 @@ A running record of what the team did and decided in iteration 1. The [release n
 - [`/home`](../../../apps/frontend/src/views/HomeView.vue) redesigned with its own look, without the burgundy plate (the team chose the "bedside table" direction over a day-journal timeline and a colour-block dashboard): a large greeting with the date, the current book with a large cover and Start session, with this week's reading days, the streak and the year goals (bars instead of rings) beside it, then open sections for your groups, from your circle, reading now, requests waiting for you and trending among friends. The serif slogan, the emoji, the play glyph and the empty-state card shown next to real data were removed.
 - `PagePlate` now has the profile bookplate's minimum height (192 px), so every plate is the same size.
 - "Admin & settings" is back on the book club (it had been renamed "Club settings") and on the challenge page.
+
+### 2026-11-04: Redesign checked against the real API
+
+- Ran the redesigned pages against a local PostgreSQL 17 database (migrated and seeded) instead of the mock fallback. Checked: the library lists the seeded books, the book detail saves the current page, accepting an invite joins the group, creating a challenge and a book club opens their pages, chat messages are stored and shown, and a book club vote takes a proposal and a vote. Library and groups have no sideways scroll at 500 px.
+- Fixed two things that only showed with real data. A challenge with no scores yet showed "#0" in the plate and in the standings; it now shows "Not ranked yet" with no rank circle, and a dash in the standings. The book club plate said "1 members"; it now says "1 member". Added a view test for the unranked challenge (93 passing).

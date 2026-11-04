@@ -161,7 +161,10 @@ async function startRound() {
           <BookCoverImage :src="book.cover" :title="book.title" />
         </div>
       </template>
-      <p>Book club · {{ club.round.label }} · {{ club.members.length }} members</p>
+      <p>
+        Book club · {{ club.round.label }} · {{ club.members.length }}
+        {{ club.members.length === 1 ? 'member' : 'members' }}
+      </p>
       <p class="lede">
         Reading <cite>{{ book.title }}</cite
         ><template v-if="book.author"> by {{ book.author }}</template
