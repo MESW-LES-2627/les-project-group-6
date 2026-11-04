@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { BusinessRuleViolationError, InvalidValueError } from '../../utils/errors.js';
+import { ForbiddenError, InvalidValueError } from '../../utils/errors.js';
 import { Uuid } from '../../utils/uuid.js';
 import type { UserId } from '../user/user.js';
 
@@ -56,13 +56,13 @@ export interface Membership {
 export const GROUP_KINDS = ['challenge', 'book-club'] as const;
 export type GroupKind = (typeof GROUP_KINDS)[number];
 
-export class NotGroupAdminError extends BusinessRuleViolationError {
+export class NotGroupAdminError extends ForbiddenError {
   constructor(action: string) {
     super(`Only the group admin can ${action}`);
   }
 }
 
-export class NotGroupMemberError extends BusinessRuleViolationError {
+export class NotGroupMemberError extends ForbiddenError {
   constructor(action: string) {
     super(`Only group members can ${action}`);
   }

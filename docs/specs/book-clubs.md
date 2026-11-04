@@ -8,7 +8,7 @@
 
 ## 1. Goal
 
-A group of friends reads **one book together by a deadline** and succeeds only if everyone finishes. Book clubs are the second group category, next to challenges, and reuse what challenges already built: the `groups` and `member` tables, the creator-as-admin rule, the leaderboard component, and the chat component.
+A group of friends reads **one book together by a deadline** and succeeds only if everyone finishes. Book clubs are the second group category, next to challenges, and reuse what challenges already built: the `groups` and `member` tables, the creator-as-admin rule, the leaderboard component, and the group chat of [ADR-0006](../ADRs/0006-group-chat-realtime.md).
 
 ## 2. Scope
 
@@ -22,13 +22,13 @@ A group of friends reads **one book together by a deadline** and succeeds only i
 | Progress | Per member: counted minutes on the round book, page progress (%), finished or not. The round is *completed* when every member finished before the deadline, *not completed* when the deadline passes first. |
 | Library | When a book is selected, it is added as "Not started" to the library of every member who doesn't already have it (F-GRP-07 rule 2). A member who joins later also gets it. |
 | Invites | Generic for any group: the admin invites a **friend**; the invitee accepts or declines. Accepting adds them as a member. |
-| Chat | Generic for any group: members post text messages; the club and challenge pages load them from the API and poll for new ones. System messages announce key events (club created, member joined, round started, voting opened). |
+| Chat | Reuses the group chat of [ADR-0006](../ADRs/0006-group-chat-realtime.md) (REST + Socket.IO push), which already works for any group. The club page passes its group id to the live `GroupChat`. Book clubs post system messages through the chat's `SystemMessages` port (club started, round started, voting opened), and a `JoinAnnouncer` posts "X joined the group" when an invite is accepted. |
 | Voting | The admin opens a vote with a closing time and chooses anonymous or named proposals. Members propose books (one per member) and cast one vote, which they can change until it closes. The admin makes the final selection by starting the next round. |
 
 **Out of scope** (tracked elsewhere or later)
 
 - Anti-cheat settings (F-READ-03): the club page shows "Simple timer" only.
-- Images and videos in the chat, deleting messages, real-time push (WebSocket/SSE). Polling every 5 s stands in for real time.
+- Images and videos in the chat (left out by ADR-0006 too).
 - Leaving a group, removing members, admin hand-over (#55, #59).
 - Friend requests (#33, #36): friends come from accepted `friendships` rows (seeded for the demo).
 - Badges ("Group Reader") and notifications when a round completes.
@@ -75,14 +75,6 @@ classDiagram
       +accept(by, now)
       +decline(by, now)
     }
-    class ChatMessage {
-      +MessageId id
-      +GroupId groupId
-      +UserId? authorId
-      +MessageText text
-      +post(groupId, authorId, text, now)$
-      +system(groupId, text, now)$
-    }
     class BookPoll {
       +PollId id
       +GroupId groupId
@@ -110,7 +102,6 @@ classDiagram
 | `Round.outcome` | `completed` if every current member finished the book before `endsAt`; else `not-completed` once `now >= endsAt`; else `active`. | — |
 | `GroupInvite.send` | Only the admin invites; the invitee must be a friend, not a member, and not already invited (pending). | `409` |
 | `GroupInvite.accept/decline` | Only the invitee; only while pending. | `409` |
-| `ChatMessage` | Only members post. Text is trimmed, 1 to 2000 characters. | `409` / `400` |
 | `BookPoll.open` | Only the admin; one open poll at a time; `closesAt` in the future. | `409` / `400` |
 | `BookPoll.propose` | Members only, while open, at most one proposal per member, a book only once, not the current round book. | `409` |
 | `BookPoll.vote` | Members only, while open, one vote per member (a new vote replaces the old one). | `409` |
@@ -119,20 +110,19 @@ Members who joined after a round ended are not expected to read it. *"Finished b
 
 ## 4. Data
 
-Existing tables reused: `groups`, `member`, `book_clubs` (`current_book_id` mirrors the current round's book), `book_club_rounds`, `conversations`, `posts`, `friendships`, `reading_status`, `reading_sessions`.
+Existing tables reused: `groups`, `member`, `book_clubs` (`current_book_id` mirrors the current round's book), `book_club_rounds`, `friendships`, `reading_status`, `reading_sessions`.
 
-Migration `0002_book_clubs`:
+Migration `0003_book_clubs` (after the chat's `0002_group_messages`):
 
 | Change | Why |
 |---|---|
 | `book_club_rounds.book_id uuid not null → books(id)` + unique `(book_club_id, round_number)` | A round reads one book; history needs it. |
-| `posts.author_id` nullable | System messages have no author. The `chk_post_parent` check stays. |
 | `group_invites (id, group_id, invitee_id, inviter_id, status, created_at, responded_at)` + partial unique index on `(group_id, invitee_id) where status = 'pending'` | Invites for any group. |
 | `book_club_polls (id, group_id, closes_at, anonymous, created_at, closed_at)` | One vote on the next book. |
 | `book_club_proposals (id, poll_id, book_id, proposed_by, created_at)` + unique `(poll_id, book_id)` | Proposed books. |
 | `book_club_votes (poll_id, user_id, proposal_id, cast_at)` PK `(poll_id, user_id)` | One vote per member per poll. |
 
-The chat stores one `conversations` row per group (name `General`, created on the group's first message) and its messages in `posts`. `book_club_rounds.status` is left at its default: the outcome is derived.
+`book_club_rounds.status` is left at its default: the outcome is derived.
 
 The migration adds a `NOT NULL` column to `book_club_rounds`; it applies only while that table is empty, which holds because no code wrote to it before.
 
@@ -154,8 +144,6 @@ The migration adds a `NOT NULL` column to `book_club_rounds`; it applies only wh
 | `POST` | `/group-invites/:id/accept` | `userId` | `200` invite |
 | `POST` | `/group-invites/:id/decline` | `userId` | `200` invite |
 | `GET` | `/user/:userId/friends` | — | `200` accepted friends |
-| `GET` | `/groups/:id/messages` | `?userId=` | `200` messages, oldest first (members only) |
-| `POST` | `/groups/:id/messages` | `userId, text` | `201` message (members only) |
 
 Friends picked on the create form are invited right after the group is created, one `POST /groups/:id/invites` each, the same way for challenges and clubs.
 
@@ -165,7 +153,7 @@ Friends picked on the create form are invited right after the group is created, 
 
 | Where | Change |
 |---|---|
-| `GroupChat.vue` | Optional `groupId` + `userId` props: loads messages from the API, polls every 5 s, sends through the API. Without them it keeps the local mock behaviour. Used by both group pages. |
+| `GroupChat.vue` | Unchanged (ADR-0006). The club page passes `groupId`, `members` and `isAdmin` for API clubs; the mock club keeps the local chat. |
 | `BookPicker.vue` (new) | Search the catalog by title, pick a result, or add the typed title as a new book. Used by the create form, "Propose a title" and "Start next round". |
 | `/groups/new` | Book Club: book picker + deadline, saved through the API. Friends come from the API (mock fallback); selected friends are invited after create, for challenges too. |
 | `/groups/:groupId` | Non-mock ids try the challenge endpoint then the book club endpoint. The club page renders the API data: round card, progress leaderboard, live chat, voting panel, history, and an admin panel (open voting, start next round, invite friends). |
@@ -175,17 +163,16 @@ The mock `classics` club stays for the design demo.
 
 ## 7. Testing
 
-- Unit: `RoundPeriod`, `Round.outcome`, `BookClub` (admin rules, next round), `GroupInvite`, `ChatMessage`, `BookPoll`, and each service with in-memory repositories.
+- Unit: `RoundPeriod`, `Round.outcome`, `BookClub` (admin rules, next round), `GroupInvite`, `BookPoll`, `JoinAnnouncer`, and each service with in-memory repositories.
 - Integration: the book club repository round-trip and the progress query against PostgreSQL (counted minutes only on the club book inside the round).
-- Frontend: create book club, club page from the API, live chat send, invites accept/decline, voting.
+- Frontend: book picker, create book club, club page from the API (round, history, vote, admin panel), invites accept/decline.
 
 ## 8. Decisions
 
 | Decision | Why | Rejected |
 |---|---|---|
-| Chat and invites are generic group features (`features/group-chat`, `features/group-invite`), not book club code. | Both group kinds need them (F-GRP-01, F-GRP-02); this is the "reuse" asked in #104. | A chat inside the book club feature, duplicated later for challenges. |
+| Book clubs reuse the ADR-0006 chat and post through its `SystemMessages` port; invites are a generic group feature (`features/group-invite`). | Both group kinds need them (F-GRP-01, F-GRP-02); this is the "reuse" asked in #104. | A chat or invites inside the book club feature. |
 | Invites are sent after creation, not as part of `POST /groups/book-clubs`. | One invite flow for both group kinds; the club and its invites are separate aggregates. | `inviteeIds` in the create body. |
 | A "member joined" event (Observer) lets the chat and the book club react to an accepted invite. | The invite does not need to know the chat or the library. | Calling the chat and library from the invite service. |
 | Round outcome is computed on read. | Same as challenge status and the no-background-jobs decision in [`infra.md`](../architecture/infra.md). | Storing `book_club_rounds.status` and a job at the deadline. |
-| Polling for chat updates. | No real-time infra exists yet; 5 s is fine for a club. | WebSocket / SSE now. |
 | Admin selects the next book by starting a round; the winning proposal is not auto-selected. | F-GRP-08 rule 5 and the design note "The final selection is the admin's". | Auto-selecting the winner when the poll closes. |

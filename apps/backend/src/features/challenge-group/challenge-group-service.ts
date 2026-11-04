@@ -11,6 +11,7 @@ import {
   type ChallengeStatus,
 } from './challenge-group.js';
 import type { IChallengeGroupRepository } from './challenge-group-repository.js';
+import type { SystemMessages } from '../group-chat/chat-service.js';
 
 export interface CreateChallengeGroupCommand {
   userId: unknown;
@@ -34,12 +35,15 @@ export class ChallengeGroupService {
     private readonly groups: IChallengeGroupRepository,
     private readonly users: IUserRepository,
     private readonly now: Clock = () => new Date(),
+    /** Posts the group's system messages in its chat (F-GRP-02 rule 5), when wired. */
+    private readonly chat?: SystemMessages,
   ) {}
 
   /** The reader creates a challenge group and becomes its admin and first member. */
   async create(command: CreateChallengeGroupCommand): Promise<ChallengeGroupView> {
     const adminId = UserId.of(command.userId);
-    if (!(await this.users.findById(adminId))) throw new NotFoundError('User');
+    const admin = await this.users.findById(adminId);
+    if (!admin) throw new NotFoundError('User');
 
     const group = ChallengeGroup.create(
       {
@@ -55,6 +59,7 @@ export class ChallengeGroupService {
     );
 
     await this.groups.add(group);
+    await this.chat?.postSystem(group.id, `${admin.displayName} created the challenge`);
     return this.view(group);
   }
 

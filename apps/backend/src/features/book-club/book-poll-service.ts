@@ -2,8 +2,7 @@ import type { Clock } from '../../utils/clock.js';
 import { NotFoundError } from '../../utils/errors.js';
 import type { IBookRepository } from '../book/book-repository.js';
 import { BookId } from '../book/book.js';
-import { ChatMessage } from '../group-chat/chat-message.js';
-import type { IChatRepository } from '../group-chat/chat-repository.js';
+import type { SystemMessages } from '../group-chat/chat-service.js';
 import { GroupId } from '../group/group.js';
 import { UserId } from '../user/user.js';
 import type { BookClub } from './book-club.js';
@@ -23,8 +22,9 @@ export class BookPollService {
     private readonly polls: IBookPollRepository,
     private readonly clubs: IBookClubRepository,
     private readonly books: IBookRepository,
-    private readonly chat: IChatRepository,
     private readonly now: Clock = () => new Date(),
+    /** Posts the club's system messages in its chat (F-GRP-02 rule 5), when wired. */
+    private readonly chat?: SystemMessages,
   ) {}
 
   /** The admin opens a vote; an earlier vote whose time ran out is settled first. */
@@ -46,12 +46,9 @@ export class BookPollService {
       await this.polls.save(previous);
     }
     await this.polls.save(poll);
-    await this.chat.add(
-      ChatMessage.system(
-        club.id,
-        'Voting for the next book is open. Propose a title and vote.',
-        now,
-      ),
+    await this.chat?.postSystem(
+      club.id,
+      'Voting for the next book is open. Propose a title and vote.',
     );
     return poll;
   }

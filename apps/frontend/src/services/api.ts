@@ -1,7 +1,6 @@
 import type {
   BookClubDetail,
   ChallengeDetail,
-  ChatMessage,
   GroupKind,
   GroupMember,
   GroupStatus,
@@ -488,6 +487,92 @@ export async function getUserGroups(userId: string = DEMO_USER_ID): Promise<ApiC
   return response.json() as Promise<ApiChallengeGroup[]>;
 }
 
+// Group chat (ADR-0006): REST sends and reads, the socket only pushes.
+export interface ApiChatMessage {
+  id: string;
+  seq: number;
+  groupId: string;
+  kind: 'text' | 'system';
+  authorId: string | null;
+  clientId: string | null;
+  /** Null once the message is deleted. */
+  body: string | null;
+  createdAt: string;
+  deletedAt: string | null;
+}
+
+export async function getGroupMessages(
+  groupId: string,
+  cursor: { after?: number; before?: number } = {},
+  userId: string = DEMO_USER_ID,
+): Promise<ApiChatMessage[]> {
+  const query = new URLSearchParams({ userId });
+  if (cursor.after !== undefined) query.set('after', String(cursor.after));
+  if (cursor.before !== undefined) query.set('before', String(cursor.before));
+  const response = await fetch(
+    `${baseUrl}/groups/${encodeURIComponent(groupId)}/messages?${query}`,
+    { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10_000) },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await errorMessage(response, `Failed to load messages: HTTP ${response.status}`),
+    );
+  }
+
+  return response.json() as Promise<ApiChatMessage[]>;
+}
+
+/** Sends a message; retrying with the same clientId never stores it twice. */
+export async function sendGroupMessage(
+  groupId: string,
+  payload: { clientId: string; body: string },
+  userId: string = DEMO_USER_ID,
+): Promise<ApiChatMessage> {
+  const response = await fetch(`${baseUrl}/groups/${encodeURIComponent(groupId)}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ userId, ...payload }),
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await errorMessage(response, `Failed to send message: HTTP ${response.status}`),
+    );
+  }
+
+  return response.json() as Promise<ApiChatMessage>;
+}
+
+export async function deleteGroupMessage(
+  groupId: string,
+  messageId: string,
+  userId: string = DEMO_USER_ID,
+): Promise<void> {
+  const response = await fetch(
+    `${baseUrl}/groups/${encodeURIComponent(groupId)}/messages/${encodeURIComponent(messageId)}`,
+    {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ userId }),
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await errorMessage(response, `Failed to delete message: HTTP ${response.status}`),
+    );
+  }
+}
+
+/** Where the API lives, so the chat socket can connect to the same server. */
+export function apiEndpoint(): { origin: string; path: string } {
+  const url = new URL(baseUrl, window.location.origin);
+  return { origin: url.origin, path: url.pathname.replace(/\/+$/, '') };
+}
+
 // ---------------------------------------------------------------------------
 // Shared helpers for JSON requests
 // ---------------------------------------------------------------------------
@@ -522,6 +607,10 @@ async function sendJson<T>(
 }
 
 const id = (value: string) => encodeURIComponent(value);
+
+function pad(n: number): string {
+  return String(n).padStart(2, '0');
+}
 
 // ---------------------------------------------------------------------------
 // Books catalog (used by the book picker)
@@ -612,64 +701,6 @@ export async function answerInvite(
     { userId },
     `Failed to ${answer}`,
   );
-}
-
-// ---------------------------------------------------------------------------
-// Group chat (any group)
-// ---------------------------------------------------------------------------
-
-export interface ApiChatMessage {
-  id: string;
-  groupId: string;
-  author: { userId: string; displayName: string; username: string } | null;
-  text: string;
-  createdAt: string;
-}
-
-function pad(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-/** "Today · 09:21", "Yesterday · 18:10" or "3 November · 09:21" */
-export function formatMessageTime(iso: string, now = new Date()): string {
-  const date = new Date(iso);
-  const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const diff = Math.round((day(now) - day(date)) / DAY_MS);
-  if (diff === 0) return `Today · ${time}`;
-  if (diff === 1) return `Yesterday · ${time}`;
-  return `${formatLongDate(`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`).replace(/ \d{4}$/, '')} · ${time}`;
-}
-
-export function mapApiMessage(message: ApiChatMessage, now = new Date()): ChatMessage {
-  return {
-    id: message.id,
-    author: message.author
-      ? {
-          id: message.author.userId,
-          name: message.author.displayName,
-          initials: initialsOf(message.author.displayName),
-          handle: message.author.username,
-        }
-      : undefined,
-    text: message.text,
-    time: formatMessageTime(message.createdAt, now),
-  };
-}
-
-export async function getGroupMessages(
-  groupId: string,
-  userId: string = DEMO_USER_ID,
-): Promise<ApiChatMessage[]> {
-  return getJson(`/groups/${id(groupId)}/messages?userId=${id(userId)}`, 'Failed to load messages');
-}
-
-export async function postGroupMessage(
-  groupId: string,
-  text: string,
-  userId: string = DEMO_USER_ID,
-): Promise<ApiChatMessage> {
-  return sendJson('POST', `/groups/${id(groupId)}/messages`, { userId, text }, 'Failed to send');
 }
 
 // ---------------------------------------------------------------------------

@@ -9,8 +9,6 @@ import { BookPoll } from '../../src/features/book-club/book-poll.js';
 import { DrizzleBookPollRepository } from '../../src/features/book-club/book-poll-repository.js';
 import { ClubProgressQuery } from '../../src/features/book-club/club-progress-query.js';
 import { DrizzleFriendRepository } from '../../src/features/friend/friend-repository.js';
-import { ChatMessage, MessageText } from '../../src/features/group-chat/chat-message.js';
-import { DrizzleChatRepository } from '../../src/features/group-chat/chat-repository.js';
 import { GroupInvite } from '../../src/features/group-invite/group-invite.js';
 import { DrizzleGroupInviteRepository } from '../../src/features/group-invite/group-invite-repository.js';
 import { DrizzleGroupRosterRepository } from '../../src/features/group/group-roster-repository.js';
@@ -119,7 +117,7 @@ describe('Book club repositories Integration', () => {
     );
   });
 
-  test('stores votes, invites, friends and chat messages', async () => {
+  test('stores votes, invites and reads friends', async () => {
     const polls = new DrizzleBookPollRepository(db);
     const poll = BookPoll.open(
       club,
@@ -159,19 +157,5 @@ describe('Book club repositories Integration', () => {
     invite.accept(MAYA, now);
     await invites.save(invite);
     assert.strictEqual((await invites.pendingFor(MAYA)).length, 0);
-
-    const chat = new DrizzleChatRepository(db);
-    await chat.add(ChatMessage.system(club.id, 'Classics started.', now));
-    await chat.add(
-      ChatMessage.post(club.id, ADMIN, MessageText.of('Hello'), new Date(now.getTime() + 1)),
-    );
-    const history = await chat.recent(club.id, 100);
-    assert.deepStrictEqual(
-      history.map((e) => [e.message.text.value, e.author?.username ?? null]),
-      [
-        ['Classics started.', null],
-        ['Hello', 'admin_reader'],
-      ],
-    );
   });
 });

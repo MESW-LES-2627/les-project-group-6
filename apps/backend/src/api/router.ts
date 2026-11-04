@@ -24,14 +24,18 @@ import { BookPollService } from '../features/book-club/book-poll-service.js';
 import type { ClubProgressQuery } from '../features/book-club/club-progress-query.js';
 import type { IFriendRepository } from '../features/friend/friend-repository.js';
 import { friendRoutes } from '../features/friend/friend-routes.js';
-import type { IChatRepository } from '../features/group-chat/chat-repository.js';
-import { chatRoutes } from '../features/group-chat/chat-routes.js';
-import { ChatService } from '../features/group-chat/chat-service.js';
 import type { IGroupInviteRepository } from '../features/group-invite/group-invite-repository.js';
 import { groupInviteRoutes } from '../features/group-invite/group-invite-routes.js';
 import { GroupInviteService } from '../features/group-invite/group-invite-service.js';
 import type { IGroupRosterRepository } from '../features/group/group-roster-repository.js';
 import type { MemberJoinedListener } from '../features/group/group.js';
+import type { IChatMessageRepository } from '../features/group-chat/chat-message-repository.js';
+import type { ChatNotifier } from '../features/group-chat/chat-notifier.js';
+import { NoopChatNotifier } from '../features/group-chat/chat-notifier.js';
+import { chatRoutes } from '../features/group-chat/chat-routes.js';
+import { ChatService } from '../features/group-chat/chat-service.js';
+import type { GroupMembership } from '../features/group-chat/group-membership-query.js';
+import { JoinAnnouncer } from '../features/group-chat/join-announcer.js';
 import { healthRoutes } from './health-routes.js';
 
 export interface ApiDependencies {
@@ -44,12 +48,17 @@ export interface ApiDependencies {
   challengeGroupRepository?: IChallengeGroupRepository;
   standingsQuery?: StandingsQuery;
   groupRosterRepository?: IGroupRosterRepository;
-  chatRepository?: IChatRepository;
   friendRepository?: IFriendRepository;
   groupInviteRepository?: IGroupInviteRepository;
   bookClubRepository?: IBookClubRepository;
   bookPollRepository?: IBookPollRepository;
   clubProgressQuery?: ClubProgressQuery;
+  chatMessageRepository?: IChatMessageRepository;
+  groupMembership?: GroupMembership;
+  /** Pushes chat events to sockets; defaults to no push (REST still works). */
+  chatNotifier?: ChatNotifier;
+  /** Receives the chat service once built, e.g. so the socket server can check membership. */
+  onChatService?: (chat: ChatService) => void;
 }
 
 // Wires each feature's service to its dependencies by hand (no DI container) and
@@ -66,12 +75,15 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
     challengeGroupRepository,
     standingsQuery,
     groupRosterRepository,
-    chatRepository,
     friendRepository,
     groupInviteRepository,
     bookClubRepository,
     bookPollRepository,
     clubProgressQuery,
+    chatMessageRepository,
+    groupMembership,
+    chatNotifier = new NoopChatNotifier(),
+    onChatService,
   } = deps;
 
   router.use(healthRoutes(healthCheck));
@@ -92,10 +104,19 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
     );
   }
 
+  const chat =
+    chatMessageRepository && groupMembership
+      ? new ChatService(chatMessageRepository, groupMembership, chatNotifier)
+      : undefined;
+  if (chat) {
+    onChatService?.(chat);
+    router.use(chatRoutes(chat));
+  }
+
   if (userRepository && challengeGroupRepository && standingsQuery) {
     router.use(
       challengeGroupRoutes(
-        new ChallengeGroupService(challengeGroupRepository, userRepository),
+        new ChallengeGroupService(challengeGroupRepository, userRepository, undefined, chat),
         standingsQuery,
       ),
     );
@@ -105,17 +126,14 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
   // a book club adds its round book to their library.
   const joinListeners: MemberJoinedListener[] = [];
 
-  if (userRepository && groupRosterRepository && chatRepository) {
-    const chat = new ChatService(chatRepository, groupRosterRepository, userRepository);
-    joinListeners.push(chat);
-    router.use(chatRoutes(chat));
+  if (userRepository && chat) {
+    joinListeners.push(new JoinAnnouncer(chat, userRepository));
   }
 
   if (
     userRepository &&
     bookRepository &&
     readingStatusRepository &&
-    chatRepository &&
     bookClubRepository &&
     bookPollRepository &&
     clubProgressQuery
@@ -126,14 +144,16 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
       bookRepository,
       readingStatusRepository,
       bookPollRepository,
-      chatRepository,
+      undefined,
+      chat,
     );
     joinListeners.push(clubs);
     const polls = new BookPollService(
       bookPollRepository,
       bookClubRepository,
       bookRepository,
-      chatRepository,
+      undefined,
+      chat,
     );
     router.use(bookClubRoutes(clubs, polls, clubProgressQuery));
   }

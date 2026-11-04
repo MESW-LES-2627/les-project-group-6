@@ -29,6 +29,9 @@ vi.mock('@/services/api', async (importOriginal) => ({
   voteForProposal,
 }));
 
+// The live chat would open a socket; the page tests only need it to exist.
+vi.mock('@/services/chat-socket', () => ({ connectChatSocket: () => ({ close: () => {} }) }));
+
 const MAYA = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b01';
 const EMMA = 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01';
 
@@ -233,10 +236,14 @@ describe('GroupDetailView', () => {
     getGroupMessages.mockResolvedValue([
       {
         id: 'm1',
+        seq: 1,
         groupId: apiClub.id,
-        author: null,
-        text: 'Emma was selected by admin Maya Laurent.',
+        kind: 'system',
+        authorId: null,
+        clientId: null,
+        body: 'Emma was selected by admin Maya Laurent.',
         createdAt: '2026-11-01T10:00:00Z',
+        deletedAt: null,
       },
     ]);
     voteForProposal.mockResolvedValue({} as ApiPoll);

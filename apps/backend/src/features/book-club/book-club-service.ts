@@ -2,8 +2,7 @@ import type { Clock } from '../../utils/clock.js';
 import { NotFoundError } from '../../utils/errors.js';
 import type { IBookRepository } from '../book/book-repository.js';
 import { BookId, type Book } from '../book/book.js';
-import { ChatMessage } from '../group-chat/chat-message.js';
-import type { IChatRepository } from '../group-chat/chat-repository.js';
+import type { SystemMessages } from '../group-chat/chat-service.js';
 import {
   GroupId,
   GroupName,
@@ -67,8 +66,9 @@ export class BookClubService implements MemberJoinedListener {
     private readonly books: IBookRepository,
     private readonly statuses: IReadingStatusRepository,
     private readonly polls: IBookPollRepository,
-    private readonly chat: IChatRepository,
     private readonly now: Clock = () => new Date(),
+    /** Posts the club's system messages in its chat (F-GRP-02 rule 5), when wired. */
+    private readonly chat?: SystemMessages,
   ) {}
 
   /** The reader creates a club with its first book and becomes admin and first member. */
@@ -91,12 +91,9 @@ export class BookClubService implements MemberJoinedListener {
     );
     await this.clubs.save(club);
     await this.addToLibrary(adminId, book.id);
-    await this.chat.add(
-      ChatMessage.system(
-        club.id,
-        `${admin.displayName} started ${club.name.value}. Round 1: ${book.title.value}, closes ${formatDay(club.currentRound.period.deadline)}.`,
-        now,
-      ),
+    await this.chat?.postSystem(
+      club.id,
+      `${admin.displayName} started ${club.name.value}. Round 1: ${book.title.value}, closes ${formatDay(club.currentRound.period.deadline)}.`,
     );
     return this.view(club);
   }
@@ -132,12 +129,9 @@ export class BookClubService implements MemberJoinedListener {
     for (const m of club.members) await this.addToLibrary(m.userId, book.id);
     const admin = await this.users.findById(by);
     const who = admin ? `admin ${admin.displayName}` : 'the admin';
-    await this.chat.add(
-      ChatMessage.system(
-        club.id,
-        `${book.title.value} was selected by ${who}. Round ${round.number} closes ${formatDay(round.period.deadline)}.`,
-        now,
-      ),
+    await this.chat?.postSystem(
+      club.id,
+      `${book.title.value} was selected by ${who}. Round ${round.number} closes ${formatDay(round.period.deadline)}.`,
     );
     return this.view(club);
   }

@@ -34,7 +34,6 @@ CREATE TABLE "group_invites" (
 	"responded_at" timestamp with time zone
 );
 --> statement-breakpoint
-ALTER TABLE "posts" ALTER COLUMN "author_id" DROP NOT NULL;--> statement-breakpoint
 ALTER TABLE "book_club_rounds" ADD COLUMN "book_id" uuid NOT NULL;--> statement-breakpoint
 ALTER TABLE "book_club_polls" ADD CONSTRAINT "book_club_polls_group_id_fkey" FOREIGN KEY ("group_id") REFERENCES "public"."book_clubs"("group_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "book_club_proposals" ADD CONSTRAINT "book_club_proposals_poll_id_fkey" FOREIGN KEY ("poll_id") REFERENCES "public"."book_club_polls"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

@@ -52,6 +52,7 @@ Architecture Decision Records. One file per decision, numbered `NNNN-short-title
 | [`0003-backend-http-framework.md`](ADRs/0003-backend-http-framework.md) | Express 5 as the backend HTTP layer, chosen over Hono and Fastify for team familiarity and ecosystem. | ✅ |
 | [`0004-database-access-and-migrations.md`](ADRs/0004-database-access-and-migrations.md) | PostgreSQL 17 on Docker Compose, Supabase in production, Drizzle Kit for migrations and Drizzle ORM for querying. | ✅ |
 | [`0005-server-timed-reading-sessions.md`](ADRs/0005-server-timed-reading-sessions.md) | Reading sessions timed by the server clock (start and finish requests, resume on reload, cancel, no pause) and counted for every minutes challenge whose period contains them. | 📝 Proposed |
+| [`0006-group-chat-realtime.md`](ADRs/0006-group-chat-realtime.md) | Group chat: REST for sending and history, Socket.IO to push new messages, sequence numbers and client ids for order and dedupe, and the direction for media in a private bucket. | 📝 Proposed |
 
 ## `architecture/`
 

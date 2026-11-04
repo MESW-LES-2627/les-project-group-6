@@ -335,6 +335,8 @@ async function startRound() {
           :messages="club.messages"
           :me="me"
           :group-id="live ? club.id : undefined"
+          :members="club.members"
+          :is-admin="club.isAdmin"
           label="Message your club"
           placeholder="Write a thought, or share a passage…"
         />

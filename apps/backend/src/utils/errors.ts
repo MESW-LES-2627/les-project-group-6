@@ -19,3 +19,6 @@ export class NotFoundError extends DomainError {
 
 /** The operation is not allowed in the current state of the aggregate. */
 export class BusinessRuleViolationError extends DomainError {}
+
+/** The caller is known but may not act on this aggregate (e.g. not a member of the group). */
+export class ForbiddenError extends DomainError {}

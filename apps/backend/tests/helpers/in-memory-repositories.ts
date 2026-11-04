@@ -14,20 +14,30 @@ import type {
   ReadingStats,
 } from '../../src/features/reading-session/reading-session-repository.js';
 import type { ChallengeGroup } from '../../src/features/challenge-group/challenge-group.js';
-import { GroupRoster, type GroupId, type Membership } from '../../src/features/group/group.js';
+import {
+  GroupRoster,
+  type GroupId,
+  type MemberRole,
+  type Membership,
+} from '../../src/features/group/group.js';
 import type { IGroupRosterRepository } from '../../src/features/group/group-roster-repository.js';
 import type { BookClub } from '../../src/features/book-club/book-club.js';
 import type { IBookClubRepository } from '../../src/features/book-club/book-club-repository.js';
 import type { BookPoll } from '../../src/features/book-club/book-poll.js';
 import type { IBookPollRepository } from '../../src/features/book-club/book-poll-repository.js';
-import type { ChatMessage } from '../../src/features/group-chat/chat-message.js';
-import type { ChatEntry, IChatRepository } from '../../src/features/group-chat/chat-repository.js';
 import type { FriendView, IFriendRepository } from '../../src/features/friend/friend-repository.js';
 import type { GroupInvite, InviteId } from '../../src/features/group-invite/group-invite.js';
 import type {
   IGroupInviteRepository,
   PendingInvite,
 } from '../../src/features/group-invite/group-invite-repository.js';
+import { ChatMessage, type MessageId } from '../../src/features/group-chat/chat-message.js';
+import type {
+  IChatMessageRepository,
+  MessageCursor,
+} from '../../src/features/group-chat/chat-message-repository.js';
+import type { GroupMembership } from '../../src/features/group-chat/group-membership-query.js';
+import type { SystemMessages } from '../../src/features/group-chat/chat-service.js';
 import type { IChallengeGroupRepository } from '../../src/features/challenge-group/challenge-group-repository.js';
 import type { IUserRepository } from '../../src/features/user/user-repository.js';
 import type { User, UserId, Username } from '../../src/features/user/user.js';
@@ -159,29 +169,6 @@ export class InMemoryGroupRosterRepository implements IGroupRosterRepository {
   }
 }
 
-export class InMemoryChatRepository implements IChatRepository {
-  readonly messages: ChatMessage[] = [];
-
-  constructor(private readonly users?: InMemoryUserRepository) {}
-
-  async add(message: ChatMessage): Promise<void> {
-    this.messages.push(message);
-  }
-
-  async recent(groupId: GroupId, limit: number): Promise<ChatEntry[]> {
-    const mine = this.messages.filter((m) => m.groupId.equals(groupId)).slice(-limit);
-    return Promise.all(
-      mine.map(async (message) => {
-        const user = message.authorId ? await this.users?.findById(message.authorId) : null;
-        return {
-          message,
-          author: user ? { displayName: user.displayName, username: user.username.value } : null,
-        };
-      }),
-    );
-  }
-}
-
 export class InMemoryFriendRepository implements IFriendRepository {
   private readonly pairs = new Set<string>();
 
@@ -253,5 +240,77 @@ export class InMemoryBookPollRepository implements IBookPollRepository {
 
   async save(poll: BookPoll): Promise<void> {
     if (!this.polls.includes(poll)) this.polls.push(poll);
+  }
+}
+
+export class InMemoryChatMessageRepository implements IChatMessageRepository {
+  private readonly messages: ChatMessage[] = [];
+  private nextSeq = 1;
+
+  async append(message: ChatMessage): Promise<{ message: ChatMessage; created: boolean }> {
+    const existing = this.messages.find(
+      (m) =>
+        message.clientId !== null &&
+        m.clientId?.equals(message.clientId) &&
+        m.authorId?.equals(message.authorId!),
+    );
+    if (existing) return { message: existing, created: false };
+    const stored = ChatMessage.reconstitute({
+      id: message.id,
+      seq: this.nextSeq++,
+      groupId: message.groupId,
+      authorId: message.authorId,
+      clientId: message.clientId,
+      kind: message.kind,
+      body: message.body,
+      createdAt: message.createdAt,
+      deletedAt: message.deletedAt,
+    });
+    this.messages.push(stored);
+    return { message: stored, created: true };
+  }
+
+  async findById(groupId: GroupId, id: MessageId): Promise<ChatMessage | null> {
+    return this.messages.find((m) => m.groupId.equals(groupId) && m.id.equals(id)) ?? null;
+  }
+
+  async page(groupId: GroupId, cursor: MessageCursor, limit: number): Promise<ChatMessage[]> {
+    const inGroup = this.messages.filter((m) => m.groupId.equals(groupId));
+    if (cursor.after !== undefined) {
+      return inGroup.filter((m) => m.seq! > cursor.after!).slice(0, limit);
+    }
+    const older =
+      cursor.before !== undefined ? inGroup.filter((m) => m.seq! < cursor.before!) : inGroup;
+    return older.slice(-limit);
+  }
+
+  async markDeleted(message: ChatMessage): Promise<void> {
+    const i = this.messages.findIndex((m) => m.id.equals(message.id));
+    this.messages[i] = message;
+  }
+}
+
+export class InMemoryGroupMembership implements GroupMembership {
+  private readonly roles = new Map<string, MemberRole>();
+
+  add(groupId: GroupId, userId: UserId, role: MemberRole = 'member'): void {
+    this.roles.set(`${groupId.value}:${userId.value}`, role);
+  }
+
+  async roleOf(groupId: GroupId, userId: UserId): Promise<MemberRole | null> {
+    return this.roles.get(`${groupId.value}:${userId.value}`) ?? null;
+  }
+}
+
+/** Records the system messages other features post, instead of a chat. */
+export class RecordingSystemMessages implements SystemMessages {
+  readonly posts: { groupId: GroupId; text: string }[] = [];
+
+  async postSystem(groupId: GroupId, text: string): Promise<void> {
+    this.posts.push({ groupId, text });
+  }
+
+  get texts(): string[] {
+    return this.posts.map((p) => p.text);
   }
 }

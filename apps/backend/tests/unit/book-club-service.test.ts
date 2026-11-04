@@ -17,9 +17,9 @@ import {
   InMemoryBookClubRepository,
   InMemoryBookPollRepository,
   InMemoryBookRepository,
-  InMemoryChatRepository,
   InMemoryReadingStatusRepository,
   InMemoryUserRepository,
+  RecordingSystemMessages,
 } from '../helpers/in-memory-repositories.js';
 
 const ADMIN = UserId.of('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11');
@@ -29,7 +29,7 @@ describe('BookClubService and BookPollService', () => {
   let now: Date;
   let books: InMemoryBookRepository;
   let statuses: InMemoryReadingStatusRepository;
-  let chat: InMemoryChatRepository;
+  let chat: RecordingSystemMessages;
   let clubs: BookClubService;
   let polls: BookPollService;
   let emma: Book;
@@ -73,11 +73,11 @@ describe('BookClubService and BookPollService', () => {
     await books.save(emma);
     await books.save(piranesi);
     statuses = new InMemoryReadingStatusRepository();
-    chat = new InMemoryChatRepository();
+    chat = new RecordingSystemMessages();
     const clubRepo = new InMemoryBookClubRepository();
     const pollRepo = new InMemoryBookPollRepository();
-    clubs = new BookClubService(clubRepo, users, books, statuses, pollRepo, chat, clock);
-    polls = new BookPollService(pollRepo, clubRepo, books, chat, clock);
+    clubs = new BookClubService(clubRepo, users, books, statuses, pollRepo, clock, chat);
+    polls = new BookPollService(pollRepo, clubRepo, books, clock, chat);
   });
 
   test('creating a club adds the book to the library and announces round 1', async () => {
@@ -88,7 +88,7 @@ describe('BookClubService and BookPollService', () => {
     assert.strictEqual(rounds[0]!.daysLeft, 27);
     const status = await statuses.findByUserAndBook(ADMIN, emma.id);
     assert.strictEqual(status?.status, 'not-started');
-    assert.match(chat.messages[0]!.text.value, /Demo Reader started Classics\. Round 1: Emma/);
+    assert.match(chat.texts[0]!, /Demo Reader started Classics\. Round 1: Emma/);
     assert.strictEqual((await clubs.forMember(ADMIN.value)).length, 1);
   });
 
@@ -129,7 +129,7 @@ describe('BookClubService and BookPollService', () => {
     );
     assert.strictEqual(await polls.find(club.id), null);
     assert.ok(await statuses.findByUserAndBook(ADMIN, piranesi.id));
-    assert.match(chat.messages.at(-1)!.text.value, /Piranesi was selected by admin Demo Reader/);
+    assert.match(chat.texts.at(-1)!, /Piranesi was selected by admin Demo Reader/);
   });
 
   test('the round is not completed after the deadline, and the admin can move on', async () => {

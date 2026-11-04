@@ -1,27 +1,22 @@
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  MessageText,
-  InvalidMessageTextError,
-} from '../../src/features/group-chat/chat-message.js';
-import { ChatService } from '../../src/features/group-chat/chat-service.js';
+import { JoinAnnouncer } from '../../src/features/group-chat/join-announcer.js';
 import { InviteRuleError } from '../../src/features/group-invite/group-invite.js';
 import { GroupInviteService } from '../../src/features/group-invite/group-invite-service.js';
 import {
   GroupId,
   GroupRoster,
   NotGroupAdminError,
-  NotGroupMemberError,
   type MemberJoined,
 } from '../../src/features/group/group.js';
 import { Email, User, UserId, Username } from '../../src/features/user/user.js';
 import { NotFoundError } from '../../src/utils/errors.js';
 import {
-  InMemoryChatRepository,
   InMemoryFriendRepository,
   InMemoryGroupInviteRepository,
   InMemoryGroupRosterRepository,
   InMemoryUserRepository,
+  RecordingSystemMessages,
 } from '../helpers/in-memory-repositories.js';
 
 const NOW = new Date('2026-11-04T10:00:00Z');
@@ -30,12 +25,11 @@ const MAYA = UserId.of('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b01');
 const STRANGER = UserId.of('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b09');
 const GROUP = GroupId.generate();
 
-describe('Group invites and chat', () => {
+describe('Group invites', () => {
   let users: InMemoryUserRepository;
   let rosters: InMemoryGroupRosterRepository;
   let friends: InMemoryFriendRepository;
-  let chatMessages: InMemoryChatRepository;
-  let chat: ChatService;
+  let chat: RecordingSystemMessages;
   let invites: GroupInviteService;
   let joined: MemberJoined[];
 
@@ -63,15 +57,14 @@ describe('Group invites and chat', () => {
     );
     friends = new InMemoryFriendRepository();
     friends.befriend(ADMIN, MAYA);
-    chatMessages = new InMemoryChatRepository(users);
-    chat = new ChatService(chatMessages, rosters, users, () => NOW);
+    chat = new RecordingSystemMessages();
     joined = [];
     invites = new GroupInviteService(
       new InMemoryGroupInviteRepository(),
       rosters,
       friends,
       users,
-      [chat, { memberJoined: async (event) => void joined.push(event) }],
+      [new JoinAnnouncer(chat, users), { memberJoined: async (event) => void joined.push(event) }],
       () => NOW,
     );
   });
@@ -86,8 +79,7 @@ describe('Group invites and chat', () => {
     assert.ok((await rosters.findById(GROUP))!.isMember(MAYA));
     assert.strictEqual(joined.length, 1);
     assert.ok(joined[0]!.userId.equals(MAYA));
-    const history = await chat.history(GROUP.value, MAYA.value);
-    assert.strictEqual(history.at(-1)!.message.text.value, 'Maya Laurent joined the group.');
+    assert.deepStrictEqual(chat.texts, ['Maya Laurent joined the group']);
     assert.strictEqual((await invites.pendingFor(MAYA.value)).length, 0);
   });
 
@@ -111,22 +103,5 @@ describe('Group invites and chat', () => {
     assert.strictEqual((await invites.decline(invite.id.value, MAYA.value)).status, 'declined');
     await assert.rejects(invites.accept(invite.id.value, MAYA.value), InviteRuleError);
     assert.ok(!(await rosters.findById(GROUP))!.isMember(MAYA));
-  });
-
-  test('members post trimmed messages; others cannot read or write', async () => {
-    const entry = await chat.post(GROUP.value, ADMIN.value, '  Chapter 27!  ');
-
-    assert.strictEqual(entry.message.text.value, 'Chapter 27!');
-    assert.strictEqual(entry.author?.displayName, 'Demo Reader');
-    await assert.rejects(chat.post(GROUP.value, MAYA.value, 'hi'), NotGroupMemberError);
-    await assert.rejects(chat.history(GROUP.value, MAYA.value), NotGroupMemberError);
-    assert.strictEqual((await chat.history(GROUP.value, ADMIN.value)).length, 1);
-  });
-
-  test('message text is 1 to 2000 characters', () => {
-    assert.throws(() => MessageText.of('   '), InvalidMessageTextError);
-    assert.throws(() => MessageText.of('x'.repeat(2001)), InvalidMessageTextError);
-    assert.throws(() => MessageText.of(42), InvalidMessageTextError);
-    assert.strictEqual(MessageText.of('x'.repeat(2000)).value.length, 2000);
   });
 });

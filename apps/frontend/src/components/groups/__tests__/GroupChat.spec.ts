@@ -1,90 +1,165 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ApiChatMessage } from '@/services/api';
+import type { ChatSocketHandlers } from '@/services/chat-socket';
 import GroupChat from '../GroupChat.vue';
 
-const getGroupMessages = vi.hoisted(() => vi.fn<(groupId: string) => Promise<ApiChatMessage[]>>());
-const postGroupMessage = vi.hoisted(() =>
-  vi.fn<(groupId: string, text: string, userId: string) => Promise<ApiChatMessage>>(),
-);
+const api = vi.hoisted(() => ({
+  getGroupMessages: vi.fn<typeof import('@/services/api').getGroupMessages>(),
+  sendGroupMessage: vi.fn<typeof import('@/services/api').sendGroupMessage>(),
+  deleteGroupMessage: vi.fn<typeof import('@/services/api').deleteGroupMessage>(),
+}));
+const socket = vi.hoisted(() => ({
+  handlers: null as ChatSocketHandlers | null,
+  close: vi.fn<() => void>(),
+}));
 
 vi.mock('@/services/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/api')>()),
-  getGroupMessages,
-  postGroupMessage,
+  ...api,
+}));
+vi.mock('@/services/chat-socket', () => ({
+  connectChatSocket: (_groupId: string, handlers: ChatSocketHandlers) => {
+    socket.handlers = handlers;
+    return { close: socket.close };
+  },
 }));
 
-const me = { id: 'u1', name: 'Demo Reader', initials: 'DR', handle: 'demo_reader' };
-const message = (id: string, text: string): ApiChatMessage => ({
-  id,
-  groupId: 'g1',
-  author: { userId: 'u2', displayName: 'Maya Laurent', username: 'mayareads' },
-  text,
-  createdAt: new Date().toISOString(),
-});
+const GROUP = 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01';
+const me = { id: 'u-me', name: 'Demo Reader', initials: 'DR', handle: 'demo' };
+const ana = { id: 'u-ana', name: 'Ana Silva', initials: 'AS', handle: 'ana' };
 
-function mountChat(pollInterval = 5000) {
+function message(seq: number, overrides: Partial<ApiChatMessage> = {}): ApiChatMessage {
+  return {
+    id: `m-${seq}`,
+    seq,
+    groupId: GROUP,
+    kind: 'text',
+    authorId: ana.id,
+    clientId: `c-${seq}`,
+    body: `message ${seq}`,
+    createdAt: '2026-11-02T10:00:00Z',
+    deletedAt: null,
+    ...overrides,
+  };
+}
+
+function mountLive(isAdmin = false) {
   return mount(GroupChat, {
-    props: { me, groupId: 'g1', label: 'Message the group', placeholder: 'Write…', pollInterval },
+    props: {
+      messages: [],
+      me,
+      label: 'Message the group',
+      placeholder: 'Write…',
+      groupId: GROUP,
+      members: [me, ana],
+      isAdmin,
+    },
   });
 }
 
-describe('GroupChat with the API', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.resetAllMocks();
+describe('GroupChat (live)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    api.getGroupMessages.mockResolvedValue([
+      message(1, {
+        kind: 'system',
+        authorId: null,
+        clientId: null,
+        body: 'Ana created the challenge',
+      }),
+      message(2),
+    ]);
   });
 
-  it('loads the messages and sends a new one as the reader', async () => {
-    getGroupMessages.mockResolvedValue([message('m1', 'Chapter 27!')]);
-    postGroupMessage.mockResolvedValue({
-      ...message('m2', 'So good'),
-      author: { userId: 'u1', displayName: 'Demo Reader', username: 'demo_reader' },
-    });
-    const wrapper = mountChat();
+  it('loads the history and shows pushed messages once', async () => {
+    const wrapper = mountLive();
+    await flushPromises();
+    expect(wrapper.text()).toContain('System · Ana created the challenge');
+    expect(wrapper.text()).toContain('Ana Silva');
+
+    socket.handlers!.onMessage(message(3));
+    socket.handlers!.onMessage(message(3));
+    await flushPromises();
+    expect(wrapper.findAll('.messages > li')).toHaveLength(3);
+  });
+
+  it('catches up from the last seq after the socket (re)joins', async () => {
+    mountLive();
+    await flushPromises();
+    api.getGroupMessages.mockResolvedValue([message(3)]);
+    socket.handlers!.onJoined();
+    await flushPromises();
+    expect(api.getGroupMessages).toHaveBeenLastCalledWith(GROUP, { after: 2 });
+  });
+
+  it('sends with a client id and replaces the pending copy with the stored one', async () => {
+    api.sendGroupMessage.mockImplementation(async (_g, payload) =>
+      message(3, { authorId: me.id, clientId: payload.clientId, body: payload.body }),
+    );
+    const wrapper = mountLive();
     await flushPromises();
 
-    expect(getGroupMessages).toHaveBeenCalledWith('g1', 'u1');
-    expect(wrapper.text()).toContain('Maya Laurent');
-    expect(wrapper.text()).toContain('Today ·');
-
-    await wrapper.get('input').setValue('  So good ');
+    await wrapper.get('input').setValue('  Hello  ');
     await wrapper.get('form').trigger('submit');
     await flushPromises();
 
-    expect(postGroupMessage).toHaveBeenCalledWith('g1', 'So good', 'u1');
-    expect(wrapper.findAll('.messages > li')).toHaveLength(2);
-    expect((wrapper.get('input').element as HTMLInputElement).value).toBe('');
-    wrapper.unmount();
+    const [, payload] = api.sendGroupMessage.mock.calls[0]!;
+    expect(payload.body).toBe('Hello');
+    // The push of the same message arrives after the response: still one copy.
+    socket.handlers!.onMessage(
+      message(3, { authorId: me.id, clientId: payload.clientId, body: 'Hello' }),
+    );
+    await flushPromises();
+    expect(wrapper.findAll('.messages > li')).toHaveLength(3);
+    expect(wrapper.text()).not.toContain('Sending…');
   });
 
-  it('checks for new messages on an interval', async () => {
-    vi.useFakeTimers();
-    getGroupMessages.mockResolvedValueOnce([]).mockResolvedValue([message('m1', 'Hello')]);
-    const wrapper = mountChat(1000);
+  it('offers a retry when sending fails', async () => {
+    api.sendGroupMessage.mockRejectedValueOnce(new Error('offline'));
+    const wrapper = mountLive();
     await flushPromises();
-    expect(wrapper.text()).toContain('No messages yet.');
-
-    await vi.advanceTimersByTimeAsync(1000);
-    await flushPromises();
-
-    expect(wrapper.text()).toContain('Hello');
-    wrapper.unmount();
-  });
-
-  it('shows the server error and keeps the draft when sending fails', async () => {
-    getGroupMessages.mockResolvedValue([]);
-    postGroupMessage.mockRejectedValue(new Error('Only group members can write in the chat'));
-    const wrapper = mountChat();
-    await flushPromises();
-
-    await wrapper.get('input').setValue('Hi');
+    await wrapper.get('input').setValue('Hello');
     await wrapper.get('form').trigger('submit');
     await flushPromises();
+    expect(wrapper.text()).toContain('Not sent.');
 
-    expect(wrapper.get('[role="alert"]').text()).toBe('Only group members can write in the chat');
-    expect((wrapper.get('input').element as HTMLInputElement).value).toBe('Hi');
+    api.sendGroupMessage.mockResolvedValueOnce(message(3, { authorId: me.id, body: 'Hello' }));
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Retry')!
+      .trigger('click');
+    await flushPromises();
+    const [, first] = api.sendGroupMessage.mock.calls[0]!;
+    const [, second] = api.sendGroupMessage.mock.calls[1]!;
+    expect(second.clientId).toBe(first.clientId);
+  });
+
+  it('only shows delete on own messages, or on all of them for the admin', async () => {
+    api.getGroupMessages.mockResolvedValue([message(1), message(2, { authorId: me.id })]);
+    const member = mountLive();
+    await flushPromises();
+    expect(member.findAll('button').filter((b) => b.text() === 'Delete')).toHaveLength(1);
+
+    const admin = mountLive(true);
+    await flushPromises();
+    expect(admin.findAll('button').filter((b) => b.text() === 'Delete')).toHaveLength(2);
+  });
+
+  it('marks a message deleted when told by the socket', async () => {
+    const wrapper = mountLive();
+    await flushPromises();
+    socket.handlers!.onDeleted({ id: 'm-2', groupId: GROUP, seq: 2 });
+    await flushPromises();
+    expect(wrapper.text()).toContain('This message was deleted');
+    expect(wrapper.text()).not.toContain('message 2');
+  });
+
+  it('closes the socket when it leaves the page', async () => {
+    const wrapper = mountLive();
+    await flushPromises();
     wrapper.unmount();
+    expect(socket.close).toHaveBeenCalled();
   });
 });
