@@ -167,7 +167,9 @@ CREATE TABLE book_club_rounds (
     start DATE NOT NULL,
     deadline DATE NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    book_id UUID NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT book_club_rounds_club_number_key UNIQUE (book_club_id, round_number)
 );
 
 -- Specific group subtype focused on competitive reading goals over a fixed period.
@@ -246,7 +248,7 @@ CREATE TABLE conversations (
 -- Chat message or comment (Conversation XOR BookClubRound constraint).
 CREATE TABLE posts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    author_id UUID REFERENCES users(id) ON DELETE CASCADE, -- NULL for system messages
     conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
     round_id UUID REFERENCES book_club_rounds(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
@@ -299,4 +301,43 @@ CREATE TABLE notifications (
     target_id UUID NOT NULL,
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Invitations to join any group; one pending invite per group and invitee.
+CREATE TABLE group_invites (
+    id UUID PRIMARY KEY,
+    group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    invitee_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    inviter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    responded_at TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX group_invites_one_pending_idx ON group_invites (group_id, invitee_id) WHERE status = 'pending';
+
+-- A book club's vote on its next book, with the proposals and one vote per member.
+CREATE TABLE book_club_polls (
+    id UUID PRIMARY KEY,
+    group_id UUID NOT NULL REFERENCES book_clubs(group_id) ON DELETE CASCADE,
+    closes_at TIMESTAMPTZ NOT NULL,
+    anonymous BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    closed_at TIMESTAMPTZ
+);
+
+CREATE TABLE book_club_proposals (
+    id UUID PRIMARY KEY,
+    poll_id UUID NOT NULL REFERENCES book_club_polls(id) ON DELETE CASCADE,
+    book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    proposed_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT book_club_proposals_poll_book_key UNIQUE (poll_id, book_id)
+);
+
+CREATE TABLE book_club_votes (
+    poll_id UUID NOT NULL REFERENCES book_club_polls(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    proposal_id UUID NOT NULL REFERENCES book_club_proposals(id) ON DELETE CASCADE,
+    cast_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (poll_id, user_id)
 );

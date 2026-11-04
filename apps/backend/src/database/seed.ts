@@ -1,6 +1,16 @@
 import process from 'node:process';
 import { createPool, createDb } from './pool.js';
-import { users, books, readingStatus } from './schema.js';
+import {
+  users,
+  books,
+  readingStatus,
+  friendships,
+  groups,
+  member,
+  bookClubs,
+  bookClubRounds,
+  groupInvites,
+} from './schema.js';
 
 const pool = createPool();
 const db = createDb(pool);
@@ -92,6 +102,85 @@ async function seed(): Promise<void> {
   }));
 
   await db.insert(readingStatus).values(statuses).onConflictDoNothing();
+
+  // 4. Friends of the demo user, so groups can invite them
+  const friends = [
+    ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b01', 'mayareads', 'Maya Laurent'],
+    ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b02', 'priyapages', 'Priya Shah'],
+    ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b03', 'jonahreads', 'Jonah Ellis'],
+    ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b04', 'sofiachen', 'Sofia Chen'],
+    ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b05', 'nadiapatel', 'Nadia Patel'],
+  ] as const;
+  await db
+    .insert(users)
+    .values(
+      friends.map(([id, username, displayName]) => ({
+        id,
+        email: `${username}@bookmarked.app`,
+        username,
+        displayName,
+      })),
+    )
+    .onConflictDoNothing();
+  await db
+    .insert(friendships)
+    .values(
+      friends.map(([id], index) => ({
+        id: `f0eebc99-9c0b-4ef8-bb6d-6bb9bd380b0${index + 1}`,
+        requesterId: demoUserId,
+        addresseeId: id,
+        status: 'accepted',
+        respondedAt: new Date().toISOString(),
+      })),
+    )
+    .onConflictDoNothing();
+
+  // 5. A book club run by Maya, reading Emma, with a pending invite for the demo user
+  const mayaId = friends[0][0];
+  const priyaId = friends[1][0];
+  const clubId = 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380c01';
+  const today = new Date();
+  const deadline = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+  await db
+    .insert(groups)
+    .values({
+      id: clubId,
+      name: 'Sunday Classics',
+      description: 'One classic a month, read slowly.',
+      adminId: mayaId,
+    })
+    .onConflictDoNothing();
+  await db
+    .insert(member)
+    .values([
+      { groupId: clubId, userId: mayaId, role: 'admin' },
+      { groupId: clubId, userId: priyaId, role: 'member' },
+    ])
+    .onConflictDoNothing();
+  await db
+    .insert(bookClubs)
+    .values({ groupId: clubId, currentBookId: seedBooks[0]!.id })
+    .onConflictDoNothing();
+  await db
+    .insert(bookClubRounds)
+    .values({
+      id: 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380c02',
+      bookClubId: clubId,
+      roundNumber: 1,
+      bookId: seedBooks[0]!.id,
+      start: today.toISOString().slice(0, 10),
+      deadline: deadline.toISOString().slice(0, 10),
+    })
+    .onConflictDoNothing();
+  await db
+    .insert(groupInvites)
+    .values({
+      id: 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380c03',
+      groupId: clubId,
+      inviteeId: demoUserId,
+      inviterId: mayaId,
+    })
+    .onConflictDoNothing();
 
   console.log('✅ Seeding completed successfully!');
   await pool.end();

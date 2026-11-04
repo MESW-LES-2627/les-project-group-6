@@ -43,6 +43,19 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | `POST` | `/groups/challenges` | Creates a challenge group (`name`, `startDate`, `durationDays`, `winMetric`); the creator is admin and first member (`201`) |
 | `GET` | `/groups/challenges/:id` | Returns the group, its challenge and `standings` (counted minutes of sessions finished in the period, split by book in `books`) (`200` or `404`) |
 | `GET` | `/user/:userId/groups` | Lists the challenge groups the user belongs to (`200 OK`) |
+| `POST` | `/groups/book-clubs` | Creates a book club (`name`, `bookId`, `deadline`); the creator is admin, round 1 starts today and the book goes to their library (`201`) |
+| `GET` | `/groups/book-clubs/:id?userId=` | Returns the club, its current `round` (outcome, finished/expected, days left), `standings` (minutes on the round book inside the round, page %, finished), `history` and the open `poll` (`200` or `404`) |
+| `GET` | `/user/:userId/book-clubs` | Lists the book clubs the user belongs to (`200`) |
+| `POST` | `/groups/book-clubs/:id/rounds` | The admin starts the next round with a new book and deadline once the current one is over (`201`; `409` otherwise) |
+| `POST` | `/groups/book-clubs/:id/poll` | The admin opens a vote on the next book (`closesAt`, `anonymous`) (`201`; `409` if one is open) |
+| `POST` | `/groups/book-clubs/:id/poll/proposals` | A member proposes a book, one per member (`201`) |
+| `PUT` | `/groups/book-clubs/:id/poll/vote` | A member votes for a proposal; voting again moves the vote (`200`) |
+| `POST` | `/groups/:id/invites` | The admin of any group invites a friend (`inviteeId`) (`201`; `409` if not a friend, a member or already invited) |
+| `GET` | `/user/:userId/group-invites` | Pending invites with group name, kind and inviter (`200`) |
+| `POST` | `/group-invites/:id/accept` · `/decline` | The invitee answers; accepting adds them to the group (`200`) |
+| `GET` | `/user/:userId/friends` | Accepted friends (`200`) |
+| `GET` | `/groups/:id/messages?userId=` | Chat of any group, oldest first, members only (`200`) |
+| `POST` | `/groups/:id/messages` | A member writes in the chat (`text`, 1–2000 characters) (`201`) |
 | `GET` | `/user/:userId/reading-stats` | Returns `{ totalMinutes, sessionsCount }` over finished sessions (`200 OK`) |
 
 CORS middleware is enabled globally (`Access-Control-Allow-Origin: *`) with preflight `OPTIONS` support for cross-origin browser clients.
@@ -87,6 +100,11 @@ apps/backend/
 │   │   │                  # book-routes.ts (routes)
 │   │   ├── reading-status/ # ReadingStatus aggregate, ReadingState (State pattern) + PageProgress, repository, service, DTO, routes
 │   │   ├── challenge-group/ # ChallengeGroup aggregate (groups + member + challenges), repository, standings query, service, DTO, routes
+│   │   ├── group/         # Shared kernel of every group: GroupId, GroupName, memberships, GroupRoster, MemberJoined event
+│   │   ├── group-invite/  # GroupInvite aggregate, repository, service, DTO, routes (any group)
+│   │   ├── group-chat/    # ChatMessage entity over conversations + posts, service, DTO, routes (any group)
+│   │   ├── book-club/     # BookClub aggregate (rounds), BookPoll aggregate (voting), progress query, services, DTO, routes
+│   │   ├── friend/        # Read-only friends list from accepted friendships
 │   │   ├── reading-session/ # ReadingSession aggregate (server-timed), repository + stats, service, DTO, routes
 │   │   ├── user/          # User entity + value objects (UserId, Email, Username), repository
 │   │   └── library/       # Read-side query (CQRS) and the library route
