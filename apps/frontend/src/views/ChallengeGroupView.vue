@@ -14,15 +14,22 @@ const props = withDefaults(
     challenge: ChallengeDetail;
     /** The viewing reader's member id; the mock pages use Eleanor. */
     meId?: string;
+    /** Loaded from the API: the chat is saved and shared. */
+    live?: boolean;
   }>(),
-  { meId: mockCurrentMemberId },
+  { meId: mockCurrentMemberId, live: false },
 );
 
 type Tab = 'chat' | 'members' | 'history';
 
 const tab = ref<Tab>('chat');
 const rematchStarted = ref(false);
-const me = props.challenge.members.find((m) => m.id === props.meId) ?? props.challenge.members[0]!;
+const me = props.challenge.members.find((m) => m.id === props.meId) ?? {
+  id: props.meId,
+  name: 'You',
+  initials: 'YO',
+  handle: '',
+};
 
 const tabs = [
   { id: 'chat', label: 'Chat' },
@@ -123,6 +130,7 @@ const tabs = [
             v-show="tab === 'chat'"
             :messages="challenge.messages"
             :me="me"
+            :group-id="live ? challenge.id : undefined"
             label="Message the group"
             placeholder="Write a message…"
           />

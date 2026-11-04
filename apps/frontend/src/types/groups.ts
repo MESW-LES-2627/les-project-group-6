@@ -94,8 +94,19 @@ export interface ChallengeDetail {
 export interface ProposalOption {
   id: string;
   title: string;
+  /** Second line: the book's author, or who proposed it */
   author: string;
   votes: number;
+}
+
+export interface BookClubVoting {
+  status: 'open' | 'closed';
+  closes: string;
+  options: ProposalOption[];
+  yourVote: string | null;
+  voted: number;
+  total: number;
+  anonymous: boolean;
 }
 
 export interface BookClubDetail {
@@ -109,15 +120,19 @@ export interface BookClubDetail {
   };
   finished: { count: number; total: number };
   deadline: string;
+  /** "20 days to turn the last page" */
+  daysLeft: string;
   yourProgress: { page: number; pages: number };
   leaderboard: LeaderboardEntry[];
   messages: ChatMessage[];
-  voting: {
-    closes: string;
-    options: ProposalOption[];
-    yourVote: string | null;
-    voted: number;
-    total: number;
-    anonymous: boolean;
-  };
+  /** Null when no vote is open */
+  voting: BookClubVoting | null;
+  members: GroupMember[];
+  adminName: string;
+  /** Whether the reader is the admin */
+  isAdmin: boolean;
+  /** The round is over, so the admin can pick the next book */
+  roundOver: boolean;
+  /** Earlier rounds, newest first */
+  history: PastResult[];
 }

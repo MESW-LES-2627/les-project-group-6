@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 
+import BookPicker, { type PickedBook } from '@/components/groups/BookPicker.vue';
 import GroupsPageHeader from '@/components/groups/GroupsPageHeader.vue';
 import InfoNote from '@/components/groups/InfoNote.vue';
 import ToggleSwitch from '@/components/groups/ToggleSwitch.vue';
 import { mockFriends } from '@/mocks/groups';
-import { createChallengeGroup } from '@/services/api';
-import type { GroupKind, WinMetric } from '@/types/groups';
+import { createBookClub, createChallengeGroup, getFriends, inviteToGroup } from '@/services/api';
+import type { GroupKind, GroupMember, WinMetric } from '@/types/groups';
 import { endDate, formatLongDate, formatPeriod } from '@/utils/groups';
 
-// Challenges are saved through the API; book clubs and invites are not stored yet,
-// so those only validate and return to /groups.
+// Challenges and book clubs are saved through the API, then each selected friend
+// is invited. Friends come from the API; the mock list (when it is unreachable)
+// can be selected but is not invited. The fair-reading settings are not stored yet.
 const router = useRouter();
 
 const metrics: { id: WinMetric; label: string; winner: string }[] = [
@@ -28,7 +30,7 @@ const picture = ref('');
 const startDate = ref('2026-11-01');
 const duration = ref(30);
 const metric = ref<WinMetric>('pages');
-const book = ref('');
+const book = ref<PickedBook | null>(null);
 const roundDeadline = ref('2026-11-30');
 const simpleTimer = ref(true);
 const stillReading = ref(false);
@@ -36,6 +38,8 @@ const inactivityPause = ref(false);
 const dailyCap = ref<number | null>(60);
 const endPage = ref(true);
 const friendQuery = ref('');
+const friends = ref<GroupMember[]>(mockFriends);
+const friendsFromApi = ref(false);
 const invited = ref<string[]>(['mayareads', 'priyapages']);
 const submitted = ref(false);
 const saving = ref(false);
@@ -43,10 +47,11 @@ const saveError = ref<string | null>(null);
 
 const isChallenge = computed(() => kind.value === 'challenge');
 const nameError = computed(() => submitted.value && !name.value.trim());
+const bookError = computed(() => submitted.value && !isChallenge.value && !book.value);
 const metricInfo = computed(() => metrics.find((m) => m.id === metric.value)!);
 const visibleFriends = computed(() => {
   const query = friendQuery.value.trim().toLowerCase().replace(/^@/, '');
-  return mockFriends.filter(
+  return friends.value.filter(
     (f) => !query || f.name.toLowerCase().includes(query) || f.handle.includes(query),
   );
 });
@@ -67,6 +72,24 @@ const checksSummary = computed(() => {
   return off.length ? `${off.join(' and ')} off` : 'Still-reading checks and inactivity pause on';
 });
 
+onMounted(async () => {
+  try {
+    const mine = await getFriends();
+    friends.value = mine;
+    friendsFromApi.value = true;
+    invited.value = invited.value.filter((handle) => mine.some((f) => f.handle === handle));
+  } catch {
+    // Keep the mock friends when the API is unreachable
+  }
+});
+
+/** Invites the selected friends; a failed invite does not undo the group. */
+async function sendInvites(groupId: string): Promise<void> {
+  if (!friendsFromApi.value) return;
+  const chosen = friends.value.filter((f) => invited.value.includes(f.handle));
+  await Promise.allSettled(chosen.map((f) => inviteToGroup(groupId, f.id)));
+}
+
 function toggleFriend(handle: string) {
   invited.value = invited.value.includes(handle)
     ? invited.value.filter((h) => h !== handle)
@@ -81,20 +104,23 @@ function onPicture(event: Event) {
 async function submit() {
   submitted.value = true;
   saveError.value = null;
-  if (!name.value.trim()) return;
-  if (!isChallenge.value) {
-    void router.push({ name: 'groups' });
-    return;
-  }
+  if (!name.value.trim() || bookError.value) return;
 
   saving.value = true;
   try {
-    const group = await createChallengeGroup({
-      name: name.value.trim(),
-      startDate: startDate.value,
-      durationDays: duration.value,
-      winMetric: metric.value,
-    });
+    const group = isChallenge.value
+      ? await createChallengeGroup({
+          name: name.value.trim(),
+          startDate: startDate.value,
+          durationDays: duration.value,
+          winMetric: metric.value,
+        })
+      : await createBookClub({
+          name: name.value.trim(),
+          bookId: book.value!.id,
+          deadline: roundDeadline.value,
+        });
+    await sendInvites(group.id);
     void router.push({ name: 'group-detail', params: { groupId: group.id } });
   } catch (error) {
     saveError.value = (error as Error).message;
@@ -211,13 +237,15 @@ async function submit() {
             <legend>If you choose Book Club instead</legend>
             <div class="fields">
               <div class="field">
-                <label for="club-book">Selected book</label>
-                <input
-                  id="club-book"
+                <BookPicker
                   v-model="book"
-                  type="text"
-                  placeholder="Search title, author or ISBN…"
+                  input-id="club-book"
+                  label="Selected book"
+                  placeholder="Search title…"
                 />
+                <p v-if="bookError" id="book-error" class="error" role="alert">
+                  Pick the book the club will read.
+                </p>
               </div>
               <div class="field">
                 <label for="round-deadline">Round deadline</label>
@@ -350,7 +378,7 @@ async function submit() {
           </template>
           <template v-else>
             <p>Round deadline: {{ formatLongDate(roundDeadline) }}</p>
-            <p>{{ book.trim() ? book : 'No book selected yet' }}</p>
+            <p>{{ book ? book.title : 'No book selected yet' }}</p>
             <p>Only the selected book counts</p>
           </template>
           <div class="rules-summary">

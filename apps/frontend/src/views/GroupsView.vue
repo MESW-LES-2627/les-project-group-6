@@ -6,15 +6,25 @@ import GroupCard from '@/components/groups/GroupCard.vue';
 import GroupsPageHeader from '@/components/groups/GroupsPageHeader.vue';
 import InfoNote from '@/components/groups/InfoNote.vue';
 import { mockGroups, mockInvitation } from '@/mocks/groups';
-import { getUserGroups, mapApiGroupToSummary } from '@/services/api';
+import {
+  answerInvite,
+  getPendingInvites,
+  getUserBookClubs,
+  getUserGroups,
+  mapApiClubToSummary,
+  mapApiGroupToSummary,
+  type ApiPendingInvite,
+} from '@/services/api';
 import type { GroupSummary } from '@/types/groups';
 
-// Challenge groups the reader created come from the API, listed before the mock
-// groups. Accepting or declining the mock invitation only changes this page.
+// The reader's challenges and book clubs come from the API, listed before the mock
+// groups, with their real pending invites. Accepting or declining the mock
+// invitation only changes this page.
 type FilterId = 'all' | 'challenge' | 'book-club' | 'active' | 'scheduled' | 'completed';
 
 const groups = ref<GroupSummary[]>([...mockGroups]);
 const invitation = ref<typeof mockInvitation | null>(mockInvitation);
+const invites = ref<ApiPendingInvite[]>([]);
 const filter = ref<FilterId>('all');
 const message = ref('');
 
@@ -43,14 +53,39 @@ const visible = computed(() =>
   }),
 );
 
+async function loadMine(): Promise<GroupSummary[]> {
+  const [challenges, clubs] = await Promise.all([getUserGroups(), getUserBookClubs()]);
+  return [
+    ...clubs.map((club) => mapApiClubToSummary(club)),
+    ...challenges.map((group) => mapApiGroupToSummary(group)),
+  ];
+}
+
 onMounted(async () => {
   try {
-    const mine = (await getUserGroups()).map((group) => mapApiGroupToSummary(group));
+    const [mine, pending] = await Promise.all([loadMine(), getPendingInvites()]);
     groups.value = [...mine, ...groups.value];
+    invites.value = pending;
   } catch {
     // Keep the mock groups when the API is unreachable
   }
 });
+
+async function answer(invite: ApiPendingInvite, choice: 'accept' | 'decline') {
+  try {
+    await answerInvite(invite.id, choice);
+    invites.value = invites.value.filter((i) => i.id !== invite.id);
+    if (choice === 'accept') {
+      const mine = await loadMine();
+      const known = new Set(groups.value.map((g) => g.id));
+      groups.value = [...mine.filter((g) => !known.has(g.id)), ...groups.value];
+    }
+    message.value =
+      choice === 'accept' ? `You joined ${invite.groupName}.` : `You declined ${invite.groupName}.`;
+  } catch (error) {
+    message.value = (error as Error).message;
+  }
+}
 
 function acceptInvitation() {
   if (!invitation.value) return;
@@ -83,6 +118,29 @@ function rematch(group: GroupSummary) {
         </RouterLink>
       </template>
     </GroupsPageHeader>
+
+    <section v-if="invites.length" class="panel invites" aria-labelledby="invites-title">
+      <h2 id="invites-title" class="panel-heading">Pending invites</h2>
+      <ul>
+        <li v-for="invite in invites" :key="invite.id" class="invitation-body">
+          <div>
+            <p class="invitation-name">{{ invite.groupName }}</p>
+            <p class="invitation-detail">
+              {{ invite.inviterName }} invited you to a
+              {{ invite.groupKind === 'book-club' ? 'book club' : 'challenge' }}
+            </p>
+          </div>
+          <div class="invitation-actions">
+            <button type="button" class="button button-small" @click="answer(invite, 'accept')">
+              Accept
+            </button>
+            <button type="button" class="button-outline" @click="answer(invite, 'decline')">
+              Decline
+            </button>
+          </div>
+        </li>
+      </ul>
+    </section>
 
     <div class="intro">
       <section v-if="invitation" class="panel invitation" aria-labelledby="invitation-title">
@@ -176,6 +234,16 @@ function rematch(group: GroupSummary) {
   display: flex;
   flex-shrink: 0;
   gap: var(--space-3);
+}
+
+.invites {
+  margin-bottom: var(--space-6);
+}
+
+.invites ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .status {

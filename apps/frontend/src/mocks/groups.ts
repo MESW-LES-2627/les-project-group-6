@@ -203,6 +203,7 @@ export const mockClub: BookClubDetail = {
   },
   finished: { count: 2, total: 6 },
   deadline: '31 October 2026',
+  daysLeft: '20 days to turn the last page',
   yourProgress: { page: 294, pages: 474 },
   leaderboard: [
     {
@@ -252,7 +253,19 @@ export const mockClub: BookClubDetail = {
       time: 'Today · 09:21',
     },
   ],
+  members: [maya, priya, eleanor, jonah, sofia, nadia],
+  adminName: 'Maya',
+  isAdmin: false,
+  roundOver: false,
+  history: [
+    {
+      label: 'Round 3 · Completed',
+      summary: 'Persuasion · 6 of 6 finished',
+      note: 'Every member turned the last page before 30 September.',
+    },
+  ],
   voting: {
+    status: 'open',
     closes: '25 October at 18:00',
     options: [
       { id: 'persuasion', title: 'Persuasion', author: 'Jane Austen', votes: 3 },

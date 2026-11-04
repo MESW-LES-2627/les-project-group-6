@@ -1,32 +1,81 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 import MemberAvatar from '@/components/groups/MemberAvatar.vue';
+import { getGroupMessages, mapApiMessage, postGroupMessage } from '@/services/api';
 import type { ChatMessage, GroupMember } from '@/types/groups';
 
-const props = defineProps<{
-  messages: ChatMessage[];
-  me: GroupMember;
-  label: string;
-  placeholder: string;
-}>();
+// Shared by the challenge and book club pages. With a `groupId` the messages come
+// from the API and new ones are fetched every few seconds; without it (the mock
+// pages) messages stay on this page.
+const props = withDefaults(
+  defineProps<{
+    messages?: ChatMessage[];
+    me: GroupMember;
+    label: string;
+    placeholder: string;
+    groupId?: string;
+    /** How often to look for new messages, in ms */
+    pollInterval?: number;
+  }>(),
+  { messages: () => [], groupId: undefined, pollInterval: 5000 },
+);
 
 const items = ref<ChatMessage[]>([...props.messages]);
 const draft = ref('');
+const sending = ref(false);
+const error = ref('');
 const inputId = `chat-${props.label.replace(/\s+/g, '-').toLowerCase()}`;
+let timer: ReturnType<typeof setInterval> | undefined;
 
-function send() {
+async function refresh() {
+  if (!props.groupId) return;
+  try {
+    const messages = await getGroupMessages(props.groupId, props.me.id);
+    items.value = messages.map((m) => mapApiMessage(m));
+    error.value = '';
+  } catch (e) {
+    error.value = (e as Error).message;
+  }
+}
+
+onMounted(() => {
+  if (!props.groupId) return;
+  void refresh();
+  timer = setInterval(() => void refresh(), props.pollInterval);
+});
+
+onBeforeUnmount(() => clearInterval(timer));
+
+async function send() {
   const text = draft.value.trim();
-  if (!text) return;
-  const now = new Date();
-  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  items.value.push({ id: `local-${items.value.length}`, author: props.me, text, time });
-  draft.value = '';
+  if (!text || sending.value) return;
+  if (!props.groupId) {
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    items.value.push({ id: `local-${items.value.length}`, author: props.me, text, time });
+    draft.value = '';
+    return;
+  }
+  sending.value = true;
+  try {
+    const message = await postGroupMessage(props.groupId, text, props.me.id);
+    items.value.push(mapApiMessage(message));
+    draft.value = '';
+    error.value = '';
+  } catch (e) {
+    error.value = (e as Error).message;
+  } finally {
+    sending.value = false;
+  }
 }
 </script>
 
 <template>
   <div class="chat">
+    <p v-if="groupId && !items.length && !error" class="empty">
+      No messages yet. Say hello to the group.
+    </p>
     <ul class="messages" aria-live="polite">
       <li v-for="message in items" :key="message.id">
         <p v-if="!message.author" class="system">
@@ -100,8 +149,9 @@ function send() {
           </svg>
           <span>Video</span>
         </button>
-        <button type="submit" class="button button-small send">Send</button>
+        <button type="submit" class="button button-small send" :disabled="sending">Send</button>
       </div>
+      <p v-if="error" class="error" role="alert">{{ error }}</p>
     </form>
   </div>
 </template>
@@ -228,5 +278,17 @@ function send() {
 
 .send {
   margin-left: auto;
+}
+
+.empty {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.error {
+  margin: var(--space-2) 0 0;
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
 }
 </style>

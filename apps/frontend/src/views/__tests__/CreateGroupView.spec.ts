@@ -1,18 +1,60 @@
-import { mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { flushPromises, mount } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import router from '@/router';
-import type { ApiChallengeGroup, CreateChallengeGroupPayload } from '@/services/api';
+import type {
+  ApiBook,
+  ApiBookClub,
+  ApiChallengeGroup,
+  ApiGroupInvite,
+  CreateBookClubPayload,
+  CreateChallengeGroupPayload,
+} from '@/services/api';
+import type { GroupMember } from '@/types/groups';
 import CreateGroupView from '../CreateGroupView.vue';
 
 const createChallengeGroup = vi.hoisted(() =>
   vi.fn<(payload: CreateChallengeGroupPayload) => Promise<ApiChallengeGroup>>(),
 );
 
+const createBookClub = vi.hoisted(() =>
+  vi.fn<(payload: CreateBookClubPayload) => Promise<ApiBookClub>>(),
+);
+const getFriends = vi.hoisted(() => vi.fn<() => Promise<GroupMember[]>>());
+const inviteToGroup = vi.hoisted(() =>
+  vi.fn<(groupId: string, inviteeId: string) => Promise<ApiGroupInvite>>(),
+);
+const searchBooks = vi.hoisted(() => vi.fn<(title: string) => Promise<ApiBook[]>>());
+
 vi.mock('@/services/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/api')>()),
   createChallengeGroup,
+  createBookClub,
+  getFriends,
+  inviteToGroup,
+  searchBooks,
 }));
+
+const MAYA = {
+  id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b01',
+  name: 'Maya Laurent',
+  initials: 'ML',
+  handle: 'mayareads',
+};
+const JONAH = {
+  id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b03',
+  name: 'Jonah Ellis',
+  initials: 'JE',
+  handle: 'jonahreads',
+};
+const EMMA: ApiBook = {
+  id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
+  title: 'Emma',
+  description: null,
+  isbn13: null,
+  pageCount: 474,
+  coverUrl: null,
+};
 
 function mountView() {
   return mount(CreateGroupView, { global: { plugins: [router] } });
@@ -21,6 +63,11 @@ function mountView() {
 describe('CreateGroupView', () => {
   afterEach(() => {
     vi.clearAllMocks();
+  });
+
+  beforeEach(() => {
+    // The friends API is unreachable by default, so the mock friends are shown.
+    getFriends.mockRejectedValue(new Error('offline'));
   });
 
   it('previews the challenge as the form changes', async () => {
@@ -98,14 +145,44 @@ describe('CreateGroupView', () => {
     await vi.waitFor(() => expect(wrapper.get('[role="alert"]').text()).toContain('Invalid start'));
   });
 
-  it('returns to the groups page for a book club, which is not saved yet', async () => {
-    await router.push('/groups/new');
+  it('asks for the club book before creating a book club', async () => {
     const wrapper = mountView();
 
     await wrapper.findAll('.segment')[1]!.trigger('click');
     await wrapper.get('form').trigger('submit');
 
-    expect(createChallengeGroup).not.toHaveBeenCalled();
-    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('groups'));
+    expect(wrapper.get('#book-error').text()).toBe('Pick the book the club will read.');
+    expect(createBookClub).not.toHaveBeenCalled();
+  });
+
+  it('creates a book club with the picked book, invites friends and opens it', async () => {
+    const id = 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a09';
+    getFriends.mockResolvedValue([MAYA, JONAH]);
+    searchBooks.mockResolvedValue([EMMA]);
+    createBookClub.mockResolvedValueOnce({ id } as ApiBookClub);
+    inviteToGroup.mockResolvedValue({} as ApiGroupInvite);
+    await router.push('/groups/new');
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper.findAll('.segment')[1]!.trigger('click');
+    await wrapper.get('#group-name').setValue('Classics');
+    await wrapper.get('#club-book').setValue('Emm');
+    await vi.waitFor(() => expect(wrapper.findAll('.result')).not.toHaveLength(0));
+    await wrapper.get('.result').trigger('click');
+    await wrapper.get('#round-deadline').setValue('2026-12-15');
+
+    expect(wrapper.get('.glance').text()).toContain('Emma');
+    // Maya stays selected from the defaults; Jonah is added.
+    await wrapper.findAll('.friend')[1]!.trigger('click');
+    await wrapper.get('form').trigger('submit');
+
+    await vi.waitFor(() => expect(router.currentRoute.value.params.groupId).toBe(id));
+    expect(createBookClub).toHaveBeenCalledWith({
+      name: 'Classics',
+      bookId: EMMA.id,
+      deadline: '2026-12-15',
+    });
+    expect(inviteToGroup.mock.calls.map((c) => c[1]).sort()).toEqual([MAYA.id, JONAH.id].sort());
   });
 });

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import MemberAvatar from '@/components/groups/MemberAvatar.vue';
@@ -15,6 +15,14 @@ const statusLabel = computed(
 );
 const route = computed(() => ({ name: 'group-detail', params: { groupId: props.group.id } }));
 const extraReaders = computed(() => props.group.memberCount - props.group.memberInitials.length);
+const readersLabel = computed(() => {
+  const count = extraReaders.value;
+  const noun = count === 1 ? 'reader' : 'readers';
+  // API groups list no initials, so the count stands alone
+  return props.group.memberInitials.length ? `+${count} ${noun}` : `${count} ${noun}`;
+});
+/** A cover that fails to load is hidden rather than shown as a broken image. */
+const coverFailed = ref(false);
 </script>
 
 <template>
@@ -32,7 +40,12 @@ const extraReaders = computed(() => props.group.memberCount - props.group.member
     </p>
 
     <div v-if="group.book" class="book">
-      <img :src="group.book.cover" :alt="`Cover of ${group.book.title}`" />
+      <img
+        v-if="group.book.cover && !coverFailed"
+        :src="group.book.cover"
+        :alt="`Cover of ${group.book.title}`"
+        @error="coverFailed = true"
+      />
       <div>
         <p class="book-title">{{ group.book.title }}</p>
         <p class="book-author">{{ group.book.author }}</p>
@@ -56,7 +69,7 @@ const extraReaders = computed(() => props.group.memberCount - props.group.member
         :initials="initials"
         size="sm"
       />
-      <span v-if="extraReaders > 0" class="more">+{{ extraReaders }} readers</span>
+      <span v-if="extraReaders > 0" class="more">{{ readersLabel }}</span>
     </div>
 
     <button
