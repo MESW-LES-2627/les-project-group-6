@@ -781,3 +781,20 @@ yes
 
 #### Explanation of Changes
 Committed and pushed the PR #102 review fixes and replied on each review thread. On the open threads, added a `MetricGoal` value object and made `ChallengeGroupService` return `{ group, status }` with a private clock. See the [iteration log](log.md).
+
+### 2026-11-04: Book clubs, group invites and a shared group chat (#104)
+
+- **Date:** 2026-11-04
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs, database, backend, frontend, testing
+
+#### Prompt
+```text
+ok, so, We already implemented the challenge groups, now we need to create the book clubs. The requirements are in docs/product. the design are in [Image #1]. You can reus the chat implementation from challenge groups probably. Create a spec, issues and implement everything in this branch
+```
+
+#### Explanation of Changes
+Wrote the [book clubs spec](../../specs/book-clubs.md), created sub-issues #105 to #110 under #104, and implemented book clubs (rounds, progress, next round, voting), group invites, a friends list and a persisted group chat shared by challenges and clubs, with a migration, seed data, backend and frontend tests, and the wired-up book club, create and groups pages. See the [iteration log](log.md).
+
