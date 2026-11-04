@@ -58,7 +58,7 @@ Lint uses Oxlint and ESLint with `eslint-plugin-vue`. Formatting uses the root P
 - `src/mocks/`, `src/types/`, `src/utils/`: domain types, helpers and typed prototype data.
 - `src/assets/covers/`: book cover crops; `src/assets/auth/`: the authentication reference photo crop.
 - `src/router/`: routes and router tests.
-- `src/services/api.ts`: health request and response validation; `src/services/auth.ts`: the Supabase adapter; `src/services/__tests__/`: adapter tests.
+- `src/services/api.ts`: health request and response validation; `src/services/auth.ts`: the Supabase adapter; `src/services/chat-socket.ts`: the listen-only Socket.IO wrapper for the group chat (ADR-0006); `src/services/__tests__/`: adapter tests.
 
 The [Home](../../docs/design/screens/05-home.png) and [authentication](../../docs/design/screens/01-authentication.png) screenshots guide typography: [Lora](https://fonts.google.com/specimen/Lora) for headings, book titles and editorial text; [Inter](https://fonts.google.com/specimen/Inter) for body copy, navigation, labels and controls. `index.html` loads both with `display=swap`, with local serif/sans-serif fallbacks. Warm neutral background, surface, muted text and border tokens follow the screenshots; the five brand colors are unchanged.
 

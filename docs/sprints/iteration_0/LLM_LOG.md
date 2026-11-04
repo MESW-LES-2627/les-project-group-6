@@ -781,3 +781,37 @@ yes
 
 #### Explanation of Changes
 Committed and pushed the PR #102 review fixes and replied on each review thread. On the open threads, added a `MetricGoal` value object and made `ChallengeGroupService` return `{ group, status }` with a private clock. See the [iteration log](log.md).
+
+### 2026-11-02: Implement the group chat ADR (Socket.IO + REST)
+
+- **Date:** 2026-11-02
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, frontend, database, testing
+
+#### Prompt
+```text
+https://github.com/MESW-LES-2627/les-project-group-6/pull/102 this Pr created the group and
+  sessions pages and first integrations. Now, I want you to implement the ADR in
+  https://github.com/MESW-LES-2627/les-project-group-6/pull/101
+```
+
+#### Explanation of Changes
+Built the text group chat on top of PR #102: `group_messages` table and migration, the `group-chat` backend feature (entity, repository, membership query, service, REST routes, Socket.IO notifier and room join), a system message when a challenge is created, and a live `GroupChat` component with catch-up, retry and delete. Added unit, integration (REST + socket) and component tests. See the [iteration log](log.md).
+
+### 2026-11-02: Move the group chat ADR into PR #103
+
+- **Date:** 2026-11-02
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** architecture, docs
+
+#### Prompt
+```text
+close the PR 101 and add the adr in 103
+```
+
+#### Explanation of Changes
+Copied the group chat ADR from PR #101 as ADR-0006 (Proposed; 0005 is taken by reading sessions), added it to the ADR index, replaced the "polling or SSE" line in `infra.md`, and closed PR #101. The ADR was written with Claude in PR #101 (see the 2026-10-27 entry there). See the [iteration log](log.md).

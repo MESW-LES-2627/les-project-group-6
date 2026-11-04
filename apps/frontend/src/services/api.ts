@@ -482,3 +482,89 @@ export async function getUserGroups(userId: string = DEMO_USER_ID): Promise<ApiC
 
   return response.json() as Promise<ApiChallengeGroup[]>;
 }
+
+// Group chat (ADR-0006): REST sends and reads, the socket only pushes.
+export interface ApiChatMessage {
+  id: string;
+  seq: number;
+  groupId: string;
+  kind: 'text' | 'system';
+  authorId: string | null;
+  clientId: string | null;
+  /** Null once the message is deleted. */
+  body: string | null;
+  createdAt: string;
+  deletedAt: string | null;
+}
+
+export async function getGroupMessages(
+  groupId: string,
+  cursor: { after?: number; before?: number } = {},
+  userId: string = DEMO_USER_ID,
+): Promise<ApiChatMessage[]> {
+  const query = new URLSearchParams({ userId });
+  if (cursor.after !== undefined) query.set('after', String(cursor.after));
+  if (cursor.before !== undefined) query.set('before', String(cursor.before));
+  const response = await fetch(
+    `${baseUrl}/groups/${encodeURIComponent(groupId)}/messages?${query}`,
+    { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10_000) },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await errorMessage(response, `Failed to load messages: HTTP ${response.status}`),
+    );
+  }
+
+  return response.json() as Promise<ApiChatMessage[]>;
+}
+
+/** Sends a message; retrying with the same clientId never stores it twice. */
+export async function sendGroupMessage(
+  groupId: string,
+  payload: { clientId: string; body: string },
+  userId: string = DEMO_USER_ID,
+): Promise<ApiChatMessage> {
+  const response = await fetch(`${baseUrl}/groups/${encodeURIComponent(groupId)}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ userId, ...payload }),
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await errorMessage(response, `Failed to send message: HTTP ${response.status}`),
+    );
+  }
+
+  return response.json() as Promise<ApiChatMessage>;
+}
+
+export async function deleteGroupMessage(
+  groupId: string,
+  messageId: string,
+  userId: string = DEMO_USER_ID,
+): Promise<void> {
+  const response = await fetch(
+    `${baseUrl}/groups/${encodeURIComponent(groupId)}/messages/${encodeURIComponent(messageId)}`,
+    {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ userId }),
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await errorMessage(response, `Failed to delete message: HTTP ${response.status}`),
+    );
+  }
+}
+
+/** Where the API lives, so the chat socket can connect to the same server. */
+export function apiEndpoint(): { origin: string; path: string } {
+  const url = new URL(baseUrl, window.location.origin);
+  return { origin: url.origin, path: url.pathname.replace(/\/+$/, '') };
+}

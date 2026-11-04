@@ -45,6 +45,13 @@ export interface ChatMessage {
   time: string;
   /** Small label above a message, for example the spoiler etiquette tag */
   tag?: string;
+  /** Live chat only: order from the server, absent while the message is being sent */
+  seq?: number;
+  /** Live chat only: the id the client generated, to match the server's copy */
+  clientId?: string;
+  deleted?: boolean;
+  pending?: boolean;
+  failed?: boolean;
 }
 
 export interface LeaderboardEntry {

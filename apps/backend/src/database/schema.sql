@@ -257,6 +257,23 @@ CREATE TABLE posts (
     )
 );
 
+-- Group chat message (ADR-0006). seq orders messages and is the catch-up cursor;
+-- (author_id, client_id) makes a retried send idempotent. System messages have no author.
+CREATE TABLE group_messages (
+    id UUID PRIMARY KEY,
+    seq BIGSERIAL NOT NULL UNIQUE,
+    group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    author_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    client_id UUID,
+    kind VARCHAR(10) NOT NULL CHECK (kind IN ('text', 'system')),
+    body TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMPTZ,
+    UNIQUE (author_id, client_id),
+    CHECK ((kind = 'system') = (author_id IS NULL AND client_id IS NULL))
+);
+CREATE INDEX group_messages_group_id_seq_idx ON group_messages (group_id, seq);
+
 -- ============================================================================
 -- 5. User Statistics
 -- ============================================================================
