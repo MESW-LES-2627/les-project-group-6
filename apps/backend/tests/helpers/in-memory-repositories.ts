@@ -13,10 +13,8 @@ import type {
   IReadingSessionRepository,
   ReadingStats,
 } from '../../src/features/reading-session/reading-session-repository.js';
-import type {
-  ChallengeGroup,
-  GroupId,
-} from '../../src/features/challenge-group/challenge-group.js';
+import type { ChallengeGroup } from '../../src/features/challenge-group/challenge-group.js';
+import type { GroupId } from '../../src/features/group/group.js';
 import type { IChallengeGroupRepository } from '../../src/features/challenge-group/challenge-group-repository.js';
 import type { IUserRepository } from '../../src/features/user/user-repository.js';
 import type { User, UserId, Username } from '../../src/features/user/user.js';

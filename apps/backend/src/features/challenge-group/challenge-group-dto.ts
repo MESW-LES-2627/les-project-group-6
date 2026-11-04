@@ -1,9 +1,5 @@
-import type {
-  ChallengeGroup,
-  ChallengeStatus,
-  MemberRole,
-  WinMetricType,
-} from './challenge-group.js';
+import type { MemberRole } from '../group/group.js';
+import type { ChallengeGroup, ChallengeStatus, WinMetricType } from './challenge-group.js';
 import type { StandingView } from './standings-query.js';
 
 // Shape of a challenge group on the wire. Keeps value objects out of the JSON contract.

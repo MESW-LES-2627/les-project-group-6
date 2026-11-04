@@ -1,35 +1,7 @@
-import crypto from 'node:crypto';
+import { DAY_MS, parseIsoDay } from '../../utils/calendar.js';
 import { InvalidValueError } from '../../utils/errors.js';
-import { Uuid } from '../../utils/uuid.js';
 import type { UserId } from '../user/user.js';
-
-export class GroupId extends Uuid {
-  declare private readonly brand: 'GroupId';
-
-  static of(raw: unknown): GroupId {
-    return new GroupId(Uuid.parse(raw, 'group id'));
-  }
-
-  static generate(): GroupId {
-    return new GroupId(crypto.randomUUID());
-  }
-}
-
-export class InvalidGroupNameError extends InvalidValueError {
-  constructor(raw: unknown) {
-    super(`Group name must be 1-100 characters, got ${String(raw)}`);
-  }
-}
-
-export class GroupName {
-  private constructor(readonly value: string) {}
-
-  static of(raw: unknown): GroupName {
-    const name = typeof raw === 'string' ? raw.trim() : '';
-    if (name.length === 0 || name.length > 100) throw new InvalidGroupNameError(raw);
-    return new GroupName(name);
-  }
-}
+import { GroupId, type GroupName, type Membership } from '../group/group.js';
 
 export const WIN_METRICS = ['minutes', 'pages', 'books', 'streak'] as const;
 export type WinMetricType = (typeof WIN_METRICS)[number];
@@ -78,15 +50,11 @@ export class MetricGoal {
 
 export class InvalidChallengePeriodError extends InvalidValueError {}
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const DAY_MS = 24 * 60 * 60 * 1000;
 export const MAX_CHALLENGE_DAYS = 365;
 
 function parseDay(raw: unknown, label: string): Date {
-  const date = typeof raw === 'string' && ISO_DATE.test(raw) ? new Date(`${raw}T00:00:00Z`) : null;
-  if (!date || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== raw) {
-    throw new InvalidChallengePeriodError(`Invalid ${label}: ${String(raw)}`);
-  }
+  const date = parseIsoDay(raw);
+  if (!date) throw new InvalidChallengePeriodError(`Invalid ${label}: ${String(raw)}`);
   return date;
 }
 
@@ -134,25 +102,6 @@ export class ChallengePeriod {
     if (now >= this.endsAt) return 'completed';
     return 'active';
   }
-}
-
-export const MEMBER_ROLES = ['admin', 'member'] as const;
-export type MemberRole = (typeof MEMBER_ROLES)[number];
-
-function isMemberRole(raw: string): raw is MemberRole {
-  return MEMBER_ROLES.some((role) => role === raw);
-}
-
-/** Parses the role stored for a member; a value outside the known roles is corrupt data. */
-export function memberRoleOf(raw: string): MemberRole {
-  if (!isMemberRole(raw)) throw new InvalidValueError(`Unknown member role: ${raw}`);
-  return raw;
-}
-
-export interface Membership {
-  userId: UserId;
-  role: MemberRole;
-  joinedAt: Date;
 }
 
 export interface Challenge {
