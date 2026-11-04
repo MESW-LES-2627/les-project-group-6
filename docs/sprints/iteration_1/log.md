@@ -1,0 +1,33 @@
+# Iteration 1 log
+
+A running record of what the team did and decided in iteration 1. The [release notes](release_notes.md) are the summary written at the end; this file is the day-to-day history. Newest entries go at the bottom. Iteration 0 is in its [own log](../iteration_0/log.md).
+
+**Traceability chain:** requirement ID (`F-XXX-NN`) → GitHub issue (milestone `Iteration 1`) → PR → release notes.
+
+## Log
+
+### 2026-11-04: Library link in the header
+
+- The **Library** item in the [header](../../../apps/frontend/src/components/layout/AppHeader.vue) now links to `/library`, like Groups and Profile; it was a dead `#` link. It stays highlighted on `/library/:bookId`. Explore still has no route.
+
+### 2026-11-04: Inter for the profile name and section titles
+
+- On [`/profile`](../../../apps/frontend/src/views/ProfileView.vue) the reader's name (`h1`) and the section titles (`h2`: Currently reading, Shelf, Streak, Reading time, recap…) now use Inter instead of Lora. Book titles (`h3`, spines) keep Lora, as do headings on other pages.
+
+### 2026-11-04: One look for profile, library and groups (design)
+
+- Wrote [`apps/frontend/PRODUCT.md`](../../../apps/frontend/PRODUCT.md), the product record the Impeccable design skill reads before UI work (users, purpose, capabilities, brand commitments).
+- **Decision: the Profile page is the app's visual reference.** Library, Groups (list, book club, challenge) and the login page were redesigned on a Claude Design canvas to match it: the burgundy bookplate band, open sections split by thin rules instead of bordered cards and panels, Inter page and section titles, Lora book titles, and generated covers. *Rejected:* the current serif slogan headers ("A life between the covers."), small labels above headings, and stat rows, as too busy and too generic. The canvas is private to its owner until shared; porting it to the Vue views is the next step.
+
+### 2026-11-04: Library, groups and login rebuilt in the profile's look
+
+- Ported the design canvas to Vue. [`/library`](../../../apps/frontend/src/views/LibraryView.vue), [`/groups`](../../../apps/frontend/src/views/GroupsView.vue), the [challenge](../../../apps/frontend/src/views/ChallengeGroupView.vue) and [book club](../../../apps/frontend/src/views/BookClubGroupView.vue) pages and [`/login`](../../../apps/frontend/src/views/LoginView.vue) now open with the profile's burgundy plate (new [`PagePlate`](../../../apps/frontend/src/components/layout/PagePlate.vue)) and use open sections split by rules instead of cards and panels. Behaviour is unchanged: API loading with mock fallback, filters, invites, chat, voting, proposals and the club admin panel.
+- Library: status tabs, search, genre and sort in one toolbar; folders and tags in a plain sidebar; books as 2:3 covers ([`BookCoverImage`](../../../apps/frontend/src/components/library/BookCoverImage.vue), which shows the title when an image fails). The six mock cover PNGs in `src/assets/covers/` were cropped to the cover itself (they had a beige border).
+- Groups: kind tabs (all, challenges, book clubs) and sections by status (active, coming up, completed) replace the status filter buttons. Login: one form at a time with Log in / Create account tabs; the reference photo was removed.
+- Shared classes in `main.css`: `.section-heading`, `.page-tabs`, `.field-input`, `.link-button`; `.section-title` now uses Inter. Tests updated to the new layout (92 passing).
+
+### 2026-11-04: Home redesign, same plate height everywhere
+
+- [`/home`](../../../apps/frontend/src/views/HomeView.vue) redesigned with its own look, without the burgundy plate (the team chose the "bedside table" direction over a day-journal timeline and a colour-block dashboard): a large greeting with the date, the current book with a large cover and Start session, with this week's reading days, the streak and the year goals (bars instead of rings) beside it, then open sections for your groups, from your circle, reading now, requests waiting for you and trending among friends. The serif slogan, the emoji, the play glyph and the empty-state card shown next to real data were removed.
+- `PagePlate` now has the profile bookplate's minimum height (192 px), so every plate is the same size.
+- "Admin & settings" is back on the book club (it had been renamed "Club settings") and on the challenge page.

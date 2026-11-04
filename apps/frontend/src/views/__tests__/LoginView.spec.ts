@@ -44,16 +44,38 @@ async function fillSignup(wrapper: ReturnType<typeof mount>) {
 }
 
 describe('authentication page and Supabase integration', () => {
-  it('renders the reference content and both labeled forms without invented OIDC controls', async () => {
+  it('renders both labeled forms without invented OIDC controls', async () => {
     const { wrapper } = await render();
-    expect(wrapper.get('h1').text()).toBe('Good books.Better company.');
+    expect(wrapper.get('h1').text()).toBe('Welcome to Bookmarked');
     expect(wrapper.findAll('form')).toHaveLength(2);
     expect(wrapper.get('#login-password').attributes('autocomplete')).toBe('current-password');
     expect(wrapper.get('#signup-password').attributes('minlength')).toBe('12');
     expect(wrapper.text()).not.toContain('Available ·');
     expect(wrapper.text()).not.toContain('Google');
-    expect(wrapper.get('img').attributes('src')).toContain('reading-by-window.png');
     expect(sdk.signInWithPassword).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('switches between the log in and create account tabs', async () => {
+    const { wrapper } = await render();
+    const hidden = (title: string) =>
+      wrapper.get<HTMLFormElement>(`form[aria-labelledby="${title}"]`).element.style.display ===
+      'none';
+    expect(hidden('login-title')).toBe(false);
+    expect(hidden('signup-title')).toBe(true);
+
+    await wrapper
+      .findAll('.page-tab')
+      .find((t) => t.text() === 'Create account')!
+      .trigger('click');
+    expect(hidden('login-title')).toBe(true);
+    expect(hidden('signup-title')).toBe(false);
+
+    await wrapper
+      .findAll('.page-tab')
+      .find((t) => t.text() === 'Log in')!
+      .trigger('click');
+    expect(hidden('login-title')).toBe(false);
     wrapper.unmount();
   });
 

@@ -76,6 +76,8 @@ export interface HomeInvitation {
 
 export interface HomeData {
   date: string;
+  /** Today as YYYY-MM-DD, for the week of reading days */
+  isoDate: string;
   readerName: string;
   bedside: BedsideBook;
   streak: Streak;

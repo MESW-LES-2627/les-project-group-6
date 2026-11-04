@@ -9,6 +9,7 @@ import type { HomeData } from '@/types/home';
 
 export const mockHome: HomeData = {
   date: 'Sunday, October 11, 2026',
+  isoDate: '2026-10-11',
   readerName: 'Eleanor',
   bedside: {
     id: 'emma',
@@ -55,7 +56,7 @@ export const mockHome: HomeData = {
       id: 'a1',
       initials: 'ML',
       title: 'Maya Laurent finished Piranesi',
-      detail: '“An extraordinary little universe.” · ★★★★★ · 1 hour ago',
+      detail: '“An extraordinary little universe.” · 1 hour ago',
     },
     {
       id: 'a2',

@@ -48,23 +48,23 @@ Lint uses Oxlint and ESLint with `eslint-plugin-vue`. Formatting uses the root P
 ## Source layout and design
 
 - `src/assets/styles/tokens.css`: brand colors, semantic aliases, typography, spacing, radii and layout/motion tokens. Use the `--font-size-*` scale for font sizes.
-- `src/assets/styles/main.css`: global styles and shared classes (`.page-column`, `.button`, `.text-link`, `.book-link`, `.progress-bar`, `.section-title`, `.sr-only`).
+- `src/assets/styles/main.css`: global styles and shared classes (`.page-column`, `.button`, `.text-link`, `.book-link`, `.progress-bar`, `.section-title`, `.section-heading`, `.page-tabs`, `.field-input`, `.link-button`, `.sr-only`).
 - `src/views/`: the authentication screen, the home page prototype (`HomeView`, mock data in `src/mocks/home.ts`), the not-found placeholder, the profile, library, book-detail and active-session prototypes, and the groups pages (`GroupsView`, `CreateGroupView`, `GroupDetailView`, which shows `ChallengeGroupView` or `BookClubGroupView`); view tests live in `__tests__/`.
-- `src/components/layout/`: `AppHeader` and `AppFooter`, hidden on routes with `meta.hideAppChrome` (Login).
-- `src/components/library/`: reusable book card, shelves sidebar and book-detail panels.
+- `src/components/layout/`: `AppHeader` and `AppFooter`, hidden on routes with `meta.hideAppChrome` (Login), and `PagePlate`, the burgundy band that opens the library and groups pages (the same plate as the profile's bookplate).
+- `src/components/library/`: book card, `BookCoverImage` (a 2:3 cover that shows the title when the image is missing), folders and tags sidebar, and book-detail panels.
 - `src/components/groups/`: the groups building blocks (`GroupCard`, `GroupLeaderboard`, `GroupChat`, `GroupsPageHeader`, `InfoNote`, `ToggleSwitch`, `MemberAvatar`).
 - `src/components/profile/`: profile sections with their empty states.
 - `src/components/session/`: reading timer with pause, resume and stop events.
 - `src/mocks/`, `src/types/`, `src/utils/`: domain types, helpers and typed prototype data.
-- `src/assets/covers/`: book cover crops; `src/assets/auth/`: the authentication reference photo crop.
+- `src/assets/covers/`: book cover crops (2:3).
 - `src/router/`: routes and router tests.
 - `src/services/api.ts`: health request and response validation; `src/services/auth.ts`: the Supabase adapter; `src/services/chat-socket.ts`: the listen-only Socket.IO wrapper for the group chat (ADR-0006); `src/services/__tests__/`: adapter tests.
 
-The [Home](../../docs/design/screens/05-home.png) and [authentication](../../docs/design/screens/01-authentication.png) screenshots guide typography: [Lora](https://fonts.google.com/specimen/Lora) for headings, book titles and editorial text; [Inter](https://fonts.google.com/specimen/Inter) for body copy, navigation, labels and controls. `index.html` loads both with `display=swap`, with local serif/sans-serif fallbacks. Warm neutral background, surface, muted text and border tokens follow the screenshots; the five brand colors are unchanged.
+The [Home](../../docs/design/screens/05-home.png) and [authentication](../../docs/design/screens/01-authentication.png) screenshots guide typography: [Lora](https://fonts.google.com/specimen/Lora) for book titles, quotes and editorial text; [Inter](https://fonts.google.com/specimen/Inter) for body copy, navigation, labels and controls, and for page and section titles on the profile, library, groups and login pages, which share the profile's look (see `PRODUCT.md`). `index.html` loads both with `display=swap`, with local serif/sans-serif fallbacks. Warm neutral background, surface, muted text and border tokens follow the screenshots; the five brand colors are unchanged.
 
 ## Authentication skeleton
 
-`/` redirects to `/login`, which contains both forms from [01-authentication.png](../../docs/design/screens/01-authentication.png). It intentionally uses the screenshot’s “Re”/“Marginalia” branding and has no invented provider buttons. The reading photograph in `src/assets/auth/reading-by-window.png` is cropped directly from that reference (x=48, y=406, 440×350), with no generated replacement. Shared tokens, `.button`, `.muted` and `.sr-only` are reused. Existing app chrome is hidden via the route’s `hideAppChrome` metadata because it differs from the reference.
+`/` redirects to `/login`: the profile's burgundy plate on the left, and the log in and create account forms as two tabs on the right. It has no invented provider buttons. Existing app chrome is hidden via the route’s `hideAppChrome` metadata.
 
 The page calls our `AuthProvider` interface in `src/services/auth.ts`; the adapter lazily creates the official Supabase client. Copy these public values from `.env.example` into `.env.local` when the project is ready, then restart Vite:
 

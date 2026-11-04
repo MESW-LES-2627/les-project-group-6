@@ -9,10 +9,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{ search: [query: string] }>();
 
-// Library and Explore have no route yet in the header
+// Explore has no route yet in the header
 const navItems = [
   { label: 'Home', to: '/home' },
-  { label: 'Library', to: null },
+  { label: 'Library', to: '/library' },
   { label: 'Groups', to: '/groups' },
   { label: 'Explore', to: null },
   { label: 'Profile', to: '/profile' },

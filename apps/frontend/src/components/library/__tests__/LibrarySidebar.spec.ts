@@ -7,10 +7,8 @@ import LibrarySidebar from '../LibrarySidebar.vue';
 function mountSidebar() {
   return mount(LibrarySidebar, {
     props: {
-      shelves: mockLibrary.shelves,
       folders: mockLibrary.folders,
       tags: mockLibrary.tags,
-      activeShelf: 'all' as const,
       activeFolder: 'autumn',
       activeTag: null,
     },
@@ -18,33 +16,30 @@ function mountSidebar() {
 }
 
 describe('LibrarySidebar', () => {
-  it('shows the shelves, folders, tags and the tip', () => {
+  it('shows the folders and tags', () => {
     const wrapper = mountSidebar();
 
-    expect(wrapper.get('.panel-title').text()).toBe('Your shelves');
-    expect(wrapper.text()).toContain('All books');
+    const titles = wrapper.findAll('h2').map((h) => h.text());
+    expect(titles).toEqual(['Folders', 'Tags']);
     expect(wrapper.text()).toContain('Autumn reading');
     expect(wrapper.text()).toContain('borrowed');
-    expect(wrapper.get('.tip-title').text()).toBe('Shelves, not duplicates');
-    expect(wrapper.get('.tip-body').text()).toContain('Deleting a folder never deletes its books');
   });
 
-  it('marks the active shelf, folder and tag', () => {
+  it('marks the active folder', () => {
     const wrapper = mountSidebar();
 
-    expect(wrapper.get('.shelf-list .row.active').text()).toContain('All books');
     expect(wrapper.get('.folder-list .row.active').text()).toContain('Autumn reading');
   });
 
-  it('emits the selected shelf, folder and tag', async () => {
+  it('emits the selected folder, tag and a new folder', async () => {
     const wrapper = mountSidebar();
 
-    await wrapper.findAll('.shelf-list .row')[3]!.trigger('click');
     await wrapper.findAll('.folder-list .row')[1]!.trigger('click');
     await wrapper.findAll('.tag')[0]!.trigger('click');
+    await wrapper.get('.add-folder').trigger('click');
 
-    expect(wrapper.emitted('selectShelf')).toEqual([['finished']]);
     expect(wrapper.emitted('selectFolder')).toEqual([['favorites']]);
     expect(wrapper.emitted('selectTag')).toEqual([['borrowed']]);
+    expect(wrapper.emitted('createFolder')).toHaveLength(1);
   });
 });
