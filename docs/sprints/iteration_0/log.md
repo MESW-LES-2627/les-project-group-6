@@ -269,7 +269,7 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 
 ### 2026-11-04: Book clubs, group invites and a shared group chat
 
-Issue [#104](https://github.com/MESW-LES-2627/les-project-group-6/issues/104), split into sub-issues #105 to #110. Spec: [book clubs](../../specs/book-clubs.md) (new `docs/specs/` folder).
+`7a919bd` (shared group kernel), `7d9350c` (spec), `2f8830c` (backend), `394fe96` (frontend). Issue [#104](https://github.com/MESW-LES-2627/les-project-group-6/issues/104), split into sub-issues #105 to #110. Spec: [book clubs](../../specs/book-clubs.md) (new `docs/specs/` folder).
 
 - Added the [`book-club`](../../../apps/backend/src/features/book-club/) backend feature: a `BookClub` aggregate with `Round` and `RoundPeriod` over `groups`, `member`, `book_clubs` and `book_club_rounds`, and a `BookPoll` aggregate for voting on the next book (F-GRP-07, F-GRP-08). Creating a club or starting a round adds the book to each member's library as "Not started". Progress is a read-side `ClubProgressQuery`: counted minutes of finished sessions **on the round book inside the round**, page percent and finished.
 - Added [`group-invite`](../../../apps/backend/src/features/group-invite/), [`group-chat`](../../../apps/backend/src/features/group-chat/) and a read-only [`friend`](../../../apps/backend/src/features/friend/) feature that work for **any group**, and moved `GroupId`, `GroupName` and memberships from the challenge feature to a shared [`group`](../../../apps/backend/src/features/group/group.ts) kernel. Endpoints are in the [backend README](../../../apps/backend/README.md).
