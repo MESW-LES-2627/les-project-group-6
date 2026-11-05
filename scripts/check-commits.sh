@@ -7,7 +7,7 @@
 set -euo pipefail
 
 range=${1:?usage: scripts/check-commits.sh <base>..<head>}
-types='build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test'
+types='build|chore|ci|db|docs|feat|fix|perf|refactor|revert|style|test'
 pattern="^(($types)(\([a-z0-9._/-]+\))?!?: [^ ].*|Revert \".+\")$"
 
 failed=0

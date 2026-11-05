@@ -425,6 +425,11 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 
 - Each leaderboard standing now lists the books its minutes were read in (`books: [{ bookId, title, minutes }]`), since a reader can read several books in one challenge. The [standings query](../../../apps/backend/src/features/challenge-group/standings-query.ts) groups finished sessions by member **and** book and joins `books` for the title; the score is their sum. The [leaderboard](../../../apps/frontend/src/components/groups/GroupLeaderboard.vue) shows them under each member, most minutes first. Checked against a migrated database: 10 + 12 min of Emma and 15 min of The Midnight Library give a score of 37, and a session finished before the challenge is excluded.
 
+### 2026-11-05: Commitlint fix for historical `db` commits
+
+- Updated [`scripts/check-commits.sh`](../../../scripts/check-commits.sh) to accept `db` as a valid Conventional Commit type in PR commit checks, so existing migration/database commits in branch history do not fail the `commitlint` workflow.
+- Updated the commitlint rule documentation in [`README.md`](../../../README.md#github) to keep the listed allowed types aligned with the script.
+
 ## Next steps
 
 - Review ADR-0005 with the team and mark it Accepted.

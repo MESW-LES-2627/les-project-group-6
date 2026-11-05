@@ -102,7 +102,7 @@ Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks a
 
 - `backend-ci.yml`: runs on every pull request to `main` when `apps/backend/`, the shared root config or the workflow itself changes. It installs with the locked dependencies, then runs lint, format check, typecheck, tests (against a Postgres service) and build.
 - `frontend-ci.yml`: the same steps for `apps/frontend/`: lint, format check, typecheck, component/router tests and build.
-- `commitlint.yml`: runs on every pull request to `main` and fails when a commit (merge commits aside) does not follow Conventional Commits: `<type>(<scope>)!: <description>` with type `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style` or `test`. Check locally with `scripts/check-commits.sh origin/main..HEAD`. Fix a bad message with `git commit --amend` or `git rebase -i` and force-push.
+- `commitlint.yml`: runs on every pull request to `main` and fails when a commit (merge commits aside) does not follow Conventional Commits: `<type>(<scope>)!: <description>` with type `build`, `chore`, `ci`, `db`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style` or `test`. Check locally with `scripts/check-commits.sh origin/main..HEAD`. Fix a bad message with `git commit --amend` or `git rebase -i` and force-push.
 
 #### Deploy (Render)
 

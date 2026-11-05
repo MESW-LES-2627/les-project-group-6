@@ -838,3 +838,21 @@ yes
 ```
 (Commit and open the PR.) `main` had gained the ADR-0006 group chat meanwhile, so the branch merged it, dropped its own chat, and made book clubs post their system messages through the chat's `SystemMessages` port; the migration became `0003_book_clubs`.
 
+### 2026-11-05: Fix failing commitlint workflow on PR #115
+
+- **Date:** 2026-11-05
+- **Author:** GitHub Copilot (@copilot)
+- **Model:** GPT-5
+- **Tool:** GitHub Copilot Coding Agent
+- **Domain:** infra, docs
+
+#### Prompt
+```text
+Fix the failing GitHub Actions job "commitlint"
+Analyze the Actions logs, identify the root cause of the failure, and implement a fix.
+Check run ID: 127407246991
+Job URL: https://github.com/MESW-LES-2627/les-project-group-6/actions/runs/42073446145/job/127407246991
+```
+
+#### Explanation of Changes
+Read the failing job logs, reproduced the failure locally with `scripts/check-commits.sh`, and identified a historical `db:` commit in the PR range as the blocker. Updated `scripts/check-commits.sh` to accept `db` as a valid type and synchronized the allowed-types documentation in `README.md`. Logged this change in the iteration log.
