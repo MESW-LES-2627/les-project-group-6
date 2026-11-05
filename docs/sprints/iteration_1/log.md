@@ -39,6 +39,8 @@ A running record of what the team did and decided in iteration 1. The [release n
 
 ### 2026-11-05: Supabase authentication (F-AUTH-01, #7)
 
+- Commits: `08724b2` (backend), `00f1957` (frontend), `9d9b261` (docs).
+
 - **Backend.** Every route except `GET /health` and `GET /usernames/:username/availability` now needs `Authorization: Bearer <Supabase JWT>`. [`SupabaseAuthProvider`](../../../apps/backend/src/features/auth/supabase-auth-provider.ts) verifies it with the project's JWKS (`jose`) behind our `AuthProvider` port (ADR-0002), and [`authenticate` / `requireUser`](../../../apps/backend/src/middleware/auth.ts) answer `401 UNAUTHENTICATED` or `403 PROFILE_REQUIRED`. New `POST/GET/PATCH /me` ([`UserService`](../../../apps/backend/src/features/user/user-service.ts), [`me-routes`](../../../apps/backend/src/features/user/me-routes.ts)). Migration `0004` adds a unique index on `lower(username)`; a taken username gives `409 USERNAME_TAKEN`.
 - **Decision: the acting reader always comes from the token.** Every route that read `userId` from the body, query or path now uses the token's user, and `/user/:userId/...` became `/me/...` (library, reading sessions, stats, groups, book clubs, invites, friends). The chat socket handshake sends `{ token }`. *Rejected:* keeping `userId` parameters and checking they match the token, as more code for the same result and easy to forget on a new route.
 - **Kept from the existing schema:** the `users` row keeps `email` (filled from the token) and the streak columns, because other features already use them; issue #7's "no email column" was not applied.
