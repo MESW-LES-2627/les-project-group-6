@@ -26,6 +26,7 @@ import type { IBookClubRepository } from '../../src/features/book-club/book-club
 import type { BookPoll } from '../../src/features/book-club/book-poll.js';
 import type { IBookPollRepository } from '../../src/features/book-club/book-poll-repository.js';
 import type { FriendView, IFriendRepository } from '../../src/features/friend/friend-repository.js';
+import type { Friendship, FriendshipId } from '../../src/features/friend/friend.js';
 import type { GroupInvite, InviteId } from '../../src/features/group-invite/group-invite.js';
 import type {
   IGroupInviteRepository,
@@ -171,6 +172,7 @@ export class InMemoryGroupRosterRepository implements IGroupRosterRepository {
 
 export class InMemoryFriendRepository implements IFriendRepository {
   private readonly pairs = new Set<string>();
+  private readonly friendships = new Map<string, Friendship>();
 
   befriend(a: UserId, b: UserId): void {
     this.pairs.add(`${a.value}:${b.value}`);
@@ -185,6 +187,39 @@ export class InMemoryFriendRepository implements IFriendRepository {
     return [...this.pairs]
       .filter((p) => p.startsWith(`${userId.value}:`))
       .map((p) => ({ userId: p.split(':')[1]!, displayName: '', username: '' }));
+  }
+
+  async findById(id: FriendshipId): Promise<Friendship | null> {
+    return this.friendships.get(id.value) ?? null;
+  }
+
+  async findBetween(a: UserId, b: UserId): Promise<Friendship | null> {
+    return (
+      [...this.friendships.values()].find(
+        (f) =>
+          (f.requesterId.equals(a) && f.addresseeId.equals(b)) ||
+          (f.requesterId.equals(b) && f.addresseeId.equals(a)),
+      ) ?? null
+    );
+  }
+
+  async save(friendship: Friendship): Promise<void> {
+    this.friendships.set(friendship.id.value, friendship);
+    if (friendship.status === 'accepted') {
+      this.befriend(friendship.requesterId, friendship.addresseeId);
+    } else {
+      this.pairs.delete(`${friendship.requesterId.value}:${friendship.addresseeId.value}`);
+      this.pairs.delete(`${friendship.addresseeId.value}:${friendship.requesterId.value}`);
+    }
+  }
+
+  async delete(id: FriendshipId): Promise<void> {
+    const f = this.friendships.get(id.value);
+    if (f) {
+      this.pairs.delete(`${f.requesterId.value}:${f.addresseeId.value}`);
+      this.pairs.delete(`${f.addresseeId.value}:${f.requesterId.value}`);
+    }
+    this.friendships.delete(id.value);
   }
 }
 
