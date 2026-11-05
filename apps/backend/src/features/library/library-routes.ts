@@ -15,5 +15,12 @@ export function libraryRoutes(libraryQuery: LibraryQuery): Router {
     res.status(200).json(library);
   });
 
+  router.get('/library', async (req, res) => {
+    const userId = (req.query.userId as string) ?? (req.headers['x-user-id'] as string);
+    const status = isReadingStatusType(req.query.status) ? req.query.status : undefined;
+    const library = await libraryQuery.forUser(UserId.of(userId), status);
+    res.status(200).json(library);
+  });
+
   return router;
 }

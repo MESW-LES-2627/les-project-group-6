@@ -284,4 +284,35 @@ describe('Reading status API Endpoints', () => {
       assert.strictEqual(retryRes.status, 404);
     });
   });
+
+  test('PUT /library/:bookId and DELETE /library/:bookId manage the book in library', async () => {
+    await withApp(app, async (baseUrl) => {
+      const putRes = await send(baseUrl, 'PUT', `/library/${book.id.value}`, {
+        userId: USER_ID,
+        status: 'finished',
+        startedOn: '2026-10-01',
+        finishedOn: '2026-10-15',
+      });
+      assert.strictEqual(putRes.status, 200);
+      const data = (await putRes.json()) as StatusBody;
+      assert.strictEqual(data.status, 'finished');
+      assert.strictEqual(data.startedOn, '2026-10-01');
+
+      const getRes = await fetch(`${baseUrl}/library?userId=${USER_ID}&status=finished`);
+      assert.strictEqual(getRes.status, 200);
+      const list = (await getRes.json()) as Array<{ status: string }>;
+      assert.strictEqual(list.length, 1);
+      assert.strictEqual(list[0]?.status, 'finished');
+
+      const deleteRes = await fetch(`${baseUrl}/library/${book.id.value}?userId=${USER_ID}`, {
+        method: 'DELETE',
+      });
+      assert.strictEqual(deleteRes.status, 204);
+
+      const retryRes = await fetch(`${baseUrl}/library/${book.id.value}?userId=${USER_ID}`, {
+        method: 'DELETE',
+      });
+      assert.strictEqual(retryRes.status, 404);
+    });
+  });
 });

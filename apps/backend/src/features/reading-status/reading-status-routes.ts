@@ -39,5 +39,19 @@ export function readingStatusRoutes(readingStatuses: ReadingStatusService): Rout
     res.status(204).end();
   });
 
+  router.put('/library/:bookId', async (req, res) => {
+    const entry = await readingStatuses.set({
+      ...req.body,
+      bookId: req.params.bookId,
+    });
+    res.status(200).json(toReadingStatusDto(entry));
+  });
+
+  router.delete('/library/:bookId', async (req, res) => {
+    const userId = (req.query.userId as string) ?? req.body?.userId;
+    await readingStatuses.remove(userId, req.params.bookId);
+    res.status(204).end();
+  });
+
   return router;
 }
