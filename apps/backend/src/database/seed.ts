@@ -99,6 +99,8 @@ async function seed(): Promise<void> {
     bookId: book.id,
     status: 'not-started',
     currentPage: 0,
+    startedOn: null,
+    finishedOn: null,
   }));
 
   await db.insert(readingStatus).values(statuses).onConflictDoNothing();

@@ -107,6 +107,8 @@ export const readingStatus = pgTable(
     bookId: uuid('book_id').notNull(),
     status: varchar({ length: 20 }).notNull(),
     currentPage: integer('current_page').default(0).notNull(),
+    startedOn: date('started_on'),
+    finishedOn: date('finished_on'),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
