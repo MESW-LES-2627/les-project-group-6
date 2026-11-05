@@ -1,21 +1,36 @@
 <script setup lang="ts">
-import { RouterView, useRoute } from 'vue-router';
+import { computed } from 'vue';
+import { RouterView, useRoute, useRouter } from 'vue-router';
 
 import AppFooter from '@/components/layout/AppFooter.vue';
 import AppHeader from '@/components/layout/AppHeader.vue';
 import { mockProfile } from '@/mocks/profile';
+import { session } from '@/stores/session';
+import { initialsOf } from '@/utils/groups';
 
-// The signed-in user comes from the mock until auth (Supabase) is wired in
-const currentUser = mockProfile;
 const route = useRoute();
+const router = useRouter();
+
+const initials = computed(() => (session.state.me ? initialsOf(session.state.me.displayName) : ''));
+// Notifications are not stored yet (F-NOTIF), so the count stays a mock.
+const unreadNotifications = mockProfile.unreadNotifications;
+
+async function signOut() {
+  try {
+    await session.signOut();
+  } finally {
+    await router.push({ name: 'login' });
+  }
+}
 </script>
 
 <template>
   <div class="app">
     <AppHeader
       v-if="!route.meta.hideAppChrome"
-      :initials="currentUser.user.initials"
-      :unread-notifications="currentUser.unreadNotifications"
+      :initials="initials"
+      :unread-notifications="unreadNotifications"
+      @sign-out="signOut"
     />
     <RouterView class="app-main" />
     <AppFooter v-if="!route.meta.hideAppChrome" />

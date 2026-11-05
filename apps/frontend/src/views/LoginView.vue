@@ -1,17 +1,29 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { authProvider, type AuthOutcome } from '@/services/auth';
+import { useRoute, useRouter } from 'vue-router';
+import { safeRedirect } from '@/utils/redirect';
+import { session } from '@/stores/session';
 
 const router = useRouter();
+const route = useRoute();
 const mode = ref<'login' | 'signup'>('login');
 const login = reactive({ identifier: '', password: '', remember: false });
 const signup = reactive({ displayName: '', username: '', email: '', password: '' });
 const pending = ref<'login' | 'signup' | null>(null);
-const loginMessage = ref('');
+const loginMessage = ref(session.state.error ?? '');
 const signupMessage = ref('');
-const loginError = ref(false);
+const loginError = ref(Boolean(session.state.error));
 const signupError = ref(false);
+
+async function enterApp() {
+  if (session.state.status === 'ready') {
+    await router.push(safeRedirect(route.query.redirect) ?? '/home');
+  } else if (session.state.status === 'profile-required') {
+    await router.push({ name: 'complete-profile' });
+  } else {
+    throw new Error(session.state.error ?? 'Unable to sign in. Please try again.');
+  }
+}
 
 async function submit(kind: 'login' | 'signup') {
   if (pending.value) return;
@@ -21,14 +33,16 @@ async function submit(kind: 'login' | 'signup') {
   errorState.value = false;
   pending.value = kind;
   try {
-    const result: AuthOutcome =
-      kind === 'login'
-        ? await authProvider.signIn({ ...login })
-        : await authProvider.signUp({ ...signup });
-    if (kind === 'login') login.password = '';
-    else signup.password = '';
-    if (result === 'authenticated') await router.push('/home');
-    else message.value = 'Check your email to confirm your account before logging in.';
+    if (kind === 'login') {
+      await session.signIn({ ...login });
+      login.password = '';
+      await enterApp();
+    } else {
+      const outcome = await session.signUp({ ...signup });
+      signup.password = '';
+      if (outcome === 'authenticated') await enterApp();
+      else message.value = 'Check your email to confirm your account before logging in.';
+    }
   } catch (error) {
     errorState.value = true;
     message.value = error instanceof Error ? error.message : 'Unable to sign in. Please try again.';
@@ -180,11 +194,13 @@ async function submit(kind: 'login' | 'signup') {
               name="username"
               autocomplete="username"
               placeholder="yourname"
-              pattern="@?[A-Za-z0-9_]+"
+              pattern="@?[A-Za-z0-9_.]{3,50}"
               aria-describedby="username-help"
               required
             />
-            <small id="username-help" class="help">Letters, numbers and underscores</small>
+            <small id="username-help" class="help">
+              3 to 50 letters, numbers, dots or underscores
+            </small>
           </label>
           <label class="field" for="signup-email">
             <span>Email</span>

@@ -7,7 +7,7 @@ const props = defineProps<{
   unreadNotifications: number;
 }>();
 
-const emit = defineEmits<{ search: [query: string] }>();
+const emit = defineEmits<{ search: [query: string]; 'sign-out': [] }>();
 
 // Explore has no route yet in the header
 const navItems = [
@@ -27,6 +27,11 @@ const searchInput = ref<HTMLInputElement | null>(null);
 
 function submitSearch() {
   emit('search', query.value.trim());
+}
+
+function signOut() {
+  closeMenu();
+  emit('sign-out');
 }
 
 function closeMenu(returnFocus = false) {
@@ -188,7 +193,9 @@ async function toggleSearch() {
             <a role="menuitem" href="#" class="menu-item" @click="closeMenu()">Settings</a>
             <a role="menuitem" href="#" class="menu-item" @click="closeMenu()">Privacy</a>
             <div class="menu-divider" role="separator"></div>
-            <a role="menuitem" href="#" class="menu-item" @click="closeMenu()">Sign out</a>
+            <button type="button" role="menuitem" class="menu-item" @click="signOut">
+              Sign out
+            </button>
           </div>
         </div>
       </div>
@@ -372,6 +379,12 @@ async function toggleSearch() {
 
 .menu-item {
   display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   padding: 10px var(--space-3);
   border-radius: 4px;
   color: var(--color-text);
