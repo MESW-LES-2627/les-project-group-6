@@ -45,6 +45,7 @@ export interface IFriendRepository {
   friendsOf(userId: UserId): Promise<FriendView[]>;
   findById(id: FriendshipId): Promise<Friendship | null>;
   findBetween(a: UserId, b: UserId): Promise<Friendship | null>;
+  pendingFor(addresseeId: UserId): Promise<Friendship[]>;
   save(friendship: Friendship): Promise<void>;
   delete(id: FriendshipId): Promise<void>;
 }
@@ -116,6 +117,20 @@ export class DrizzleFriendRepository implements IFriendRepository {
       .orderBy(desc(friendships.createdAt))
       .limit(1);
     return rows[0] ? toDomain(rows[0]) : null;
+  }
+
+  async pendingFor(addresseeId: UserId): Promise<Friendship[]> {
+    const rows = await this.db
+      .select()
+      .from(friendships)
+      .where(
+        and(
+          eq(friendships.addresseeId, addresseeId.value),
+          eq(friendships.status, 'pending'),
+        ),
+      )
+      .orderBy(desc(friendships.createdAt));
+    return rows.map(toDomain);
   }
 
   async save(friendship: Friendship): Promise<void> {

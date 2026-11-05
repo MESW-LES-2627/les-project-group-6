@@ -1,5 +1,5 @@
 import type { Clock } from '../../utils/clock.js';
-import { InvalidValueError, NotFoundError } from '../../utils/errors.js';
+import { InvalidValueError } from '../../utils/errors.js';
 import type { IUserRepository } from '../user/user-repository.js';
 import { UserId } from '../user/user.js';
 import {
@@ -7,8 +7,6 @@ import {
   Friendship,
   FriendshipId,
   FriendshipNotFoundError,
-  FriendshipNotPendingError,
-  UnauthorizedFriendshipActionError,
 } from './friend.js';
 import type { FriendView, IFriendRepository } from './friend-repository.js';
 
@@ -91,6 +89,33 @@ export class FriendService {
 
   async areFriends(a: unknown, b: unknown): Promise<boolean> {
     return this.friends.areFriends(UserId.of(a), UserId.of(b));
+  }
+
+  /**
+   * Returns all pending friend requests where this user is the requested one.
+   */
+  async pendingRequestsFor(userId: unknown): Promise<Friendship[]> {
+    return this.friends.pendingFor(UserId.of(userId));
+  }
+
+  /**
+   * Removes a friendship between two users using their user IDs.
+   * Deletes the friendship record. Throws FriendshipNotFoundError if they are not friends.
+   */
+  async removeFriend(userId: unknown, friendUserId: unknown): Promise<void> {
+    const current = UserId.of(userId);
+    const friend = UserId.of(friendUserId);
+
+    if (current.equals(friend)) {
+      throw new FriendshipNotFoundError();
+    }
+
+    const existing = await this.friends.findBetween(current, friend);
+    if (!existing || existing.status !== 'accepted') {
+      throw new FriendshipNotFoundError();
+    }
+
+    await this.friends.delete(existing.id);
   }
 
   private async resolvePendingFriendship(by: UserId, targetOrFriendshipId: unknown): Promise<Friendship> {
