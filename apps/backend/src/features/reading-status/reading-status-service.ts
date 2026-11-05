@@ -100,20 +100,16 @@ export class ReadingStatusService {
     const book = await this.books.findById(bookId);
     if (!book) throw new NotFoundError('Book');
 
-    const existing = await this.readingStatuses.findByUserAndBook(userId, bookId);
-    if (!existing) {
-      const created = ReadingStatus.create(userId, bookId);
-      created.startReading();
-      await this.readingStatuses.save(created);
-      return created;
+    const status =
+      (await this.readingStatuses.findByUserAndBook(userId, bookId)) ??
+      ReadingStatus.create(userId, bookId);
+
+    if (status.status === 'not-started') {
+      status.startReading();
+      await this.readingStatuses.save(status);
     }
 
-    if (existing.status === 'not-started') {
-      existing.startReading();
-      await this.readingStatuses.save(existing);
-    }
-
-    return existing;
+    return status;
   }
 
   private findEntry(command: UpdateReadingStatusCommand): Promise<ReadingStatus | null> {

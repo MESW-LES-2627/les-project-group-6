@@ -86,7 +86,7 @@ describe('ReadingSessionService', () => {
         ensureInProgress: async (userId: UserId, bookId: BookId) => {
           ensuredUserId = userId.value;
           ensuredBookId = bookId.value;
-          return ReadingStatus.initial(userId, bookId);
+          return ReadingStatus.create(userId, bookId);
         },
       } as unknown as ReadingStatusService,
     );

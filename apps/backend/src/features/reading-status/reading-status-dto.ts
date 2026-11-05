@@ -8,6 +8,8 @@ export interface ReadingStatusDto {
   bookId: string;
   status: ReadingStatusType;
   currentPage: number;
+  startedOn: string | null;
+  finishedOn: string | null;
   updatedAt: string;
 }
 
@@ -18,6 +20,8 @@ export function toReadingStatusDto(status: ReadingStatus): ReadingStatusDto {
     bookId: status.bookId.value,
     status: status.status,
     currentPage: status.progress.page,
+    startedOn: status.startedOn,
+    finishedOn: status.finishedOn,
     updatedAt: status.updatedAt.toISOString(),
   };
 }

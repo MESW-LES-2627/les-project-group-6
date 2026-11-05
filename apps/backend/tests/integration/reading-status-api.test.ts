@@ -17,6 +17,8 @@ interface StatusBody {
   id: string;
   status: string;
   currentPage: number;
+  startedOn?: string | null;
+  finishedOn?: string | null;
   error?: string;
 }
 
@@ -149,15 +151,137 @@ describe('Reading status API Endpoints', () => {
       const library = (await response.json()) as Array<{
         status: string;
         currentPage: number;
+        startedOn: string | null;
+        finishedOn: string | null;
         book: { id: string; title: string; pageCount: number };
       }>;
       assert.strictEqual(library.length, 1);
       assert.strictEqual(library[0]?.status, 'finished');
       assert.strictEqual(library[0]?.currentPage, 393);
+      assert.strictEqual(typeof library[0]?.startedOn, 'string');
+      assert.strictEqual(typeof library[0]?.finishedOn, 'string');
       assert.deepStrictEqual(
         { id: library[0]?.book.id, title: library[0]?.book.title },
         { id: book.id.value, title: 'Circe' },
       );
+    });
+  });
+
+  test('PUT /reading-status accepts startedOn and finishedOn dates', async () => {
+    await withApp(app, async (baseUrl) => {
+      const response = await send(baseUrl, 'PUT', '/reading-status', {
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'finished',
+        startedOn: '2026-10-01',
+        finishedOn: '2026-10-15',
+      });
+      assert.strictEqual(response.status, 200);
+      const data = (await response.json()) as StatusBody;
+      assert.strictEqual(data.startedOn, '2026-10-01');
+      assert.strictEqual(data.finishedOn, '2026-10-15');
+    });
+  });
+
+  test('PUT /reading-status returns 400 when finishedOn is earlier than startedOn', async () => {
+    await withApp(app, async (baseUrl) => {
+      const response = await send(baseUrl, 'PUT', '/reading-status', {
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'finished',
+        startedOn: '2026-10-15',
+        finishedOn: '2026-10-01',
+      });
+      assert.strictEqual(response.status, 400);
+    });
+  });
+
+  test('PATCH /reading-status/:id updates dates', async () => {
+    await withApp(app, async (baseUrl) => {
+      const created = (await (
+        await send(baseUrl, 'PUT', '/reading-status', {
+          userId: USER_ID,
+          bookId: book.id.value,
+          status: 'in-progress',
+        })
+      ).json()) as StatusBody;
+
+      const response = await send(baseUrl, 'PATCH', `/reading-status/${created.id}`, {
+        startedOn: '2026-09-01',
+        finishedOn: '2026-09-10',
+      });
+      assert.strictEqual(response.status, 200);
+      const updated = (await response.json()) as StatusBody;
+      assert.strictEqual(updated.startedOn, '2026-09-01');
+      assert.strictEqual(updated.finishedOn, '2026-09-10');
+    });
+  });
+
+  test('DELETE /reading-status/:id removes the entry', async () => {
+    await withApp(app, async (baseUrl) => {
+      const created = (await (
+        await send(baseUrl, 'PUT', '/reading-status', {
+          userId: USER_ID,
+          bookId: book.id.value,
+          status: 'in-progress',
+        })
+      ).json()) as StatusBody;
+
+      const deleteRes = await fetch(`${baseUrl}/reading-status/${created.id}`, {
+        method: 'DELETE',
+      });
+      assert.strictEqual(deleteRes.status, 204);
+
+      const retryRes = await fetch(`${baseUrl}/reading-status/${created.id}`, {
+        method: 'DELETE',
+      });
+      assert.strictEqual(retryRes.status, 404);
+    });
+  });
+
+  test('DELETE /reading-status removes the entry by userId and bookId', async () => {
+    await withApp(app, async (baseUrl) => {
+      await send(baseUrl, 'PUT', '/reading-status', {
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'in-progress',
+      });
+
+      const deleteRes = await fetch(
+        `${baseUrl}/reading-status?userId=${USER_ID}&bookId=${book.id.value}`,
+        { method: 'DELETE' },
+      );
+      assert.strictEqual(deleteRes.status, 204);
+
+      const retryRes = await fetch(
+        `${baseUrl}/reading-status?userId=${USER_ID}&bookId=${book.id.value}`,
+        { method: 'DELETE' },
+      );
+      assert.strictEqual(retryRes.status, 404);
+    });
+  });
+
+  test('DELETE /user/:userId/library/:bookId removes the book from user library', async () => {
+    await withApp(app, async (baseUrl) => {
+      await send(baseUrl, 'PUT', '/reading-status', {
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'in-progress',
+      });
+
+      const deleteRes = await fetch(`${baseUrl}/user/${USER_ID}/library/${book.id.value}`, {
+        method: 'DELETE',
+      });
+      assert.strictEqual(deleteRes.status, 204);
+
+      const libraryRes = await fetch(`${baseUrl}/user/${USER_ID}/library`);
+      const library = (await libraryRes.json()) as Array<unknown>;
+      assert.strictEqual(library.length, 0);
+
+      const retryRes = await fetch(`${baseUrl}/user/${USER_ID}/library/${book.id.value}`, {
+        method: 'DELETE',
+      });
+      assert.strictEqual(retryRes.status, 404);
     });
   });
 });
