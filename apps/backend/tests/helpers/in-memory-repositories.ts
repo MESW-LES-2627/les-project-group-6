@@ -78,6 +78,16 @@ export class InMemoryReadingStatusRepository implements IReadingStatusRepository
   async save(entry: ReadingStatus): Promise<void> {
     this.entries.set(`${entry.userId.value}:${entry.bookId.value}`, entry);
   }
+
+  async delete(userId: UserId, bookId: BookId): Promise<boolean> {
+    return this.entries.delete(`${userId.value}:${bookId.value}`);
+  }
+
+  async deleteById(id: ReadingStatusId): Promise<boolean> {
+    const entry = [...this.entries.entries()].find(([, s]) => s.id.equals(id));
+    if (!entry) return false;
+    return this.entries.delete(entry[0]);
+  }
 }
 
 export class InMemoryReadingSessionRepository implements IReadingSessionRepository {

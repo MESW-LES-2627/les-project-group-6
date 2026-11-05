@@ -22,6 +22,8 @@ export interface LibraryItemView {
   book: LibraryBookView;
   status: ReadingStatusType;
   currentPage: number;
+  startedOn: string | null;
+  finishedOn: string | null;
   updatedAt: string;
 }
 
@@ -41,6 +43,8 @@ export class DrizzleLibraryQuery implements LibraryQuery {
         id: readingStatus.id,
         status: readingStatus.status,
         currentPage: readingStatus.currentPage,
+        startedOn: readingStatus.startedOn,
+        finishedOn: readingStatus.finishedOn,
         updatedAt: readingStatus.updatedAt,
         book: books,
       })
@@ -62,6 +66,8 @@ export class DrizzleLibraryQuery implements LibraryQuery {
       },
       status: row.status as ReadingStatusType,
       currentPage: row.currentPage,
+      startedOn: row.startedOn ?? null,
+      finishedOn: row.finishedOn ?? null,
       updatedAt: new Date(row.updatedAt).toISOString(),
     }));
   }

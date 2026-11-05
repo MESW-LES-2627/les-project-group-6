@@ -64,4 +64,44 @@ describe('DrizzleReadingStatusRepository Integration', () => {
     assert.strictEqual(rows[0].status, 'in-progress');
     assert.strictEqual(rows[0].current_page, 42);
   });
+
+  test('persists and reloads startedOn and finishedOn dates', async () => {
+    const entry = ReadingStatus.create(USER_ID, book.id);
+    entry.startReading('2026-10-01');
+    entry.finish(book.pageCount, '2026-10-15');
+    await repo.save(entry);
+
+    const found = await repo.findByUserAndBook(USER_ID, book.id);
+    assert.ok(found);
+    assert.strictEqual(found.startedOn, '2026-10-01');
+    assert.strictEqual(found.finishedOn, '2026-10-15');
+  });
+
+  test('delete removes the entry by userId and bookId', async () => {
+    const entry = ReadingStatus.create(USER_ID, book.id);
+    await repo.save(entry);
+
+    const deleted = await repo.delete(USER_ID, book.id);
+    assert.strictEqual(deleted, true);
+
+    const found = await repo.findByUserAndBook(USER_ID, book.id);
+    assert.strictEqual(found, null);
+
+    const repeatDelete = await repo.delete(USER_ID, book.id);
+    assert.strictEqual(repeatDelete, false);
+  });
+
+  test('deleteById removes the entry by its id', async () => {
+    const entry = ReadingStatus.create(USER_ID, book.id);
+    await repo.save(entry);
+
+    const deleted = await repo.deleteById(entry.id);
+    assert.strictEqual(deleted, true);
+
+    const found = await repo.findById(entry.id);
+    assert.strictEqual(found, null);
+
+    const repeatDelete = await repo.deleteById(entry.id);
+    assert.strictEqual(repeatDelete, false);
+  });
 });
