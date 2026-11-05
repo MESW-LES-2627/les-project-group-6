@@ -328,6 +328,7 @@ const mailtoHref = computed(() => {
 
 .section-title {
   margin: 0;
+  font-family: var(--font-heading);
   font-size: 1.375rem;
   font-weight: var(--font-weight-normal);
   letter-spacing: -0.01em;

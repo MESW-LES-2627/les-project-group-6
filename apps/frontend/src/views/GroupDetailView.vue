@@ -75,11 +75,8 @@ async function reloadClub() {
     :live="!isMock"
     @changed="reloadClub"
   />
-  <main v-else-if="loading" class="page-column missing" aria-busy="true">
-    <p class="eyebrow">Groups</p>
-  </main>
+  <main v-else-if="loading" class="page-column missing" aria-busy="true"></main>
   <main v-else class="page-column missing">
-    <p class="eyebrow">Groups</p>
     <h1>This group could not be found.</h1>
     <p>Open October Sprint or Classics to see the challenge and book club pages.</p>
     <RouterLink class="button" :to="{ name: 'groups' }">Back to groups</RouterLink>

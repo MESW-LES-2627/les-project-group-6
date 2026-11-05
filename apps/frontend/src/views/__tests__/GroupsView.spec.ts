@@ -66,25 +66,28 @@ describe('GroupsView', () => {
     vi.resetAllMocks();
   });
 
-  it('shows the heading, the invitation and all six groups', () => {
+  it('shows the plate, the invitation and all six groups by status', () => {
     const wrapper = mountView();
 
-    expect(wrapper.get('h1').text()).toBe('Good books bring people together.');
+    expect(wrapper.get('h1').text()).toBe('Groups');
     expect(wrapper.text()).toContain('The Sunday Shelf');
     expect(wrapper.findAll('article')).toHaveLength(6);
+    const sections = wrapper.findAll('.group-section h2').map((h) => h.text());
+    expect(sections).toEqual(['Active', 'Coming up', 'Completed']);
   });
 
-  it('filters by kind and by status', async () => {
+  it('filters by kind', async () => {
     const wrapper = mountView();
-    const button = (label: string) =>
-      wrapper.findAll('.filter').find((b) => b.text().startsWith(label))!;
+    const tab = (label: string) =>
+      wrapper.findAll('.page-tab').find((b) => b.text().startsWith(label))!;
 
-    await button('Challenges').trigger('click');
+    await tab('Challenges').trigger('click');
     expect(wrapper.findAll('article')).toHaveLength(3);
+    expect(tab('Challenges').attributes('aria-pressed')).toBe('true');
 
-    await button('Completed').trigger('click');
-    expect(wrapper.findAll('article')).toHaveLength(2);
-    expect(button('Completed').attributes('aria-pressed')).toBe('true');
+    await tab('Book clubs').trigger('click');
+    expect(wrapper.findAll('article')).toHaveLength(3);
+    expect(wrapper.text()).not.toContain('October Sprint');
   });
 
   it('adds the group when the invitation is accepted', async () => {
@@ -92,11 +95,11 @@ describe('GroupsView', () => {
 
     await wrapper
       .findAll('button')
-      .find((b) => b.text() === 'View & accept')!
+      .find((b) => b.text() === 'View and accept')!
       .trigger('click');
 
     expect(wrapper.findAll('article')).toHaveLength(7);
-    expect(wrapper.text()).not.toContain('A new invitation');
+    expect(wrapper.text()).not.toContain('invited you to The Sunday Shelf');
     expect(wrapper.get('[role="status"]').text()).toBe('You joined The Sunday Shelf.');
   });
 
@@ -109,7 +112,7 @@ describe('GroupsView', () => {
       .trigger('click');
 
     expect(wrapper.findAll('article')).toHaveLength(6);
-    expect(wrapper.text()).not.toContain('A new invitation');
+    expect(wrapper.text()).not.toContain('invited you to The Sunday Shelf');
   });
 
   it('links to the create page and to each group', () => {
@@ -137,7 +140,7 @@ describe('GroupsView', () => {
     await flushPromises();
 
     expect(answerInvite).toHaveBeenCalledWith('i1', 'accept');
-    expect(wrapper.text()).not.toContain('Pending invites');
+    expect(wrapper.text()).not.toContain('Maya Laurent invited you to a book club');
     expect(wrapper.get('[role="status"]').text()).toBe('You joined Sunday Classics.');
     expect(wrapper.findAll('article')).toHaveLength(7);
     expect(wrapper.text()).toContain('0 of 3 finished');

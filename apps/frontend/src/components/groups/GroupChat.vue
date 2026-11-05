@@ -164,8 +164,8 @@ async function remove(message: ChatMessage) {
       <li v-for="message in items" :key="message.id">
         <p v-if="!message.author" class="system">
           <svg
-            width="18"
-            height="18"
+            width="16"
+            height="16"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -178,75 +178,42 @@ async function remove(message: ChatMessage) {
           </svg>
           <span>System · {{ message.text }}</span>
         </p>
-        <template v-else>
-          <p v-if="message.tag" class="tag-row">
-            <span class="tag">{{ message.tag }}</span>
-          </p>
-          <div class="author">
-            <MemberAvatar :initials="message.author.initials" />
-            <div>
-              <p class="name">{{ message.author.name }}</p>
-              <p class="time">{{ message.time }}</p>
-            </div>
+        <div v-else class="message">
+          <MemberAvatar :initials="message.author.initials" />
+          <div class="body">
+            <p class="author">
+              <span class="name">{{ message.author.name }}</span>
+              <span class="time">{{ message.time }}</span>
+              <span v-if="message.tag" class="tag">{{ message.tag }}</span>
+            </p>
+            <p :class="['text', { deleted: message.deleted }]">{{ message.text }}</p>
+            <p v-if="message.pending || message.failed || canDelete(message)" class="status">
+              <span v-if="message.pending">Sending…</span>
+              <template v-if="message.failed">
+                <span>Not sent.</span>
+                <button type="button" class="link" @click="deliver(message)">Retry</button>
+              </template>
+              <button v-if="canDelete(message)" type="button" class="link" @click="remove(message)">
+                Delete
+              </button>
+            </p>
           </div>
-          <p :class="['text', { deleted: message.deleted }]">{{ message.text }}</p>
-          <p v-if="message.pending || message.failed || canDelete(message)" class="status">
-            <span v-if="message.pending">Sending…</span>
-            <template v-if="message.failed">
-              <span>Not sent.</span>
-              <button type="button" class="link" @click="deliver(message)">Retry</button>
-            </template>
-            <button v-if="canDelete(message)" type="button" class="link" @click="remove(message)">
-              Delete
-            </button>
-          </p>
-        </template>
+        </div>
       </li>
     </ul>
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>
 
     <form class="composer" @submit.prevent="send">
-      <label :for="inputId" class="composer-label">{{ label }}</label>
-      <input :id="inputId" v-model="draft" type="text" :placeholder="placeholder" />
-      <div class="composer-actions">
-        <button type="button" class="media" aria-label="Attach an image">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <circle cx="9" cy="10" r="1.5" />
-            <path d="m21 16-5-5-8 9" />
-          </svg>
-          <span>Image</span>
-        </button>
-        <button type="button" class="media" aria-label="Attach a video">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <rect x="3" y="6" width="13" height="12" rx="2" />
-            <path d="m16 10 5-3v10l-5-3" />
-          </svg>
-          <span>Video</span>
-        </button>
-        <button type="submit" class="button button-small send">Send</button>
-      </div>
+      <label :for="inputId" class="sr-only">{{ label }}</label>
+      <input
+        :id="inputId"
+        v-model="draft"
+        class="field-input"
+        type="text"
+        :placeholder="placeholder"
+      />
+      <button type="submit" class="button send">Send</button>
     </form>
   </div>
 </template>
@@ -255,7 +222,7 @@ async function remove(message: ChatMessage) {
 .messages {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 22px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -263,62 +230,58 @@ async function remove(message: ChatMessage) {
 
 .system {
   display: flex;
-  gap: var(--space-3);
+  gap: var(--space-2);
   align-items: center;
   margin: 0;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-muted);
   color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
 }
 
 .system svg {
   flex-shrink: 0;
-  color: var(--color-copper);
 }
 
-.tag-row {
-  margin: 0 0 var(--space-2);
-}
-
-.tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: var(--color-track);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-2xs);
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.author {
+.message {
   display: flex;
-  gap: var(--space-3);
-  align-items: center;
+  gap: 14px;
 }
 
-.name,
-.time,
+.body {
+  min-width: 0;
+}
+
+.author,
 .text {
   margin: 0;
 }
 
-.name {
+.author {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: baseline;
   font-size: var(--font-size-sm);
+}
+
+.name {
   font-weight: 600;
 }
 
 .time {
   color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
+}
+
+.tag {
+  padding: 1px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
 }
 
 .text {
-  margin-top: var(--space-2);
-  font-size: var(--font-size-sm);
+  max-width: 62ch;
+  margin-top: 2px;
 }
 
 .text.deleted {
@@ -338,7 +301,7 @@ async function remove(message: ChatMessage) {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--color-copper);
+  color: var(--color-primary);
   font-size: inherit;
   cursor: pointer;
 }
@@ -349,61 +312,23 @@ async function remove(message: ChatMessage) {
 
 .error {
   margin: var(--space-4) 0 0;
-  color: var(--color-burgundy);
+  color: var(--color-error);
   font-size: var(--font-size-xs);
 }
 
 .composer {
-  margin-top: var(--space-6);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
-}
-
-.composer-label {
-  display: block;
-  margin-bottom: var(--space-2);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-}
-
-.composer input {
-  width: 100%;
-  height: var(--control-height);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-control);
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
-.composer input::placeholder {
-  color: var(--color-text-muted);
-}
-
-.composer-actions {
   display: flex;
-  gap: var(--space-6);
+  gap: 10px;
   align-items: center;
-  margin-top: var(--space-3);
+  margin-top: 28px;
 }
 
-.media {
-  display: inline-flex;
-  gap: var(--space-2);
-  align-items: center;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-}
-
-.media:hover {
-  color: var(--color-text);
+.composer .field-input {
+  flex: 1;
+  min-width: 0;
 }
 
 .send {
-  margin-left: auto;
+  flex: none;
 }
 </style>
