@@ -54,8 +54,8 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 The application source code. Each app is a pnpm workspace with its own `package.json`, `tsconfig.json` (extending the root base) and ESLint config. Tooling shared by every app lives in the repository root (see [Root config](#root-config)).
 
 - `apps/frontend/`: the Vue 3 web client with shared CSS tokens, a home page prototype, a profile page prototype and groups pages (list, create, challenge, book club) backed by the API with mock groups kept for the design demo, and other prototypes with mock data, router and component tests, ESLint, Prettier, vue-tsc and Vitest. See [apps/frontend/README.md](apps/frontend/README.md) for commands and production API routing.
-  Authentication is at `/login`: the login/sign-up screen, an SDK-backed Supabase skeleton in `src/services/auth.ts`, and integration tests. See the frontend guide for credentials and remaining integration work.
-- `apps/backend/`: the server, API and business logic (TypeScript, Node.js, Express). See [apps/backend/README.md](apps/backend/README.md) for how to run it.
+  Authentication uses Supabase Auth: `/login` (log in / sign up), a session store in `src/stores/`, a router guard, `/complete-profile` and sign out from the header. Every API call sends the Supabase token. See the frontend guide for the environment variables.
+- `apps/backend/`: the server, API and business logic (TypeScript, Node.js, Express). Every route except `/health` verifies the Supabase JWT and takes the user from it; `/me` creates and reads the reader's profile. See [apps/backend/README.md](apps/backend/README.md) for how to run it.
 
 ### Makefile
 

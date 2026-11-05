@@ -360,3 +360,20 @@ implementa agora todos os screens que fizemos la no claude design aqui .
 
 #### Explanation of Changes
 Implemented the base code for the redesign in the Vue app. Added a shared `PagePlate` component for the burgundy band (same height on every page), a `BookCoverImage` component with a title fallback, and shared styles in `main.css` (page tabs, section headings, fields, link buttons). Rebuilt the library, groups list, challenge, book club, login and home views on top of them, with Inter for page titles and Lora for book titles. API calls in `services/api.ts` and the backend were left untouched. Removed from the old screens: the challenge Members and History tabs, the member-side anonymous voting switch, decorative slogans, progress rings, emoji and the unused chat media buttons. Updated the view and component tests (92 passing), lint and typecheck. 
+
+### 2026-11-05: Supabase authentication (F-AUTH-01)
+
+- **Date:** 2026-11-05
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, frontend, database, testing, docs
+
+#### Prompt
+```text
+ok, so, you will notice that we already have the auth pages, sign up page and login page, however, everything is mocked. We want to implement the authentication part. I already have the supabase setup ready to use and the databases there. I have the VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
+```
+(Scope chosen in the conversation: the full issue #7, including moving every existing route to the token's user.)
+
+#### Explanation of Changes
+Implemented issue #7. Backend: `AuthProvider` port with a `SupabaseAuthProvider` (JWKS verification with `jose`, optional legacy HS256 secret), `authenticate`/`requireUser` middleware, `UserService` and `POST/GET/PATCH /me`, a public username availability check, a case-insensitive unique username index (migration 0004), and every route and the chat socket switched from a `userId` parameter to the token's user (`/user/:userId/...` → `/me/...`). Frontend: single Supabase client with "keep me signed in" storage, a session store, a router guard, a complete-profile page, sign out in the header, and the API client sending the bearer token. Updated and added backend tests (179) and frontend tests (125), and the READMEs.
