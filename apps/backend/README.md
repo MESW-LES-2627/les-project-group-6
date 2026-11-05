@@ -53,7 +53,12 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | `POST`   | `/groups/:id/invites`                                     | The admin of any group invites a friend (`inviteeId`) (`201`; `403` if not the admin, `409` if not a friend, a member or already invited)                                                                 |
 | `GET`    | `/user/:userId/group-invites`                             | Pending invites with group name, kind and inviter (`200`)                                                                                                                                                 |
 | `POST`   | `/group-invites/:id/accept` · `/decline`                  | The invitee answers; accepting adds them to the group (`200`)                                                                                                                                             |
-| `GET`    | `/user/:userId/friends`                                   | Accepted friends (`200`)                                                                                                                                                                                  |
+| `POST`   | `/friend-requests`                                        | Sends a friend request (`requesterId`, `targetUserId`) (`201 Created` or `200 OK` if already exists)                                                                     |
+| `GET`    | `/user/:userId/friend-requests`                           | Lists incoming pending friend requests for the user (`200 OK`)                                                                                                            |
+| `POST`   | `/friend-requests/:id/accept`                             | Accepts a pending friend request (`200 OK`; `404 Not Found` if not found or unauthorized, `409 Conflict` if not pending)                                                  |
+| `POST`   | `/friend-requests/:id/decline`                            | Declines a pending friend request (`204 No Content`; `404 Not Found` if not found or unauthorized)                                                                        |
+| `DELETE` | `/friends/:userId`                                        | Removes a mutual friend (`requesterId` in body or query) (`204 No Content`)                                                                                               |
+| `GET`    | `/user/:userId/friends`                                   | Accepted friends (`200 OK`)                                                                                                                                               |
 | `POST`   | `/groups/:groupId/messages`                               | Sends a chat message (`userId`, `clientId` UUID, `body`); members only. A retry with the same `clientId` returns the stored message (`201` new, `200` retry, `403` not a member)                          |
 | `GET`    | `/groups/:groupId/messages?userId=&after=&before=&limit=` | Chat history in `seq` order: the latest page, newer than `after` (catch-up) or older than `before` (`200`, `403`)                                                                                         |
 | `DELETE` | `/groups/:groupId/messages/:messageId`                    | Soft-deletes a message; its author or the group admin (`204`, `403`, `404`)                                                                                                                               |
@@ -106,7 +111,7 @@ apps/backend/
 │   │   ├── group/         # Shared kernel of every group: GroupId, GroupName, memberships, GroupRoster, MemberJoined event
 │   │   ├── group-invite/  # GroupInvite aggregate, repository, service, DTO, routes (any group)
 │   │   ├── book-club/     # BookClub aggregate (rounds), BookPoll aggregate (voting), progress query, services, DTO, routes
-│   │   ├── friend/        # Read-only friends list from accepted friendships
+│   │   ├── friend/        # Friendship aggregate root, repository, FriendService, DTO, routes (requests, accept, decline, remove, list friends)
 │   │   ├── reading-session/ # ReadingSession aggregate (server-timed), repository + stats, service, DTO, routes
 │   │   ├── group-chat/    # ChatMessage entity, repository, membership query, ChatService, routes, Socket.IO notifier, JoinAnnouncer
 │   │   ├── user/          # User entity + value objects (UserId, Email, Username), repository
