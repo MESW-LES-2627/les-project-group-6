@@ -1,6 +1,9 @@
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { Book } from '../../src/features/book/book.js';
+import { Book, type BookId } from '../../src/features/book/book.js';
+import { ReadingStatus } from '../../src/features/reading-status/reading-status.js';
+import type { ReadingStatusService } from '../../src/features/reading-status/reading-status-service.js';
+import type { UserId } from '../../src/features/user/user.js';
 import {
   AnotherSessionActiveError,
   ReadingSessionService,
@@ -69,6 +72,28 @@ describe('ReadingSessionService', () => {
       service.start({ userId: USER_ID, bookId: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a99' }),
       NotFoundError,
     );
+  });
+
+  test('starting a session calls ensureInProgress when hook is provided', async () => {
+    let ensuredUserId: string | null = null;
+    let ensuredBookId: string | null = null;
+
+    const hookService = new ReadingSessionService(
+      new InMemoryReadingSessionRepository(),
+      books,
+      () => now,
+      {
+        ensureInProgress: async (userId: UserId, bookId: BookId) => {
+          ensuredUserId = userId.value;
+          ensuredBookId = bookId.value;
+          return ReadingStatus.initial(userId, bookId);
+        },
+      } as unknown as ReadingStatusService,
+    );
+
+    await hookService.start({ userId: USER_ID, bookId: book.id.value });
+    assert.strictEqual(ensuredUserId, USER_ID);
+    assert.strictEqual(ensuredBookId, book.id.value);
   });
 
   test('active sessions are not counted in the stats', async () => {

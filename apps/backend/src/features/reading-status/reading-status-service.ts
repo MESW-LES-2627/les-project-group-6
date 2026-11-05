@@ -11,6 +11,8 @@ export interface SetReadingStatusCommand {
   bookId: unknown;
   status: unknown;
   currentPage?: unknown;
+  startedOn?: string | null;
+  finishedOn?: string | null;
 }
 
 export interface UpdateReadingStatusCommand {
@@ -19,6 +21,8 @@ export interface UpdateReadingStatusCommand {
   bookId?: unknown;
   status?: unknown;
   currentPage?: unknown;
+  startedOn?: string | null;
+  finishedOn?: string | null;
 }
 
 // Application service: one method per use case on the reader's library.
@@ -46,6 +50,9 @@ export class ReadingStatusService {
     if (command.currentPage !== undefined && status.tracksProgress) {
       status.updateProgress(book.progressAt(command.currentPage));
     }
+    if (command.startedOn !== undefined || command.finishedOn !== undefined) {
+      status.setDates(command.startedOn, command.finishedOn);
+    }
 
     await this.readingStatuses.save(status);
     return status;
@@ -65,9 +72,48 @@ export class ReadingStatusService {
     if (command.currentPage !== undefined) {
       status.updateProgress(book.progressAt(command.currentPage));
     }
+    if (command.startedOn !== undefined || command.finishedOn !== undefined) {
+      status.setDates(command.startedOn, command.finishedOn);
+    }
 
     await this.readingStatuses.save(status);
     return status;
+  }
+
+  /** Removes a book from the reader's library. */
+  async remove(userId: unknown, bookId: unknown): Promise<void> {
+    const deleted = await this.readingStatuses.delete(UserId.of(userId), BookId.of(bookId));
+    if (!deleted) throw new NotFoundError('Reading status');
+  }
+
+  /** Removes a reading status entry by its ID. */
+  async removeById(id: unknown): Promise<void> {
+    const deleted = await this.readingStatuses.deleteById(ReadingStatusId.of(id));
+    if (!deleted) throw new NotFoundError('Reading status');
+  }
+
+  /**
+   * Ensures the book is in the reader's library with status 'in-progress'.
+   * Adds it if missing; advances 'not-started' to 'in-progress'; leaves other statuses untouched.
+   */
+  async ensureInProgress(userId: UserId, bookId: BookId): Promise<ReadingStatus> {
+    const book = await this.books.findById(bookId);
+    if (!book) throw new NotFoundError('Book');
+
+    const existing = await this.readingStatuses.findByUserAndBook(userId, bookId);
+    if (!existing) {
+      const created = ReadingStatus.create(userId, bookId);
+      created.startReading();
+      await this.readingStatuses.save(created);
+      return created;
+    }
+
+    if (existing.status === 'not-started') {
+      existing.startReading();
+      await this.readingStatuses.save(existing);
+    }
+
+    return existing;
   }
 
   private findEntry(command: UpdateReadingStatusCommand): Promise<ReadingStatus | null> {
