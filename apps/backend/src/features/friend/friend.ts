@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 import {
   BusinessRuleViolationError,
-  ForbiddenError,
   InvalidValueError,
   NotFoundError,
 } from '../../utils/errors.js';
@@ -47,9 +46,9 @@ export class FriendshipNotPendingError extends BusinessRuleViolationError {
   }
 }
 
-export class UnauthorizedFriendshipActionError extends ForbiddenError {
+export class UnauthorizedFriendshipActionError extends NotFoundError {
   constructor() {
-    super('Only the requested user can respond to this friend request');
+    super('Friend request');
   }
 }
 
