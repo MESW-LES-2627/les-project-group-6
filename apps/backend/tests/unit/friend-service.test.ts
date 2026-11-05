@@ -8,6 +8,7 @@ import { Email, User, UserId, Username } from '../../src/features/user/user.js';
 import { FriendService } from '../../src/features/friend/friend-service.js';
 import {
   CannotFriendSelfError,
+  FriendshipNotFoundError,
   FriendshipNotPendingError,
   UnauthorizedFriendshipActionError,
 } from '../../src/features/friend/friend.js';
@@ -127,6 +128,7 @@ describe('FriendService', () => {
       const repeat = await service.request(alice.id.value, bob.id.value);
       assert.equal(repeat.outcome, 'no_changes');
       assert.equal(repeat.friendship.status, 'accepted');
+      assert.equal(repeat.friendship.id.value, first.friendship.id.value);
     });
   });
 
@@ -188,6 +190,87 @@ describe('FriendService', () => {
         () => service.decline(alice.id.value, bob.id.value),
         UnauthorizedFriendshipActionError,
       );
+    });
+  });
+
+  describe('pendingRequestsFor', () => {
+    it('returns all pending requests where user is the requested one', async () => {
+      // Alice -> Bob, Charlie -> Bob
+      await service.request(alice.id.value, bob.id.value);
+      await service.request(charlie.id.value, bob.id.value);
+
+      const pending = await service.pendingRequestsFor(bob.id.value);
+      assert.equal(pending.length, 2);
+      assert.ok(pending.every((p) => p.addresseeId.equals(bob.id)));
+      assert.ok(pending.every((p) => p.status === 'pending'));
+    });
+
+    it('does not return outgoing requests where user is the requester', async () => {
+      // Alice -> Bob
+      await service.request(alice.id.value, bob.id.value);
+
+      const aliceIncoming = await service.pendingRequestsFor(alice.id.value);
+      assert.equal(aliceIncoming.length, 0);
+    });
+
+    it('does not return accepted or declined requests', async () => {
+      await service.request(alice.id.value, bob.id.value);
+      await service.accept(bob.id.value, alice.id.value);
+
+      const pending = await service.pendingRequestsFor(bob.id.value);
+      assert.equal(pending.length, 0);
+    });
+  });
+
+  describe('removeFriend', () => {
+    it('removes an existing friendship using the friend user ID', async () => {
+      await service.request(alice.id.value, bob.id.value);
+      await service.accept(bob.id.value, alice.id.value);
+
+      assert.equal(await service.areFriends(alice.id.value, bob.id.value), true);
+
+      // Alice removes Bob
+      await service.removeFriend(alice.id.value, bob.id.value);
+
+      assert.equal(await service.areFriends(alice.id.value, bob.id.value), false);
+      assert.equal(await service.areFriends(bob.id.value, alice.id.value), false);
+    });
+
+    it('can be removed by either friend', async () => {
+      await service.request(alice.id.value, bob.id.value);
+      await service.accept(bob.id.value, alice.id.value);
+
+      // Bob removes Alice
+      await service.removeFriend(bob.id.value, alice.id.value);
+
+      assert.equal(await service.areFriends(alice.id.value, bob.id.value), false);
+    });
+
+    it('fails when they are not friends (only pending request)', async () => {
+      await service.request(alice.id.value, bob.id.value);
+
+      await assert.rejects(
+        () => service.removeFriend(alice.id.value, bob.id.value),
+        FriendshipNotFoundError,
+      );
+    });
+
+    it('fails when no friendship exists between users', async () => {
+      await assert.rejects(
+        () => service.removeFriend(alice.id.value, charlie.id.value),
+        FriendshipNotFoundError,
+      );
+    });
+
+    it('allows sending a new request after friendship is removed', async () => {
+      await service.request(alice.id.value, bob.id.value);
+      await service.accept(bob.id.value, alice.id.value);
+
+      await service.removeFriend(alice.id.value, bob.id.value);
+
+      const result = await service.request(alice.id.value, bob.id.value);
+      assert.equal(result.outcome, 'ok');
+      assert.equal(result.friendship.status, 'pending');
     });
   });
 });

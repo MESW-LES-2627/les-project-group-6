@@ -104,4 +104,18 @@ describe('DrizzleFriendRepository Integration', () => {
     const found = await friendRepo.findById(friendship.id);
     assert.equal(found, null);
   });
+
+  test('lists pending requests for addressee', async () => {
+    const friendship = Friendship.request(aliceId, bobId, new Date());
+    await friendRepo.save(friendship);
+
+    const bobPending = await friendRepo.pendingFor(bobId);
+    assert.equal(bobPending.length, 1);
+    assert.equal(bobPending[0]?.requesterId.value, aliceId.value);
+    assert.equal(bobPending[0]?.addresseeId.value, bobId.value);
+    assert.equal(bobPending[0]?.status, 'pending');
+
+    const alicePending = await friendRepo.pendingFor(aliceId);
+    assert.equal(alicePending.length, 0);
+  });
 });

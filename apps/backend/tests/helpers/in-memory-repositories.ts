@@ -203,6 +203,12 @@ export class InMemoryFriendRepository implements IFriendRepository {
     );
   }
 
+  async pendingFor(addresseeId: UserId): Promise<Friendship[]> {
+    return [...this.friendships.values()].filter(
+      (f) => f.addresseeId.equals(addresseeId) && f.status === 'pending',
+    );
+  }
+
   async save(friendship: Friendship): Promise<void> {
     this.friendships.set(friendship.id.value, friendship);
     if (friendship.status === 'accepted') {
