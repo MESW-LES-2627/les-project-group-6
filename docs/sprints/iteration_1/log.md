@@ -17,7 +17,7 @@ A running record of what the team did and decided in iteration 1. The [release n
 
 ## Log
 
-### 2026-11-05: Friendship domain, repository, service and API (#33)
+### 2026-11-04: Friendship domain, repository, service and API (#33)
 
 PR [#114](../../../pull/114) closing issue [#33](../../../issues/33).
 

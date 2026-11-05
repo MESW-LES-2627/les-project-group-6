@@ -24,7 +24,7 @@
 
 ## Logs
 
-### 2026-11-05: Friendship domain, service, repository and REST endpoints (#33)
+### 2026-11-04: Friendship domain, service, repository and REST endpoints (#33)
 
 - **Date:** 2026-11-05
 - **Author:** Vasco Gonçalves
