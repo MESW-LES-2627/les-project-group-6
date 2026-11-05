@@ -42,7 +42,11 @@ export class FriendshipNotFoundError extends NotFoundError {
 
 export class FriendshipNotPendingError extends BusinessRuleViolationError {
   constructor(status?: string) {
-    super(status ? `Friendship request is already ${status}` : 'No pending friend request exists between these users');
+    super(
+      status
+        ? `Friendship request is already ${status}`
+        : 'No pending friend request exists between these users',
+    );
   }
 }
 

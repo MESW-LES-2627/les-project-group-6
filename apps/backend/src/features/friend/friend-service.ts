@@ -118,7 +118,10 @@ export class FriendService {
     await this.friends.delete(existing.id);
   }
 
-  private async resolvePendingFriendship(by: UserId, targetOrFriendshipId: unknown): Promise<Friendship> {
+  private async resolvePendingFriendship(
+    by: UserId,
+    targetOrFriendshipId: unknown,
+  ): Promise<Friendship> {
     // Try to resolve as FriendshipId first
     try {
       const friendshipId = FriendshipId.of(targetOrFriendshipId);

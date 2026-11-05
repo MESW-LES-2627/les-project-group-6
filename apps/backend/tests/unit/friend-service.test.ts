@@ -1,8 +1,6 @@
 import { beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  InMemoryFriendRepository,
-} from '../helpers/in-memory-repositories.js';
+import { InMemoryFriendRepository } from '../helpers/in-memory-repositories.js';
 import type { IUserRepository } from '../../src/features/user/user-repository.js';
 import { Email, User, UserId, Username } from '../../src/features/user/user.js';
 import { FriendService } from '../../src/features/friend/friend-service.js';

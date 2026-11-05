@@ -2,11 +2,7 @@ import { and, desc, eq, or } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { friendships, users } from '../../database/schema.js';
 import { UserId } from '../user/user.js';
-import {
-  Friendship,
-  FriendshipId,
-  friendshipStatusOf,
-} from './friend.js';
+import { Friendship, FriendshipId, friendshipStatusOf } from './friend.js';
 
 /** A friend as the invite list shows them. */
 export interface FriendView {
@@ -123,12 +119,7 @@ export class DrizzleFriendRepository implements IFriendRepository {
     const rows = await this.db
       .select()
       .from(friendships)
-      .where(
-        and(
-          eq(friendships.addresseeId, addresseeId.value),
-          eq(friendships.status, 'pending'),
-        ),
-      )
+      .where(and(eq(friendships.addresseeId, addresseeId.value), eq(friendships.status, 'pending')))
       .orderBy(desc(friendships.createdAt));
     return rows.map(toDomain);
   }

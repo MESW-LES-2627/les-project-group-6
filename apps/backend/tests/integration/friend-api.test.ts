@@ -61,7 +61,12 @@ describe('Friend API Endpoints', () => {
       });
 
       assert.equal(res.status, 201);
-      const data = (await res.json()) as { id: string; status: string; requesterId: string; addresseeId: string };
+      const data = (await res.json()) as {
+        id: string;
+        status: string;
+        requesterId: string;
+        addresseeId: string;
+      };
       assert.ok(data.id);
       assert.equal(data.status, 'pending');
       assert.equal(data.requesterId, aliceId.value);
@@ -125,7 +130,11 @@ describe('Friend API Endpoints', () => {
 
       const res = await fetch(`${baseUrl}/user/${bobId.value}/friend-requests`);
       assert.equal(res.status, 200);
-      const pending = (await res.json()) as Array<{ id: string; requesterId: string; status: string }>;
+      const pending = (await res.json()) as Array<{
+        id: string;
+        requesterId: string;
+        status: string;
+      }>;
       assert.equal(pending.length, 1);
       assert.equal(pending[0]?.requesterId, aliceId.value);
       assert.equal(pending[0]?.status, 'pending');
