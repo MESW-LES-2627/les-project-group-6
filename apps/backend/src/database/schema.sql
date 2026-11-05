@@ -26,6 +26,9 @@ CREATE TABLE users (
     hit_streak BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+-- Usernames are unique ignoring case (F-AUTH-01).
+CREATE UNIQUE INDEX users_username_lower_key ON users (lower(username));
+
 -- Represents mutual social connections and pending friend requests between users.
 CREATE TABLE friendships (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

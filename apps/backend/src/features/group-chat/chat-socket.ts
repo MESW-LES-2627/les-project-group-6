@@ -1,5 +1,5 @@
 import type { Server, Socket } from 'socket.io';
-import { UserId } from '../user/user.js';
+import type { AuthProvider } from '../auth/auth-provider.js';
 import type { ChatMessageDto, MessageDeletedEvent } from './chat-dto.js';
 import type { ChatNotifier } from './chat-notifier.js';
 
@@ -31,13 +31,15 @@ export class SocketIoChatNotifier implements ChatNotifier {
 }
 
 /**
- * Registers the connection handshake and the room events. The user id comes from
- * the handshake `auth` payload until Supabase Auth lands; then it is the JWT's subject.
+ * Registers the connection handshake and the room events. The client sends its
+ * Supabase access token as `auth: { token }`; the user is the token's subject.
  */
-export function registerChatSocket(io: Server, canListen: CanListen): void {
-  io.use((socket, next) => {
+export function registerChatSocket(io: Server, auth: AuthProvider, canListen: CanListen): void {
+  io.use(async (socket, next) => {
     try {
-      socket.data.userId = UserId.of(socket.handshake.auth?.userId).value;
+      const token: unknown = socket.handshake.auth?.token;
+      if (typeof token !== 'string' || token === '') throw new Error('missing token');
+      socket.data.userId = (await auth.verify(token)).userId.value;
       next();
     } catch {
       next(new Error('unauthorized'));

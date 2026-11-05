@@ -3,6 +3,7 @@ import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { DatabaseHealthCheck } from './database/health-check.js';
 import { createPool, createDb } from './database/pool.js';
+import { SupabaseAuthProvider } from './features/auth/supabase-auth-provider.js';
 import { DrizzleBookRepository } from './features/book/book-repository.js';
 import { DrizzleChallengeGroupRepository } from './features/challenge-group/challenge-group-repository.js';
 import { StandingsQuery } from './features/challenge-group/standings-query.js';
@@ -20,6 +21,14 @@ import { DrizzleLibraryQuery } from './features/library/library-query.js';
 import { DrizzleReadingSessionRepository } from './features/reading-session/reading-session-repository.js';
 import { DrizzleReadingStatusRepository } from './features/reading-status/reading-status-repository.js';
 
+if (!env.supabaseUrl) {
+  throw new Error('SUPABASE_URL is not set; the API cannot verify sessions (see .env.example).');
+}
+const authProvider = new SupabaseAuthProvider({
+  url: env.supabaseUrl,
+  jwtSecret: env.supabaseJwtSecret || undefined,
+});
+
 const pool = createPool();
 const db = createDb(pool);
 
@@ -27,6 +36,7 @@ const db = createDb(pool);
 const io = new SocketServer({ cors: { origin: '*' } });
 
 const server = createApp({
+  authProvider,
   healthCheck: new DatabaseHealthCheck(pool),
   bookRepository: new DrizzleBookRepository(db),
   readingStatusRepository: new DrizzleReadingStatusRepository(db),
@@ -45,7 +55,7 @@ const server = createApp({
   groupMembership: new DrizzleGroupMembership(db),
   chatNotifier: new SocketIoChatNotifier(io),
   onChatService: (chat) =>
-    registerChatSocket(io, (groupId, userId) => chat.canListen(groupId, userId)),
+    registerChatSocket(io, authProvider, (groupId, userId) => chat.canListen(groupId, userId)),
 }).listen(env.port, () => {
   console.log(`Backend listening on http://localhost:${env.port}`);
 });

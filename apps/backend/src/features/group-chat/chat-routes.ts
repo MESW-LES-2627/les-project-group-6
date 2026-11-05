@@ -1,17 +1,18 @@
 import { Router } from 'express';
+import { currentUserId } from '../../middleware/auth.js';
 import type { ChatService } from './chat-service.js';
 import { toChatMessageDto } from './chat-dto.js';
 
 // REST is the source of truth for the chat (ADR-0006); the socket only pushes.
-// userId comes from the body/query until Supabase Auth lands; then it comes from the token.
+// The author/reader is always the signed-in user (from the token).
 export function chatRoutes(chat: ChatService): Router {
   const router = Router();
 
   router.post('/groups/:groupId/messages', async (req, res) => {
-    const { userId, clientId, body } = req.body ?? {};
+    const { clientId, body } = req.body ?? {};
     const { message, created } = await chat.send({
       groupId: req.params.groupId,
-      userId,
+      userId: currentUserId(res),
       clientId,
       body,
     });
@@ -19,10 +20,10 @@ export function chatRoutes(chat: ChatService): Router {
   });
 
   router.get('/groups/:groupId/messages', async (req, res) => {
-    const { userId, after, before, limit } = req.query;
+    const { after, before, limit } = req.query;
     const messages = await chat.history({
       groupId: req.params.groupId,
-      userId,
+      userId: currentUserId(res),
       after,
       before,
       limit,
@@ -34,7 +35,7 @@ export function chatRoutes(chat: ChatService): Router {
     await chat.delete({
       groupId: req.params.groupId,
       messageId: req.params.messageId,
-      userId: req.body?.userId,
+      userId: currentUserId(res),
     });
     res.status(204).end();
   });

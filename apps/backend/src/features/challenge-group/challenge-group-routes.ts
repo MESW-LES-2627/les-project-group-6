@@ -1,9 +1,10 @@
 import { Router } from 'express';
+import { currentUserId } from '../../middleware/auth.js';
 import type { ChallengeGroupService } from './challenge-group-service.js';
 import { toChallengeGroupDto } from './challenge-group-dto.js';
 import type { StandingsQuery } from './standings-query.js';
 
-// userId comes from the body/path until Supabase Auth lands; then it comes from the token.
+// The acting reader is always the signed-in user (from the token).
 export function challengeGroupRoutes(
   groups: ChallengeGroupService,
   standings: StandingsQuery,
@@ -11,9 +12,9 @@ export function challengeGroupRoutes(
   const router = Router();
 
   router.post('/groups/challenges', async (req, res) => {
-    const { userId, name, description, startDate, durationDays, winMetric, metricGoal } = req.body;
+    const { name, description, startDate, durationDays, winMetric, metricGoal } = req.body ?? {};
     const { group, status } = await groups.create({
-      userId,
+      userId: currentUserId(res),
       name,
       description,
       startDate,
@@ -32,8 +33,8 @@ export function challengeGroupRoutes(
     });
   });
 
-  router.get('/user/:userId/groups', async (req, res) => {
-    const list = await groups.forMember(req.params.userId);
+  router.get('/me/groups', async (_req, res) => {
+    const list = await groups.forMember(currentUserId(res));
     res.status(200).json(list.map((v) => toChallengeGroupDto(v.group, v.status)));
   });
 

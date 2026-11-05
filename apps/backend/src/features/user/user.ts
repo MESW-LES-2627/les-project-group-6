@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { InvalidValueError } from '../../utils/errors.js';
+import { BusinessRuleViolationError, InvalidValueError } from '../../utils/errors.js';
 import { Uuid } from '../../utils/uuid.js';
 
 export class UserId extends Uuid {
@@ -57,6 +57,27 @@ export class Username {
   }
 }
 
+/** Usernames are unique ignoring case (`Ana_Reads` and `ana_reads` are the same). */
+export class UsernameTakenError extends BusinessRuleViolationError {
+  constructor() {
+    super('This username is already taken', 'USERNAME_TAKEN');
+  }
+}
+
+export const DEFAULT_TIMEZONE = 'Europe/Lisbon';
+
+/** An IANA time zone name such as `Europe/Lisbon`, as reported by the browser. */
+export function validTimezone(raw: unknown): string {
+  if (typeof raw !== 'string' || raw.trim() === '' || raw.length > 100) {
+    throw new InvalidValueError(`Invalid timezone: ${String(raw)}`);
+  }
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone: raw.trim() }).resolvedOptions().timeZone;
+  } catch {
+    throw new InvalidValueError(`Invalid timezone: ${raw}`);
+  }
+}
+
 export type ProfileVisibility = 'private' | 'public';
 
 export interface NewUserProps {
@@ -91,7 +112,7 @@ export class User {
   private _displayName: string;
   readonly photoUrl: string | null;
   readonly bio: string | null;
-  readonly timezone: string;
+  private _timezone: string;
   private _profileVisibility: ProfileVisibility;
   readonly streakType: string;
   readonly currentStreak: number;
@@ -106,7 +127,7 @@ export class User {
     this._displayName = state.displayName;
     this.photoUrl = state.photoUrl;
     this.bio = state.bio;
-    this.timezone = state.timezone;
+    this._timezone = state.timezone;
     this._profileVisibility = state.profileVisibility;
     this.streakType = state.streakType;
     this.currentStreak = state.currentStreak;
@@ -124,7 +145,7 @@ export class User {
       displayName: User.validDisplayName(props.displayName),
       photoUrl: null,
       bio: null,
-      timezone: props.timezone ?? 'Europe/Lisbon',
+      timezone: props.timezone === undefined ? DEFAULT_TIMEZONE : validTimezone(props.timezone),
       profileVisibility: 'private',
       streakType: 'daily',
       currentStreak: 0,
@@ -143,12 +164,20 @@ export class User {
     return this._displayName;
   }
 
+  get timezone(): string {
+    return this._timezone;
+  }
+
   get profileVisibility(): ProfileVisibility {
     return this._profileVisibility;
   }
 
   rename(displayName: string): void {
     this._displayName = User.validDisplayName(displayName);
+  }
+
+  moveTo(timezone: string): void {
+    this._timezone = validTimezone(timezone);
   }
 
   makeProfilePublic(): void {
