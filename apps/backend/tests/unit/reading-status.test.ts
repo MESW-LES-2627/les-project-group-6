@@ -80,4 +80,63 @@ describe('ReadingStatus', () => {
   test('ReadingState.of rejects unknown statuses', () => {
     assert.throws(() => ReadingState.of('reading'), InvalidReadingStatusError);
   });
+
+  describe('reading dates', () => {
+    test('a new entry starts with null dates', () => {
+      const entry = newEntry();
+      assert.strictEqual(entry.startedOn, null);
+      assert.strictEqual(entry.finishedOn, null);
+    });
+
+    test('starting to read sets startedOn to given or current day', () => {
+      const entry = newEntry();
+      entry.startReading('2026-10-15');
+      assert.strictEqual(entry.startedOn, '2026-10-15');
+      assert.strictEqual(entry.finishedOn, null);
+    });
+
+    test('finishing sets finishedOn and startedOn if startedOn was missing', () => {
+      const entry = newEntry();
+      entry.finish(PAGES, '2026-10-20');
+      assert.strictEqual(entry.startedOn, '2026-10-20');
+      assert.strictEqual(entry.finishedOn, '2026-10-20');
+    });
+
+    test('finishing keeps earlier startedOn if already set', () => {
+      const entry = newEntry();
+      entry.startReading('2026-10-10');
+      entry.finish(PAGES, '2026-10-20');
+      assert.strictEqual(entry.startedOn, '2026-10-10');
+      assert.strictEqual(entry.finishedOn, '2026-10-20');
+    });
+
+    test('re-reading resets finishedOn to null', () => {
+      const entry = newEntry();
+      entry.startReading('2026-10-10');
+      entry.finish(PAGES, '2026-10-20');
+      assert.strictEqual(entry.finishedOn, '2026-10-20');
+
+      entry.startReading('2026-11-01');
+      assert.strictEqual(entry.status, 'in-progress');
+      assert.strictEqual(entry.finishedOn, null);
+    });
+
+    test('setDates updates startedOn and finishedOn when valid', () => {
+      const entry = newEntry();
+      entry.setDates('2026-09-01', '2026-09-15');
+      assert.strictEqual(entry.startedOn, '2026-09-01');
+      assert.strictEqual(entry.finishedOn, '2026-09-15');
+    });
+
+    test('setDates rejects invalid date formats', () => {
+      const entry = newEntry();
+      assert.throws(() => entry.setDates('not-a-date', null));
+      assert.throws(() => entry.setDates(null, '2026-02-30'));
+    });
+
+    test('setDates rejects finishedOn earlier than startedOn', () => {
+      const entry = newEntry();
+      assert.throws(() => entry.setDates('2026-10-20', '2026-10-10'));
+    });
+  });
 });
