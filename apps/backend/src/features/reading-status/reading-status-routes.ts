@@ -6,15 +6,15 @@ export function readingStatusRoutes(readingStatuses: ReadingStatusService): Rout
   const router = Router();
 
   router.put('/reading-status', async (req, res) => {
-    const { userId, bookId, status, currentPage } = req.body;
+    const { userId, bookId, status, currentPage } = req.body ?? {};
     const entry = await readingStatuses.set({ userId, bookId, status, currentPage });
     res.status(200).json(toReadingStatusDto(entry));
   });
 
   const update: RequestHandler = async (req, res) => {
-    const { userId, bookId, status, currentPage } = req.body;
+    const { userId, bookId, status, currentPage } = req.body ?? {};
     const entry = await readingStatuses.update({
-      id: req.params.id ?? req.body.id,
+      id: req.params.id ?? req.body?.id,
       userId,
       bookId,
       status,

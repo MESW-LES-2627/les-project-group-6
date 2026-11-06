@@ -31,6 +31,17 @@ export function bookRoutes(books: BookService): Router {
     res.status(200).json(toBookDto(book));
   });
 
+  router.post('/book/open-library', async (req, res) => {
+    const query =
+      typeof req.body?.query === 'string'
+        ? req.body.query
+        : typeof req.query?.query === 'string'
+          ? req.query.query
+          : undefined;
+    const imported = await books.importFromOpenLibrary(query);
+    res.status(200).json(imported.map(toBookDto));
+  });
+
   router.delete('/book/:id', async (req, res) => {
     await books.remove(req.params.id);
     res.status(204).send();

@@ -3,6 +3,7 @@ import type { DatabaseHealthCheck } from '../database/health-check.js';
 import type { IBookRepository } from '../features/book/book-repository.js';
 import { bookRoutes } from '../features/book/book-routes.js';
 import { BookService } from '../features/book/book-service.js';
+import { OpenLibraryService } from '../features/book/open-library-service.js';
 import type { LibraryQuery } from '../features/library/library-query.js';
 import { libraryRoutes } from '../features/library/library-routes.js';
 import type { IReadingStatusRepository } from '../features/reading-status/reading-status-repository.js';
@@ -41,6 +42,7 @@ import { healthRoutes } from './health-routes.js';
 export interface ApiDependencies {
   healthCheck?: DatabaseHealthCheck;
   bookRepository?: IBookRepository;
+  openLibrary?: OpenLibraryService;
   readingStatusRepository?: IReadingStatusRepository;
   libraryQuery?: LibraryQuery;
   readingSessionRepository?: IReadingSessionRepository;
@@ -68,6 +70,7 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
   const {
     healthCheck,
     bookRepository,
+    openLibrary = new OpenLibraryService(),
     readingStatusRepository,
     libraryQuery,
     readingSessionRepository,
@@ -89,7 +92,7 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
   router.use(healthRoutes(healthCheck));
 
   if (bookRepository) {
-    router.use(bookRoutes(new BookService(bookRepository)));
+    router.use(bookRoutes(new BookService(bookRepository, openLibrary)));
   }
 
   if (bookRepository && readingStatusRepository) {

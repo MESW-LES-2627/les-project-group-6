@@ -1,12 +1,13 @@
-import { eq, ilike } from 'drizzle-orm';
+import { and, eq, ilike } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { books } from '../../database/schema.js';
+import { authors, bookAuthors, books } from '../../database/schema.js';
 import { Book, BookId, BookTitle, Isbn13, PageCount } from './book.js';
 
 export interface IBookRepository {
   findById(id: BookId): Promise<Book | null>;
   findByTitle(title: string): Promise<Book[]>;
-  save(book: Book): Promise<void>;
+  findByTitleAndAuthor(title: string, authorName?: string | null): Promise<Book | null>;
+  save(book: Book, authorName?: string | null): Promise<void>;
   delete(id: BookId): Promise<boolean>;
 }
 
@@ -56,7 +57,32 @@ export class DrizzleBookRepository implements IBookRepository {
     return rows.map(toDomain);
   }
 
-  async save(book: Book): Promise<void> {
+  async findByTitleAndAuthor(title: string, authorName?: string | null): Promise<Book | null> {
+    const cleanTitle = title.trim();
+    if (!cleanTitle) return null;
+
+    if (authorName && authorName.trim()) {
+      const rows = await this.db
+        .select({ book: books })
+        .from(books)
+        .innerJoin(bookAuthors, eq(bookAuthors.bookId, books.id))
+        .innerJoin(authors, eq(authors.id, bookAuthors.authorId))
+        .where(and(ilike(books.title, cleanTitle), ilike(authors.name, authorName.trim())))
+        .limit(1);
+
+      if (rows[0]) return toDomain(rows[0].book);
+    }
+
+    const byTitle = await this.db
+      .select()
+      .from(books)
+      .where(ilike(books.title, cleanTitle))
+      .limit(1);
+
+    return byTitle[0] ? toDomain(byTitle[0]) : null;
+  }
+
+  async save(book: Book, authorName?: string | null): Promise<void> {
     const row = toRow(book);
     await this.db
       .insert(books)
@@ -72,6 +98,25 @@ export class DrizzleBookRepository implements IBookRepository {
           isCommunityAdded: row.isCommunityAdded,
         },
       });
+
+    if (authorName && authorName.trim()) {
+      const cleanAuthor = authorName.trim();
+      let authorRow = (
+        await this.db.select().from(authors).where(ilike(authors.name, cleanAuthor)).limit(1)
+      )[0];
+
+      if (!authorRow) {
+        const inserted = await this.db.insert(authors).values({ name: cleanAuthor }).returning();
+        authorRow = inserted[0];
+      }
+
+      if (authorRow) {
+        await this.db
+          .insert(bookAuthors)
+          .values({ bookId: book.id.value, authorId: authorRow.id })
+          .onConflictDoNothing();
+      }
+    }
   }
 
   async delete(id: BookId): Promise<boolean> {
