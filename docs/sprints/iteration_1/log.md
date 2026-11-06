@@ -36,3 +36,22 @@ A running record of what the team did and decided in iteration 1. The [release n
 
 - Ran the redesigned pages against a local PostgreSQL 17 database (migrated and seeded) instead of the mock fallback. Checked: the library lists the seeded books, the book detail saves the current page, accepting an invite joins the group, creating a challenge and a book club opens their pages, chat messages are stored and shown, and a book club vote takes a proposal and a vote. Library and groups have no sideways scroll at 500 px.
 - Fixed two things that only showed with real data. A challenge with no scores yet showed "#0" in the plate and in the standings; it now shows "Not ranked yet" with no rank circle, and a dash in the standings. The book club plate said "1 members"; it now says "1 member". Added a view test for the unranked challenge (93 passing).
+
+### 2026-11-05: Supabase authentication (F-AUTH-01, #7)
+
+- Commits: `08724b2` (backend), `00f1957` (frontend), `9d9b261` (docs), on the branch of PR [#116](https://github.com/MESW-LES-2627/les-project-group-6/pull/116). Not merged or deployed yet.
+
+- **Backend.** Every route except `GET /health` and `GET /usernames/:username/availability` now needs `Authorization: Bearer <Supabase JWT>`. [`SupabaseAuthProvider`](../../../apps/backend/src/features/auth/supabase-auth-provider.ts) verifies it with the project's JWKS (`jose`) behind our `AuthProvider` port (ADR-0002), and [`authenticate` / `requireUser`](../../../apps/backend/src/middleware/auth.ts) answer `401 UNAUTHENTICATED` or `403 PROFILE_REQUIRED`. New `POST/GET/PATCH /me` ([`UserService`](../../../apps/backend/src/features/user/user-service.ts), [`me-routes`](../../../apps/backend/src/features/user/me-routes.ts)). Migration `0004` adds a unique index on `lower(username)`; a taken username gives `409 USERNAME_TAKEN`.
+- **Decision: the acting reader always comes from the token.** Every route that read `userId` from the body, query or path now uses the token's user, and `/user/:userId/...` became `/me/...` (library, reading sessions, stats, groups, book clubs, invites, friends). The chat socket handshake sends `{ token }`. *Rejected:* keeping `userId` parameters and checking they match the token, as more code for the same result and easy to forget on a new route.
+- **Kept from the existing schema:** the `users` row keeps `email` (filled from the token) and the streak columns, because other features already use them; issue #7's "no email column" was not applied.
+- **Frontend.** One Supabase client (“Keep me signed in” chooses local or session storage), a [session store](../../../apps/frontend/src/stores/session.ts), a router guard, a [`/complete-profile`](../../../apps/frontend/src/views/CompleteProfileView.vue) step for a session without a `users` row, and Sign out in the header. Sign-up checks the username before creating the Supabase account, then creates the profile with the browser timezone. `services/api.ts` adds the token to every request; `DEMO_USER_ID` is gone.
+- **Tests.** Backend 179 passing (fake `AuthProvider`, JWKS and HS256 tests, `/me` integration tests); frontend 125 passing (session store, guard, login, complete-profile, header).
+- **Deploy:** `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` go on the frontend static site (build time); `SUPABASE_URL` goes on the backend service, which refuses to start without it.
+
+### 2026-11-06: API routes reference
+
+- Wrote [`docs/architecture/api_routes.md`](../../architecture/api_routes.md): every backend REST endpoint with its auth rule and a one-line description, the group chat Socket.IO connection and events (`group:join`, `group:leave`, `message:new`, `message:deleted`), and the frontend routes. It includes the routes from the Supabase authentication branch (#7).
+
+### 2026-11-06: Iteration 1 claim
+
+- Filled in [`CLAIM.md`](CLAIM.md): links on tag `iter-1` to the MVP, Vision and Definition of Done (iteration 0 folder), the release tags (frontend `v0.8.0`, backend `v0.7.0`), production and staging, the eight CI/CD workflows with one line each, the stories closed from 2026-10-26 to 2026-11-06 plus the ones in progress (#7, #28, #33, #31), this log as the retrospective, and the [LLM log](LLM_LOG.md).

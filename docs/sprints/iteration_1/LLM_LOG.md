@@ -360,3 +360,53 @@ implementa agora todos os screens que fizemos la no claude design aqui .
 
 #### Explanation of Changes
 Implemented the base code for the redesign in the Vue app. Added a shared `PagePlate` component for the burgundy band (same height on every page), a `BookCoverImage` component with a title fallback, and shared styles in `main.css` (page tabs, section headings, fields, link buttons). Rebuilt the library, groups list, challenge, book club, login and home views on top of them, with Inter for page titles and Lora for book titles. API calls in `services/api.ts` and the backend were left untouched. Removed from the old screens: the challenge Members and History tabs, the member-side anonymous voting switch, decorative slogans, progress rings, emoji and the unused chat media buttons. Updated the view and component tests (92 passing), lint and typecheck. 
+
+### 2026-11-05: Supabase authentication (F-AUTH-01)
+
+- **Date:** 2026-11-05
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, frontend, database, testing, docs
+
+#### Prompt
+```text
+ok, so, you will notice that we already have the auth pages, sign up page and login page, however, everything is mocked. We want to implement the authentication part. I already have the supabase setup ready to use and the databases there. I have the VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
+```
+(Scope chosen in the conversation: the full issue #7, including moving every existing route to the token's user.)
+
+#### Explanation of Changes
+Implemented issue #7. Backend: `AuthProvider` port with a `SupabaseAuthProvider` (JWKS verification with `jose`, optional legacy HS256 secret), `authenticate`/`requireUser` middleware, `UserService` and `POST/GET/PATCH /me`, a public username availability check, a case-insensitive unique username index (migration 0004), and every route and the chat socket switched from a `userId` parameter to the token's user (`/user/:userId/...` → `/me/...`). Frontend: single Supabase client with "keep me signed in" storage, a session store, a router guard, a complete-profile page, sign out in the header, and the API client sending the bearer token. Updated and added backend tests (179) and frontend tests (125), and the READMEs.
+
+### 2026-11-06: API routes reference
+
+- **Date:** 2026-11-06
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs
+
+#### Prompt
+```text
+create a md file with all routes and endpoins we have until now inside the app (include this branch). Also gives a 1 line description of what the request do. About the chat, its a websocket, so describe it too
+```
+
+#### Explanation of Changes
+Generated `docs/architecture/api_routes.md` from the route files in `apps/backend/src/features/*`, the Socket.IO adapter and client, and the Vue router. It lists the REST endpoints with auth rules, the chat socket handshake, events and flow, and the frontend routes. Linked it from `README.md` and `docs/README.md`.
+
+### 2026-11-06: Iteration 1 claim links
+
+- **Date:** 2026-11-06
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs
+
+#### Prompt
+```text
+can you update the links of @docs/sprints/iteration_1/CLAIM.md ?
+```
+(Then given: the prod and stg URLs, tag `iter-1` plus the frontend and backend versions, every CI/CD pipeline with a one-line explanation, stories closed this week and last week plus in progress, log.md as the retrospective and LLM_LOG.md as the AI log.)
+
+#### Explanation of Changes
+Filled in `docs/sprints/iteration_1/CLAIM.md` from the repository: permalinks on `iter-1`, release tags from `git tag` and the diff of each release, the workflow table from the headers of `.github/workflows/*.yml`, and the stories from `gh issue list` (closed since 2026-10-26) and the open PRs that close issues. The in-progress list is inferred from open PRs and assignees, because the project board could not be read.
