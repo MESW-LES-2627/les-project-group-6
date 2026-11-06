@@ -22,6 +22,7 @@ A running record of what the team did and decided in iteration 0. The [release n
 | Database connection and migrations (#63) | Done (connection pooling, migrations with Drizzle, health check, repository pattern, integration tests) |
 | Backend domain model (OOP/DDD) | Rich entities with value objects, `ReadingStatus` lifecycle with the State pattern, use cases, Data Mappers and a library query object |
 | Vertical prototype book CRUD (#78) | Done: Book CRUD, ReadingStatus tracking, user library endpoint, database seed with covers, and integration tests |
+| Open Library book integration | Done: OpenLibraryService, deduplication by title/author, and POST /book/open-library endpoint |
 | Frontend routes (#64) | Initial routes implemented |
 | Authentication UI and Supabase skeleton | Reference-based `/login` forms and adapter/integration tests implemented; credentials, trusted username flow, provider UI and live session lifecycle pending |
 | Frontend foundations (#64) | Shared tokens and Lora/Inter typography, Home health status, lint/format/typecheck/component tests and CI implemented |
@@ -424,6 +425,14 @@ Applied the fixes found by the first `oop-ddd-review` run, one commit each. The 
 ### 2026-10-31: Books on the challenge leaderboard
 
 - Each leaderboard standing now lists the books its minutes were read in (`books: [{ bookId, title, minutes }]`), since a reader can read several books in one challenge. The [standings query](../../../apps/backend/src/features/challenge-group/standings-query.ts) groups finished sessions by member **and** book and joins `books` for the title; the score is their sum. The [leaderboard](../../../apps/frontend/src/components/groups/GroupLeaderboard.vue) shows them under each member, most minutes first. Checked against a migrated database: 10 + 12 min of Emma and 15 min of The Midnight Library give a score of 37, and a session finished before the challenge is excluded.
+
+### 2026-11-06: Open Library book import endpoint and service
+
+- Added [`OpenLibraryService`](../../../apps/backend/src/features/book/open-library-service.ts) to query Open Library search API (`/search.json`) and trending API (`/trending/daily.json`), mapping book titles, authors, ISBN-13, median page counts, descriptions, and cover image URLs via the Covers API (`https://covers.openlibrary.org/b/olid/{olid}-L.jpg`).
+- Extended [`IBookRepository`](../../../apps/backend/src/features/book/book-repository.ts) and [`DrizzleBookRepository`](../../../apps/backend/src/features/book/book-repository.ts) with `findByTitleAndAuthor()` and updated `save()` to associate or create the author in `authors` and `book_authors`. Updated `InMemoryBookRepository` in tests to mirror this behavior.
+- Added `importFromOpenLibrary(query?: string)` to [`BookService`](../../../apps/backend/src/features/book/book-service.ts) to search and deduplicate against existing books by title and author before creating and persisting new books.
+- Added `POST /book/open-library` route in [`book-routes.ts`](../../../apps/backend/src/features/book/book-routes.ts) accepting an optional `query` string in JSON body or query parameters, returning the imported books as `BookDto[]`.
+- Added unit tests for `OpenLibraryService` and `BookService` and an integration test for `POST /book/open-library` (all 147 backend tests pass).
 
 ## Next steps
 

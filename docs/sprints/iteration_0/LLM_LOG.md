@@ -838,3 +838,25 @@ yes
 ```
 (Commit and open the PR.) `main` had gained the ADR-0006 group chat meanwhile, so the branch merged it, dropped its own chat, and made book clubs post their system messages through the chat's `SystemMessages` port; the migration became `0003_book_clubs`.
 
+### 2026-11-06: Open Library import service and endpoint
+
+- **Date:** 2026-11-06
+- **Author:** Robert Gleison
+- **Model:** Gemini 2.5 Pro
+- **Tool:** Antigravity
+- **Domain:** backend, database, testing, docs
+
+#### Prompt
+```text
+I want books to be pushed from OpenLibrary API, when specified to, there is a button on the search of books that calls an api endpoints design specifically to make a call to open library API and push the 5 top searches for a specific query or just the top 5 books when that query is empty. Before pushing it should check if that book already exists in the database going by name and author.
+Create just a OpenLibraryService that handles the pulling and api calls to open library, asside that you should append the results to already existing domains, dont create new things if not needed.
+
+https://openlibrary.org/developers/api
+https://openlibrary.org/dev/docs/api/search
+https://openlibrary.org/dev/docs/api/covers
+```
+
+#### Explanation of Changes
+Implemented `OpenLibraryService` to fetch book data and book cover images via Open Library APIs (using `/search.json` for queries and `/trending/daily.json` for empty/blank searches). Extended `IBookRepository` and `DrizzleBookRepository` with `findByTitleAndAuthor` and author upserting in `save()`. Added `importFromOpenLibrary(query)` to `BookService` to verify existence before creating books. Exposed `POST /book/open-library` in `book-routes.ts` and wired it into `apiRouter`. Added unit and integration tests (147 passing backend tests).
+
+

@@ -29,6 +29,7 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | -------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET`    | `/health`                                                 | Health check returning `{ "status": "ok", "db": "ok" }`                                                                                                                                                   |
 | `POST`   | `/book`                                                   | Creates a new book (`201 Created`, requires `title`)                                                                                                                                                      |
+| `POST`   | `/book/open-library`                                      | Fetches top 5 books from Open Library (query or trending), saves new books, and returns them (`200 OK`)                                                                                                   |
 | `GET`    | `/book?title=...`                                         | Lists books or filters by title substring (`200 OK`)                                                                                                                                                      |
 | `GET`    | `/book/:id`                                               | Returns a single book by UUID (`200 OK` or `404 Not Found`)                                                                                                                                               |
 | `DELETE` | `/book/:id`                                               | Deletes a book by UUID (`204 No Content` or `404 Not Found`)                                                                                                                                              |
@@ -99,8 +100,8 @@ apps/backend/
 ├── src/
 │   ├── features/          # One folder per feature, with everything about it
 │   │   ├── book/          # book.ts (Book + value objects), book-repository.ts (interface + Drizzle + mapper),
-│   │   │                  # book-service.ts (get/register/search/remove), book-dto.ts (JSON shape + mapper),
-│   │   │                  # book-routes.ts (routes)
+│   │   │                  # book-service.ts (get/register/search/remove/importFromOpenLibrary), open-library-service.ts,
+│   │   │                  # book-dto.ts (JSON shape + mapper), book-routes.ts (routes)
 │   │   ├── reading-status/ # ReadingStatus aggregate, ReadingState (State pattern) + PageProgress, repository, service, DTO, routes
 │   │   ├── challenge-group/ # ChallengeGroup aggregate (groups + member + challenges), repository, standings query, service, DTO, routes
 │   │   ├── group/         # Shared kernel of every group: GroupId, GroupName, memberships, GroupRoster, MemberJoined event
