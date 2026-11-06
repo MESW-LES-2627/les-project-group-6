@@ -45,6 +45,7 @@ import type { User, UserId, Username } from '../../src/features/user/user.js';
 // Test doubles that honour the repository contracts without a database.
 export class InMemoryBookRepository implements IBookRepository {
   private readonly books = new Map<string, Book>();
+  private readonly authors = new Map<string, string>();
 
   async findById(id: BookId): Promise<Book | null> {
     return this.books.get(id.value) ?? null;
@@ -55,11 +56,33 @@ export class InMemoryBookRepository implements IBookRepository {
     return [...this.books.values()].filter((b) => b.title.value.toLowerCase().includes(query));
   }
 
-  async save(book: Book): Promise<void> {
+  async findByTitleAndAuthor(title: string, authorName?: string | null): Promise<Book | null> {
+    const query = title.toLowerCase().trim();
+    const cleanAuthor = authorName?.toLowerCase().trim();
+
+    if (cleanAuthor) {
+      const match = [...this.books.values()].find((b) => {
+        const titleMatch = b.title.value.toLowerCase().trim() === query;
+        const authorMatch = this.authors.get(b.id.value)?.toLowerCase().trim() === cleanAuthor;
+        return titleMatch && authorMatch;
+      });
+      if (match) return match;
+    }
+
+    return (
+      [...this.books.values()].find((b) => b.title.value.toLowerCase().trim() === query) ?? null
+    );
+  }
+
+  async save(book: Book, authorName?: string | null): Promise<void> {
     this.books.set(book.id.value, book);
+    if (authorName) {
+      this.authors.set(book.id.value, authorName);
+    }
   }
 
   async delete(id: BookId): Promise<boolean> {
+    this.authors.delete(id.value);
     return this.books.delete(id.value);
   }
 }

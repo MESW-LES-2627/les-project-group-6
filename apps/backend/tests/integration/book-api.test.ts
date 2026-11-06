@@ -166,4 +166,30 @@ describe('Book API Endpoints', () => {
       assert.strictEqual(response.status, 404);
     });
   });
+
+  test('POST /book/open-library fetches books and persists them', async () => {
+    await withApp(app, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/book/open-library`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'dune' }),
+      });
+
+      assert.strictEqual(response.status, 200);
+      const data = (await response.json()) as Array<{ id: string; title: string }>;
+      assert.ok(Array.isArray(data));
+      assert.ok(data.length > 0);
+      assert.ok(data[0]?.title.toLowerCase().includes('dune'));
+
+      // Re-fetching the same query should return books without duplication errors
+      const secondResponse = await fetch(`${baseUrl}/book/open-library`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'dune' }),
+      });
+      assert.strictEqual(secondResponse.status, 200);
+      const secondData = (await secondResponse.json()) as Array<{ id: string }>;
+      assert.strictEqual(secondData[0]?.id, data[0]?.id);
+    });
+  });
 });
