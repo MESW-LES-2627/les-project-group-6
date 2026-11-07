@@ -67,7 +67,7 @@ jobs:
             git push origin "refs/tags/$TAG"
           fi
 
-          args=(--title "Iteration $n" --verify-tag --generate-notes --latest)
+          args=(--title "$TAG" --verify-tag --generate-notes --latest)
           notes="docs/sprints/iteration_$n/release_notes.md"
           if [ -s "$notes" ]; then
             args+=(--notes-file "$notes")
