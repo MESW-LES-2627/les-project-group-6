@@ -51,7 +51,7 @@ describe('ChallengeGroupService', () => {
       mine.map((v) => v.group.id.value),
       [group.id.value],
     );
-    assert.ok((await service.get(group.id.value)).group.id.equals(group.id));
+    assert.ok((await service.get(group.id.value, USER_ID)).group.id.equals(group.id));
   });
 
   test('an unknown reader cannot create a group', async () => {
@@ -66,6 +66,17 @@ describe('ChallengeGroupService', () => {
   });
 
   test('getting an unknown group fails', async () => {
-    await assert.rejects(service.get('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a99'), NotFoundError);
+    await assert.rejects(
+      service.get('c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a99', USER_ID),
+      NotFoundError,
+    );
+  });
+
+  test('a reader who is not a member gets the group as not found', async () => {
+    const { group } = await service.create(form);
+    await assert.rejects(
+      service.get(group.id.value, 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12'),
+      NotFoundError,
+    );
   });
 });

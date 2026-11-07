@@ -44,7 +44,9 @@ export function bookClubRoutes(
   });
 
   router.get('/groups/book-clubs/:id', async (req, res) => {
-    const view = await clubs.get(req.params.id);
+    const reader = currentUser(res).id;
+    // Membership is checked before any standings or poll data is read.
+    const view = await clubs.get(req.params.id, reader.value);
     const { club } = view;
     const [books, standings, poll] = await Promise.all([
       progress.books(club.rounds.map((r) => r.bookId.value)),
@@ -58,7 +60,7 @@ export function bookClubRoutes(
           view,
           books,
           standings,
-          poll ? await pollDto(poll, view, currentUser(res).id) : null,
+          poll ? await pollDto(poll, view, reader) : null,
         ),
       );
   });
@@ -82,19 +84,25 @@ export function bookClubRoutes(
     const { closesAt, anonymous } = req.body ?? {};
     const user = currentUser(res);
     const poll = await polls.open(req.params.id, { userId: user.id.value, closesAt, anonymous });
-    res.status(201).json(await pollDto(poll, await clubs.get(req.params.id), user.id));
+    res
+      .status(201)
+      .json(await pollDto(poll, await clubs.get(req.params.id, user.id.value), user.id));
   });
 
   router.post('/groups/book-clubs/:id/poll/proposals', async (req, res) => {
     const user = currentUser(res);
     const poll = await polls.propose(req.params.id, user.id.value, req.body?.bookId);
-    res.status(201).json(await pollDto(poll, await clubs.get(req.params.id), user.id));
+    res
+      .status(201)
+      .json(await pollDto(poll, await clubs.get(req.params.id, user.id.value), user.id));
   });
 
   router.put('/groups/book-clubs/:id/poll/vote', async (req, res) => {
     const user = currentUser(res);
     const poll = await polls.vote(req.params.id, user.id.value, req.body?.proposalId);
-    res.status(200).json(await pollDto(poll, await clubs.get(req.params.id), user.id));
+    res
+      .status(200)
+      .json(await pollDto(poll, await clubs.get(req.params.id, user.id.value), user.id));
   });
 
   return router;

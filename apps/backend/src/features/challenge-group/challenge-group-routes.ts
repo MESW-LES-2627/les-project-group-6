@@ -26,7 +26,7 @@ export function challengeGroupRoutes(
   });
 
   router.get('/groups/challenges/:id', async (req, res) => {
-    const { group, status } = await groups.get(req.params.id);
+    const { group, status } = await groups.get(req.params.id, currentUserId(res));
     res.status(200).json({
       ...toChallengeGroupDto(group, status),
       standings: await standings.forGroup(group),
