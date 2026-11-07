@@ -179,4 +179,21 @@ describe('Group chat API and socket', () => {
     const rejected = await new Promise<Error>((resolve) => forged.once('connect_error', resolve));
     assert.equal(rejected.message, 'unauthorized');
   });
+
+  test('the server closes a socket when its token expires', async () => {
+    const expiring = connect(baseUrl, {
+      auth: { token: tokenFor(ADMIN, undefined, new Date(Date.now() + 300)) },
+      transports: ['websocket'],
+      reconnection: false,
+    });
+    sockets.push(expiring);
+    await new Promise<void>((resolve, reject) => {
+      expiring.once('connect', resolve);
+      expiring.once('connect_error', reject);
+    });
+    assert.deepEqual(await expiring.emitWithAck('group:join', groupId), { ok: true });
+
+    const reason = await new Promise<string>((resolve) => expiring.once('disconnect', resolve));
+    assert.equal(reason, 'io server disconnect');
+  });
 });

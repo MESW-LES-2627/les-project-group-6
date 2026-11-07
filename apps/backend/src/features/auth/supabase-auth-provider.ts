@@ -46,7 +46,8 @@ export class SupabaseAuthProvider implements AuthProvider {
     } catch {
       email = null;
     }
-    return { userId, email };
+    const expiresAt = typeof payload.exp === 'number' ? new Date(payload.exp * 1000) : null;
+    return { userId, email, expiresAt };
   }
 
   private async verifiedPayload(token: string): Promise<JWTPayload & { email?: unknown }> {

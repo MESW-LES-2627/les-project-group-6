@@ -16,6 +16,7 @@ import { InMemoryUserRepository } from '../helpers/in-memory-repositories.js';
 const identity = (email: string | null = 'ana@example.com'): AuthIdentity => ({
   userId: UserId.generate(),
   email: email === null ? null : Email.of(email),
+  expiresAt: null,
 });
 
 describe('UserService', () => {

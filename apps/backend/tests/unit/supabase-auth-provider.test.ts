@@ -56,6 +56,9 @@ describe('SupabaseAuthProvider', () => {
     const identity = await provider.verify(await sign());
     assert.equal(identity.userId.value, SUB);
     assert.equal(identity.email?.value, 'ana@example.com');
+    // Expiry comes from the `exp` claim (1h from now, to the second).
+    const msLeft = identity.expiresAt!.getTime() - Date.now();
+    assert.ok(msLeft > 3_590_000 && msLeft <= 3_600_000, `unexpected expiry in ${msLeft} ms`);
   });
 
   test('a token without a usable email still identifies the user', async () => {

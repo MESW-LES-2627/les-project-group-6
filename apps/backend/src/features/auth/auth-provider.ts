@@ -8,6 +8,8 @@ import type { Email, UserId } from '../user/user.js';
 export interface AuthIdentity {
   userId: UserId;
   email: Email | null;
+  /** When the token stops being valid; null when it has no expiry. */
+  expiresAt: Date | null;
 }
 
 /**

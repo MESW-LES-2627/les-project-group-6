@@ -30,16 +30,23 @@ export class SocketIoChatNotifier implements ChatNotifier {
   }
 }
 
+// setTimeout fires at once for delays above this (about 24.8 days).
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
 /**
  * Registers the connection handshake and the room events. The client sends its
  * Supabase access token as `auth: { token }`; the user is the token's subject.
+ * The token is only checked here, so the socket is closed when it expires; the
+ * client reconnects with a fresh token.
  */
 export function registerChatSocket(io: Server, auth: AuthProvider, canListen: CanListen): void {
   io.use(async (socket, next) => {
     try {
       const token: unknown = socket.handshake.auth?.token;
       if (typeof token !== 'string' || token === '') throw new Error('missing token');
-      socket.data.userId = (await auth.verify(token)).userId.value;
+      const identity = await auth.verify(token);
+      socket.data.userId = identity.userId.value;
+      socket.data.expiresAt = identity.expiresAt;
       next();
     } catch {
       next(new Error('unauthorized'));
@@ -49,6 +56,13 @@ export function registerChatSocket(io: Server, auth: AuthProvider, canListen: Ca
   io.on('connection', (socket: Socket) => {
     const userId: string = socket.data.userId;
     void socket.join(userRoomOf(userId));
+
+    const expiresAt: Date | null = socket.data.expiresAt;
+    const msLeft = expiresAt ? expiresAt.getTime() - Date.now() : null;
+    if (msLeft !== null && msLeft <= MAX_TIMER_MS) {
+      const expiry = setTimeout(() => socket.disconnect(true), Math.max(0, msLeft));
+      socket.once('disconnect', () => clearTimeout(expiry));
+    }
 
     socket.on('group:join', async (groupId: unknown, ack?: JoinAck) => {
       try {
