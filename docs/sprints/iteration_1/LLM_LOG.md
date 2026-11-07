@@ -378,6 +378,39 @@ ok, so, you will notice that we already have the auth pages, sign up page and lo
 #### Explanation of Changes
 Implemented issue #7. Backend: `AuthProvider` port with a `SupabaseAuthProvider` (JWKS verification with `jose`, optional legacy HS256 secret), `authenticate`/`requireUser` middleware, `UserService` and `POST/GET/PATCH /me`, a public username availability check, a case-insensitive unique username index (migration 0004), and every route and the chat socket switched from a `userId` parameter to the token's user (`/user/:userId/...` → `/me/...`). Frontend: single Supabase client with "keep me signed in" storage, a session store, a router guard, a complete-profile page, sign out in the header, and the API client sending the bearer token. Updated and added backend tests (179) and frontend tests (125), and the READMEs.
 
+### 2026-11-06: API routes reference
+
+- **Date:** 2026-11-06
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs
+
+#### Prompt
+```text
+create a md file with all routes and endpoins we have until now inside the app (include this branch). Also gives a 1 line description of what the request do. About the chat, its a websocket, so describe it too
+```
+
+#### Explanation of Changes
+Generated `docs/architecture/api_routes.md` from the route files in `apps/backend/src/features/*`, the Socket.IO adapter and client, and the Vue router. It lists the REST endpoints with auth rules, the chat socket handshake, events and flow, and the frontend routes. Linked it from `README.md` and `docs/README.md`.
+
+### 2026-11-06: Iteration 1 claim links
+
+- **Date:** 2026-11-06
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs
+
+#### Prompt
+```text
+can you update the links of @docs/sprints/iteration_1/CLAIM.md ?
+```
+(Then given: the prod and stg URLs, tag `iter-1` plus the frontend and backend versions, every CI/CD pipeline with a one-line explanation, stories closed this week and last week plus in progress, log.md as the retrospective and LLM_LOG.md as the AI log.)
+
+#### Explanation of Changes
+Filled in `docs/sprints/iteration_1/CLAIM.md` from the repository: permalinks on `iter-1`, release tags from `git tag` and the diff of each release, the workflow table from the headers of `.github/workflows/*.yml`, and the stories from `gh issue list` (closed since 2026-10-26) and the open PRs that close issues. The in-progress list is inferred from open PRs and assignees, because the project board could not be read.
+
 ### 2026-11-07: Security review fixes on the auth PR (#116)
 
 - **Date:** 2026-11-07

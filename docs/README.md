@@ -61,6 +61,7 @@ Technical models of the system. They are not tied to an iteration: update them a
 | File | Purpose | Status |
 |---|---|---|
 | [`table_UML.md`](architecture/table_UML.md) | Database tables UML (v1.0): every table with its columns, keys and relationships, derived from `LES-UML.drawio` and the requirements v1.1, plus the mapping decisions. | ✅ |
+| [`api_routes.md`](architecture/api_routes.md) | Every backend REST endpoint, the group chat Socket.IO events and the frontend routes, each with a one-line description and its auth rule. | ✅ |
 | [`infra.md`](architecture/infra.md) | Infrastructure for Core: database, backend server, frontend hosting, external services, environments, CI/CD and secrets. Also records the infra decisions (compute on read with no background jobs, user identity linked to Supabase Auth, user timezone) and the open ones. | ✅ (draft) |
 
 ## `sprints/`

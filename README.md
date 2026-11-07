@@ -77,7 +77,7 @@ Per-app files stay in each app: `package.json`, `tsconfig.json`, ESLint config, 
 All project documentation. See [docs/README.md](docs/README.md) for an index that explains each folder and file.
 
 - `docs/ADRs/`: Architecture Decision Records. The technical decisions the team makes, with their context and consequences.
-- `docs/architecture/`: technical models of the system, such as the [database tables UML](docs/architecture/table_UML.md) and the [infrastructure](docs/architecture/infra.md).
+- `docs/architecture/`: technical models of the system, such as the [database tables UML](docs/architecture/table_UML.md), the [API routes and chat WebSocket](docs/architecture/api_routes.md) and the [infrastructure](docs/architecture/infra.md).
 - `docs/design/`: UI design (Figma link, screen snapshots and the color palette).
 - `docs/specs/`: feature specs, the technical design of a feature written before it is built (for example [book clubs](docs/specs/book-clubs.md)).
 - `docs/OOP_documents/`: deliverables for the OOP classes (domain model, component diagrams, event storming, coupling analysis, patterns used, refactored code), organized by iteration (`iteration_0` to `iteration_4`).
