@@ -10,4 +10,6 @@ export const env = {
   supabaseUrl: process.env.SUPABASE_URL ?? '',
   // Only for projects still on the legacy shared HS256 JWT secret; leave empty otherwise.
   supabaseJwtSecret: process.env.SUPABASE_JWT_SECRET ?? '',
+  // Proxies in front of the API (Render has one); 0 when it is reached directly.
+  trustProxy: Number(process.env.TRUST_PROXY ?? 0),
 };

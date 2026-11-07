@@ -160,4 +160,19 @@ describe('/me API', () => {
       assert.equal(invalid.status, 400);
     });
   });
+
+  test('GET /usernames/:username/availability is limited to 20 checks a minute per IP', async () => {
+    // A fresh app, so the checks made by other tests do not count.
+    const limited = createApp({ authProvider: new FakeAuthProvider(), userRepository });
+    await withApp(limited, async (url) => {
+      for (let i = 0; i < 20; i++) {
+        const res = await send(url, 'GET', `/usernames/reader_${i}/availability`);
+        assert.equal(res.status, 200);
+      }
+      const blocked = await send(url, 'GET', '/usernames/one_more/availability');
+      assert.equal(blocked.status, 429);
+      assert.equal(((await blocked.json()) as { code: string }).code, 'TOO_MANY_REQUESTS');
+      assert.ok(blocked.headers.get('ratelimit'));
+    });
+  });
 });

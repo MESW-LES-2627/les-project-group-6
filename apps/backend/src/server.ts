@@ -36,6 +36,7 @@ const db = createDb(pool);
 const io = new SocketServer({ cors: { origin: '*' } });
 
 const server = createApp({
+  trustProxy: env.trustProxy,
   authProvider,
   healthCheck: new DatabaseHealthCheck(pool),
   bookRepository: new DrizzleBookRepository(db),

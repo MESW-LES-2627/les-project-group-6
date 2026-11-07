@@ -1,4 +1,5 @@
 import { Router, type RequestHandler } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { currentIdentity, currentUser } from '../../middleware/auth.js';
 import type { User } from './user.js';
 import type { UserService } from './user-service.js';
@@ -37,7 +38,18 @@ export function meRoutes(
   const router = Router();
 
   // Public: the sign-up form checks the username before creating the account.
-  router.get('/usernames/:username/availability', async (req, res) => {
+  // Limited per IP so the route cannot be used to list which usernames exist.
+  const usernameChecks = rateLimit({
+    windowMs: 60_000,
+    limit: 20,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: {
+      error: 'Too many username checks, try again in a minute',
+      code: 'TOO_MANY_REQUESTS',
+    },
+  });
+  router.get('/usernames/:username/availability', usernameChecks, async (req, res) => {
     res.status(200).json({ available: await users.isUsernameAvailable(req.params.username) });
   });
 

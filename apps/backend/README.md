@@ -39,7 +39,7 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | Method   | Path                                              | Description                                                                                                                                                                                               |
 | -------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET`    | `/health`                                         | Health check returning `{ "status": "ok", "db": "ok" }` (public)                                                                                                                                          |
-| `GET`    | `/usernames/:username/availability`               | `{ "available": boolean }`, ignoring case; used by the sign-up form before the account is created (public)                                                                                                |
+| `GET`    | `/usernames/:username/availability`               | `{ "available": boolean }`, ignoring case; used by the sign-up form before the account is created (public, 20 checks a minute per IP, then `429`)                                                                                                |
 | `POST`   | `/me`                                             | Creates the reader's `users` row from the token's id and email and `{ username, displayName, timezone }` (`201`; `409` if it exists or the username is taken)                                             |
 | `GET`    | `/me`                                             | The reader's profile (`200`; `403 PROFILE_REQUIRED` before `POST /me`)                                                                                                                                    |
 | `PATCH`  | `/me`                                             | Updates `displayName` and/or `timezone` (`200`)                                                                                                                                                           |
@@ -107,6 +107,7 @@ Read from `apps/backend/.env` when it exists. See [`.env.example`](.env.example)
 | `DATABASE_URL_TEST`   | `postgresql://postgres:password123@localhost:5432/bookmarked_test` | PostgreSQL connection string for tests                                                                                                             |
 | `SUPABASE_URL`        | none (required)                                                    | Supabase project URL (same value as the frontend's `VITE_SUPABASE_URL`); tokens are verified with its JWKS. The server refuses to start without it |
 | `SUPABASE_JWT_SECRET` | empty                                                              | Only for projects still signing tokens with the legacy shared HS256 secret                                                                         |
+| `TRUST_PROXY` | `0` | Proxies in front of the API (set `1` on Render), so rate limits count the client IP and not the proxy's |
 
 ## Folder layout
 
