@@ -1,0 +1,81 @@
+# Creates the GitHub Release of an iteration (iter-0 to iter-4), one per sprint.
+# Run it by hand at the end of the sprint: Actions, "Iteration release", "Run
+# workflow", pick the iteration and the commit or branch (default main). It
+# tags that commit iter-N and creates the release of the same name, marked as
+# latest. The notes are docs/sprints/iteration_N/release_notes.md (when filled
+# in) followed by the pull requests merged since the previous iter-* tag.
+#
+# The vX.Y.Z tags made by release.yml on every deploy stay tags only, with no
+# GitHub Release.
+name: Iteration release
+
+on:
+  workflow_dispatch:
+    inputs:
+      iteration:
+        description: Iteration to release
+        required: true
+        type: choice
+        options: [iter-0, iter-1, iter-2, iter-3, iter-4]
+      ref:
+        description: Commit or branch to release
+        required: true
+        default: main
+
+permissions:
+  contents: write
+
+# Shares the group with release.yml so tags are never pushed at the same time
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: release iteration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Create ${{ inputs.iteration }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.iteration }}
+        run: |
+          n=${TAG#iter-}
+          sha=$(git rev-parse HEAD)
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::Release $TAG already exists. Delete it first to release it again."
+            exit 1
+          fi
+
+          # A tag made earlier by hand is reused only when it is on the same commit
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            tagged=$(git rev-parse "$TAG^{commit}")
+            if [ "$tagged" != "$sha" ]; then
+              echo "::error::Tag $TAG is on $tagged, not on $sha. Delete the tag or release $tagged."
+              exit 1
+            fi
+          else
+            # Pushed with git: creating it through the API needs the workflow scope
+            git tag "$TAG" "$sha"
+            git push origin "refs/tags/$TAG"
+          fi
+
+          args=(--title "Iteration $n" --verify-tag --generate-notes --latest)
+          notes="docs/sprints/iteration_$n/release_notes.md"
+          if [ -s "$notes" ]; then
+            args+=(--notes-file "$notes")
+          fi
+          prev="iter-$((n - 1))"
+          if [ "$n" -gt 0 ] && git rev-parse -q --verify "refs/tags/$prev" >/dev/null; then
+            args+=(--notes-start-tag "$prev")
+          fi
+
+          gh release create "$TAG" "${args[@]}"
+          echo "### Released \`$TAG\` on \`${sha::7}\`" >> "$GITHUB_STEP_SUMMARY"
