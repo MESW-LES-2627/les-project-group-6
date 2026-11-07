@@ -33,10 +33,13 @@ const pool = createPool();
 const db = createDb(pool);
 
 // Socket.IO only pushes chat events (ADR-0006); it shares the HTTP server's port.
-const io = new SocketServer({ cors: { origin: '*' } });
+const io = new SocketServer({
+  cors: { origin: env.corsOrigins.length > 0 ? env.corsOrigins : '*' },
+});
 
 const server = createApp({
   trustProxy: env.trustProxy,
+  corsOrigins: env.corsOrigins,
   authProvider,
   healthCheck: new DatabaseHealthCheck(pool),
   bookRepository: new DrizzleBookRepository(db),

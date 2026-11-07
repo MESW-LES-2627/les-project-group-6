@@ -12,4 +12,9 @@ export const env = {
   supabaseJwtSecret: process.env.SUPABASE_JWT_SECRET ?? '',
   // Proxies in front of the API (Render has one); 0 when it is reached directly.
   trustProxy: Number(process.env.TRUST_PROXY ?? 0),
+  // Comma-separated frontend origins allowed by CORS; empty allows any origin.
+  corsOrigins: (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 };

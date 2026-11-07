@@ -75,7 +75,7 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 
 **Group chat socket** (ADR-0006): Socket.IO on the same port, path `/socket.io`. Connect with `auth: { token }` (the Supabase access token; the user is its subject), emit `group:join` with a group id (ack `{ ok }`, members only), then receive `message:new` (a message as above) and `message:deleted` (`{ id, groupId, seq }`). Clients never write through the socket; on reconnect they call `GET …/messages?after=<last seq>`.
 
-CORS middleware is enabled globally (`Access-Control-Allow-Origin: *`) with preflight `OPTIONS` support for cross-origin browser clients.
+CORS middleware ([`src/middleware/cors.ts`](src/middleware/cors.ts)) answers only the origins in `CORS_ORIGINS` (the same list is used by Socket.IO), with preflight `OPTIONS` support. When `CORS_ORIGINS` is empty it allows any origin (`*`), for local development.
 
 ## Scripts
 
@@ -108,6 +108,7 @@ Read from `apps/backend/.env` when it exists. See [`.env.example`](.env.example)
 | `SUPABASE_URL`        | none (required)                                                    | Supabase project URL (same value as the frontend's `VITE_SUPABASE_URL`); tokens are verified with its JWKS. The server refuses to start without it |
 | `SUPABASE_JWT_SECRET` | empty                                                              | Only for projects still signing tokens with the legacy shared HS256 secret                                                                         |
 | `TRUST_PROXY` | `0` | Proxies in front of the API (set `1` on Render), so rate limits count the client IP and not the proxy's |
+| `CORS_ORIGINS` | empty | Comma-separated frontend origins allowed by CORS and Socket.IO; empty allows any origin |
 
 ## Folder layout
 
