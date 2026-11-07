@@ -171,12 +171,25 @@ describe('Supabase auth adapter', () => {
     );
   });
 
-  it('signs out locally and clears the stored session', async () => {
+  it('signs out globally so Supabase revokes the refresh tokens', async () => {
     auth.rememberAwareStorage.setItem('sb-session', 'value');
     await auth.authProvider.signOut();
-    expect(sdk.signOut).toHaveBeenCalledExactlyOnceWith({ scope: 'local' });
+    expect(sdk.signOut).toHaveBeenCalledExactlyOnceWith();
     auth.rememberAwareStorage.removeItem('sb-session');
     expect(auth.rememberAwareStorage.getItem('sb-session')).toBeNull();
+  });
+
+  it('still signs out locally when the global sign-out fails', async () => {
+    sdk.signOut
+      .mockResolvedValueOnce({ error: { message: 'Network error' } })
+      .mockResolvedValueOnce({ error: null });
+    await auth.authProvider.signOut();
+    expect(sdk.signOut).toHaveBeenNthCalledWith(2, { scope: 'local' });
+  });
+
+  it('reports an error when even the local sign-out fails', async () => {
+    sdk.signOut.mockResolvedValue({ error: { message: 'Storage unavailable' } });
+    await expect(auth.authProvider.signOut()).rejects.toThrow('Storage unavailable');
   });
 
   it('exposes the access token and the account without SDK types', async () => {

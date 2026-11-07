@@ -169,9 +169,12 @@ export function createAuthProvider(
       if (error) throw new Error(error.message);
     },
     async signOut() {
-      // Clears the local session even when the network call fails.
-      const { error } = await getClient().auth.signOut({ scope: 'local' });
-      if (error) throw new Error(error.message);
+      // The default (global) scope revokes the refresh tokens on Supabase, so a
+      // copied session stops working. If that call fails, still sign out here.
+      const { error } = await getClient().auth.signOut();
+      if (!error) return;
+      const local = await getClient().auth.signOut({ scope: 'local' });
+      if (local.error) throw new Error(local.error.message);
     },
     async currentAccount() {
       const { data } = await getClient().auth.getSession();
