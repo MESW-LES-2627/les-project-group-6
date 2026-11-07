@@ -7,12 +7,14 @@ import { DrizzleReadingStatusRepository } from '../../src/features/reading-statu
 import { DrizzleLibraryQuery } from '../../src/features/library/library-query.js';
 import { DrizzleUserRepository } from '../../src/features/user/user-repository.js';
 import { Book } from '../../src/features/book/book.js';
+import { ReadingStatusId } from '../../src/features/reading-status/reading-status.js';
 import { Email, User, UserId, Username } from '../../src/features/user/user.js';
 import { authHeader, FakeAuthProvider } from '../helpers/auth.js';
 import { createTestPool, truncateTables } from '../helpers/test-db.js';
 import { withApp } from '../helpers/http.js';
 
 const USER_ID = 'f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a61';
+const OTHER_USER_ID = 'f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a62';
 
 interface StatusBody {
   id: string;
@@ -37,10 +39,10 @@ describe('Reading status API Endpoints', () => {
   });
   let book: Book;
 
-  const send = (baseUrl: string, method: string, path: string, body: object) =>
+  const send = (baseUrl: string, method: string, path: string, body: object, as = USER_ID) =>
     fetch(`${baseUrl}${path}`, {
       method,
-      headers: { ...authHeader(USER_ID), 'Content-Type': 'application/json' },
+      headers: { ...authHeader(as), 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
@@ -52,6 +54,14 @@ describe('Reading status API Endpoints', () => {
         email: Email.of('api@example.com'),
         username: Username.of('api_reader'),
         displayName: 'API Reader',
+      }),
+    );
+    await userRepository.save(
+      User.register({
+        id: UserId.of(OTHER_USER_ID),
+        email: Email.of('other@example.com'),
+        username: Username.of('other_reader'),
+        displayName: 'Other Reader',
       }),
     );
     book = Book.create({ title: 'Circe', pageCount: 393 });
@@ -136,6 +146,38 @@ describe('Reading status API Endpoints', () => {
         { status: 'finished' },
       );
       assert.strictEqual(response.status, 404);
+    });
+  });
+
+  test("PATCH /reading-status/:id returns 404 for another reader's entry", async () => {
+    await withApp(app, async (baseUrl) => {
+      const created = (await (
+        await send(baseUrl, 'PUT', '/reading-status', {
+          bookId: book.id.value,
+          status: 'in-progress',
+        })
+      ).json()) as StatusBody;
+
+      const byId = await send(
+        baseUrl,
+        'PATCH',
+        `/reading-status/${created.id}`,
+        { status: 'finished' },
+        OTHER_USER_ID,
+      );
+      assert.strictEqual(byId.status, 404);
+      const byBody = await send(
+        baseUrl,
+        'PATCH',
+        '/reading-status',
+        { id: created.id, currentPage: 10 },
+        OTHER_USER_ID,
+      );
+      assert.strictEqual(byBody.status, 404);
+
+      const entry = await readingStatusRepository.findById(ReadingStatusId.of(created.id));
+      assert.strictEqual(entry?.status, 'in-progress');
+      assert.strictEqual(entry?.progress.page, 0);
     });
   });
 
