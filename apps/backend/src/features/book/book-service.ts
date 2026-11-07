@@ -23,11 +23,6 @@ export class BookService {
     return this.books.findByTitle(title.trim());
   }
 
-  async remove(rawId: unknown): Promise<void> {
-    const deleted = await this.books.delete(BookId.of(rawId));
-    if (!deleted) throw new NotFoundError('Book');
-  }
-
   // A malformed id can never match a book, so it is reported as not found.
   private static parseId(rawId: unknown): BookId {
     try {

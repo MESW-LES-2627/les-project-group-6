@@ -49,6 +49,7 @@ describe('Book API Endpoints', () => {
           isbn13: '9780451524935',
           pageCount: 328,
           coverUrl: 'https://example.com/1984.jpg',
+          isCommunityAdded: false,
         }),
       });
 
@@ -61,6 +62,8 @@ describe('Book API Endpoints', () => {
       const saved = await bookRepository.findById(BookId.of(data.id));
       assert.ok(saved);
       assert.strictEqual(saved.title.value, '1984');
+      // The flag is set by the server, whatever the client sends.
+      assert.strictEqual(saved.isCommunityAdded, true);
     });
   });
 
@@ -100,16 +103,6 @@ describe('Book API Endpoints', () => {
         body: '{"title": ',
       });
 
-      assert.strictEqual(response.status, 400);
-    });
-  });
-
-  test('DELETE /book/:id returns 400 when ID is not a valid UUID', async () => {
-    await withApp(app, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/book/not-a-valid-uuid`, {
-        method: 'DELETE',
-        headers: auth,
-      });
       assert.strictEqual(response.status, 400);
     });
   });
@@ -162,31 +155,17 @@ describe('Book API Endpoints', () => {
     });
   });
 
-  test('DELETE /book/:id deletes book and returns 204', async () => {
-    const book = Book.create({
-      title: 'To Be Deleted',
-    });
+  test('DELETE /book/:id is not exposed and leaves the book in the catalogue', async () => {
+    const book = Book.create({ title: 'Shared Book' });
     await bookRepository.save(book);
 
     await withApp(app, async (baseUrl) => {
-      const deleteResponse = await fetch(`${baseUrl}/book/${book.id}`, {
-        method: 'DELETE',
-        headers: auth,
-      });
-      assert.strictEqual(deleteResponse.status, 204);
-
-      const getResponse = await fetch(`${baseUrl}/book/${book.id}`, { headers: auth });
-      assert.strictEqual(getResponse.status, 404);
-    });
-  });
-
-  test('DELETE /book/:id returns 404 for non-existent book', async () => {
-    await withApp(app, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/book/00000000-0000-0000-0000-000000000000`, {
+      const response = await fetch(`${baseUrl}/book/${book.id}`, {
         method: 'DELETE',
         headers: auth,
       });
       assert.strictEqual(response.status, 404);
+      assert.ok(await bookRepository.findById(book.id));
     });
   });
 });
