@@ -7,6 +7,7 @@ Every route the app has today: the backend REST API, the chat WebSocket, and the
 - Every backend route needs `Authorization: Bearer <Supabase access token>`, except the two marked **Public**.
 - The acting reader always comes from the token. No route takes a `userId` in the body, query or path; "my" data lives under `/me/...`.
 - Without a valid token the API answers `401 UNAUTHENTICATED`. With a token but no `users` row yet (profile not created) it answers `403 PROFILE_REQUIRED`. `POST /me` is the only protected route that works before the profile exists.
+- CORS and Socket.IO accept only the origins in the backend's `CORS_ORIGINS` (any origin when it is empty, for local development).
 
 Wiring: [`apps/backend/src/api/router.ts`](../../apps/backend/src/api/router.ts). Each feature's routes are in `apps/backend/src/features/<feature>/*-routes.ts`.
 
@@ -22,7 +23,7 @@ Wiring: [`apps/backend/src/api/router.ts`](../../apps/backend/src/api/router.ts)
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/usernames/:username/availability` | Public | Tells the sign-up form whether a username is free (`{ available }`, case-insensitive). |
+| GET | `/usernames/:username/availability` | Public | Tells the sign-up form whether a username is free (`{ available }`, case-insensitive). Limited to 20 checks a minute per IP, then `429 TOO_MANY_REQUESTS`. |
 | POST | `/me` | Token only | Creates the signed-in reader's `users` row (`username`, `displayName`, `timezone`); `409 USERNAME_TAKEN` if taken. |
 | GET | `/me` | Token + profile | Returns the signed-in reader's profile. |
 | PATCH | `/me` | Token + profile | Updates the reader's `displayName` and/or `timezone`. |
@@ -31,17 +32,18 @@ Wiring: [`apps/backend/src/api/router.ts`](../../apps/backend/src/api/router.ts)
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/book` | Registers a book in the catalog (title, description, ISBN-13, page count, cover, community-added flag). |
+| POST | `/book` | Registers a book in the catalog (title, description, ISBN-13, page count, cover). The server marks it community-added. |
 | GET | `/book?title=` | Searches the catalog by title. |
 | GET | `/book/:id` | Returns one book by id. |
-| DELETE | `/book/:id` | Removes a book from the catalog. |
+
+There is no `DELETE /book/:id`: other readers' statuses, reviews and sessions depend on a book, and no reader owns the shared catalog.
 
 ### Reading status (`features/reading-status/reading-status-routes.ts`)
 
 | Method | Path | Description |
 |---|---|---|
 | PUT | `/reading-status` | Sets (creates or replaces) the reader's status and current page for a book. |
-| PATCH | `/reading-status/:id` | Updates an existing reading status entry (status, current page). |
+| PATCH | `/reading-status/:id` | Updates one of the reader's own reading status entries (status, current page); another reader's entry answers `404`. |
 | PUT | `/reading-status/:id` | Same as the PATCH above (alias). |
 | PATCH | `/reading-status` | Same update, with the entry `id` in the body instead of the path. |
 
@@ -72,7 +74,7 @@ Wiring: [`apps/backend/src/api/router.ts`](../../apps/backend/src/api/router.ts)
 | Method | Path | Description |
 |---|---|---|
 | POST | `/groups/challenges` | Creates a reading challenge (name, description, start date, duration, win metric, goal) with the reader as admin. |
-| GET | `/groups/challenges/:id` | Returns a challenge with its status and current standings. |
+| GET | `/groups/challenges/:id` | Returns a challenge with its status and current standings. Members only; others get `404`. |
 | GET | `/me/groups` | Lists the challenges the reader is a member of. |
 
 ### Book clubs and polls (`features/book-club/book-club-routes.ts`)
@@ -80,7 +82,7 @@ Wiring: [`apps/backend/src/api/router.ts`](../../apps/backend/src/api/router.ts)
 | Method | Path | Description |
 |---|---|---|
 | POST | `/groups/book-clubs` | Creates a book club with its first round book and deadline. |
-| GET | `/groups/book-clubs/:id` | Returns the club with its rounds, books, member progress standings and the open poll. |
+| GET | `/groups/book-clubs/:id` | Returns the club with its rounds, books, member progress standings and the open poll. Members only; others get `404`. |
 | GET | `/me/book-clubs` | Lists the book clubs the reader is a member of. |
 | POST | `/groups/book-clubs/:id/rounds` | Starts the next round with a new book and deadline (admin). |
 | POST | `/groups/book-clubs/:id/poll` | Opens a poll to choose the next book (`closesAt`, `anonymous`). |
@@ -120,6 +122,7 @@ The chat uses **Socket.IO** on the same host and port as the HTTP API. The socke
 
 - URL: the API origin, with Socket.IO path `<api path>/socket.io` (default `/socket.io`).
 - Handshake: the client sends `auth: { token: <Supabase access token> }`. The server verifies it and takes the user from it. A missing or invalid token fails the connection with `unauthorized`. The client passes `auth` as a callback, so each reconnect uses a fresh token.
+- Expiry: the token is only checked in the handshake, so the server disconnects the socket when the token expires. The client reconnects after a second with the refreshed token.
 - On connect the server puts the socket in a private room `user:<userId>`. The server uses it to remove the reader from a group's room when they leave that group.
 
 ### Client → server events
