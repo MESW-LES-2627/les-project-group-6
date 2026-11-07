@@ -37,7 +37,7 @@ describe('Supabase auth adapter', () => {
     vi.stubEnv('VITE_SUPABASE_URL', '');
     await expect(
       auth.authProvider.signIn({
-        identifier: 'reader@example.com',
+        email: 'reader@example.com',
         password: 'secret',
         remember: false,
       }),
@@ -51,7 +51,7 @@ describe('Supabase auth adapter', () => {
     async (remember) => {
       await expect(
         auth.authProvider.signIn({
-          identifier: ' reader@example.com ',
+          email: ' reader@example.com ',
           password: 'secret',
           remember,
         }),
@@ -81,29 +81,6 @@ describe('Supabase auth adapter', () => {
       expect(auth.rememberAwareStorage.getItem('sb-session')).toBe('value');
     },
   );
-
-  it.each(['reader_name', '@reader_name'])(
-    'resolves username %s through the injected backend hook',
-    async (identifier) => {
-      const resolve = vi
-        .fn<(username: string) => Promise<string>>()
-        .mockResolvedValue('reader@example.com');
-      const provider = auth.createAuthProvider(() => auth.getSupabaseClient(), resolve);
-      await provider.signIn({ identifier, password: 'secret', remember: false });
-      expect(resolve).toHaveBeenCalledExactlyOnceWith('reader_name');
-      expect(sdk.signInWithPassword).toHaveBeenCalledExactlyOnceWith({
-        email: 'reader@example.com',
-        password: 'secret',
-      });
-    },
-  );
-
-  it('does not invent a username lookup when the backend is not ready', async () => {
-    await expect(
-      auth.authProvider.signIn({ identifier: 'reader_name', password: 'secret', remember: false }),
-    ).rejects.toThrow('Username sign-in is not available yet');
-    expect(sdk.createClient).not.toHaveBeenCalled();
-  });
 
   it('maps signup profile metadata and waits for email confirmation', async () => {
     await expect(
@@ -149,7 +126,7 @@ describe('Supabase auth adapter', () => {
       data: { session: null },
       error: { message: 'Invalid login credentials' },
     });
-    const input = { identifier: 'reader@example.com', password: 'secret', remember: false };
+    const input = { email: 'reader@example.com', password: 'secret', remember: false };
     await expect(auth.authProvider.signIn(input)).rejects.toThrow('Invalid login credentials');
     sdk.signInWithPassword.mockResolvedValueOnce({ data: { session: null }, error: null });
     await expect(auth.authProvider.signIn(input)).rejects.toThrow('did not create a session');

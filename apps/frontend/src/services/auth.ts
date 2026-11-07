@@ -1,7 +1,7 @@
 import { createClient, type Provider, type SupabaseClient } from '@supabase/supabase-js';
 
 export interface SignInInput {
-  identifier: string;
+  email: string;
   password: string;
   remember: boolean;
 }
@@ -37,9 +37,6 @@ export interface AuthProvider {
   onChange(listener: (account: AuthAccount | null) => void): () => void;
 }
 
-// Supabase does not support username/password directly. Supply a trusted backend
-// resolver once it exists; never expose a public users/email lookup in the browser.
-export type UsernameResolver = (username: string) => Promise<string>;
 export type AuthClient = Pick<SupabaseClient, 'auth'>;
 
 const REMEMBER_KEY = 'bookmarked.remember';
@@ -130,20 +127,17 @@ export function toAccount(user: SdkUser | null | undefined): AuthAccount | null 
 
 export function createAuthProvider(
   getClient: () => AuthClient = getSupabaseClient,
-  resolveUsername?: UsernameResolver,
   remember: (value: boolean) => void = rememberAwareStorage.remember,
 ): AuthProvider {
   return {
-    async signIn({ identifier, password, remember: keep }) {
-      let email = identifier.trim();
-      if (!email.includes('@') || email.startsWith('@')) {
-        if (!resolveUsername) {
-          throw new Error('Username sign-in is not available yet. Please use your email address.');
-        }
-        email = await resolveUsername(email.replace(/^@/, ''));
-      }
+    // Supabase signs in by email only. Username login would need a public
+    // username -> email lookup, which leaks emails, so it is not offered.
+    async signIn({ email, password, remember: keep }) {
       remember(keep);
-      const { data, error } = await getClient().auth.signInWithPassword({ email, password });
+      const { data, error } = await getClient().auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
       if (error) throw new Error(error.message);
       if (!data.session) throw new Error('Sign in did not create a session. Please try again.');
       return 'authenticated';

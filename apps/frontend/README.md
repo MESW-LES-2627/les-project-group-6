@@ -84,6 +84,6 @@ How it fits together:
 - `src/services/api.ts`: every request goes through `apiFetch`, which adds `Authorization: Bearer <token>`; the API takes the user from the token, so no call sends a `userId`. A `401` signs the reader out and shows the login page. The chat socket sends the token in its handshake.
 - **Sign out** is in the header's account menu (and on the complete-profile page).
 
-Username login is still not available: Supabase signs in by email, and a public username → email lookup would leak emails. Password recovery (F-AUTH-02) and social login are not implemented.
+Login is by email and password only: Supabase signs in by email, and a public username → email lookup would leak emails, so username login is not offered. Password recovery (F-AUTH-02) and social login are not implemented.
 
 Tests never contact Supabase: `src/services/__tests__/auth.spec.ts` mocks the SDK, `src/stores/__tests__/session.spec.ts` and the router guard tests use the doubles in `src/stores/__tests__/fake-session.ts`, and `LoginView.spec.ts` / `CompleteProfileView.spec.ts` run the pages through the store with a faked API.
