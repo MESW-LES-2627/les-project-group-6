@@ -114,7 +114,7 @@ describe('authentication page and Supabase integration', () => {
 
   it('submits the login form through the adapter and navigates only after a session', async () => {
     const { wrapper, router } = await render();
-    await wrapper.get('#login-identifier').setValue('eleanor@example.com');
+    await wrapper.get('#login-email').setValue('eleanor@example.com');
     await wrapper.get('#login-password').setValue('long-password-123');
     await wrapper.get('input[type="checkbox"]').setValue(true);
     await wrapper.get('form').trigger('submit');
@@ -131,7 +131,7 @@ describe('authentication page and Supabase integration', () => {
   it('shows missing configuration without pretending to authenticate', async () => {
     vi.stubEnv('VITE_SUPABASE_URL', '');
     const { wrapper, router } = await render();
-    await wrapper.get('#login-identifier').setValue('eleanor@example.com');
+    await wrapper.get('#login-email').setValue('eleanor@example.com');
     await wrapper.get('#login-password').setValue('long-password-123');
     await wrapper.get('form').trigger('submit');
     await flushPromises();
@@ -169,7 +169,7 @@ describe('authentication page and Supabase integration', () => {
         }),
     );
     const { wrapper, router } = await render();
-    await wrapper.get('#login-identifier').setValue('eleanor@example.com');
+    await wrapper.get('#login-email').setValue('eleanor@example.com');
     await wrapper.get('#login-password').setValue('long-password-123');
     await wrapper.get('form').trigger('submit');
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined();
@@ -198,7 +198,7 @@ describe('authentication page and Supabase integration', () => {
 
   it('returns to the page the visitor first opened after logging in', async () => {
     const { wrapper, router } = await render('/login?redirect=/library');
-    await wrapper.get('#login-identifier').setValue('eleanor@example.com');
+    await wrapper.get('#login-email').setValue('eleanor@example.com');
     await wrapper.get('#login-password').setValue('long-password-123');
     await wrapper.get('form').trigger('submit');
     await flushPromises();
@@ -208,7 +208,7 @@ describe('authentication page and Supabase integration', () => {
 
   it('ignores redirects to other sites', async () => {
     const { wrapper, router } = await render('/login?redirect=//evil.example');
-    await wrapper.get('#login-identifier').setValue('eleanor@example.com');
+    await wrapper.get('#login-email').setValue('eleanor@example.com');
     await wrapper.get('#login-password').setValue('long-password-123');
     await wrapper.get('form').trigger('submit');
     await flushPromises();
@@ -219,7 +219,7 @@ describe('authentication page and Supabase integration', () => {
   it('sends a reader without a profile to the complete-profile step', async () => {
     api.getMe.mockRejectedValue(new ApiError('Complete your profile', 403, 'PROFILE_REQUIRED'));
     const { wrapper, router } = await render();
-    await wrapper.get('#login-identifier').setValue('eleanor@example.com');
+    await wrapper.get('#login-email').setValue('eleanor@example.com');
     await wrapper.get('#login-password').setValue('long-password-123');
     await wrapper.get('form').trigger('submit');
     await flushPromises();

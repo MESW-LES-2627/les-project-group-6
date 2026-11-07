@@ -7,7 +7,7 @@ import { session } from '@/stores/session';
 const router = useRouter();
 const route = useRoute();
 const mode = ref<'login' | 'signup'>('login');
-const login = reactive({ identifier: '', password: '', remember: false });
+const login = reactive({ email: '', password: '', remember: false });
 const signup = reactive({ displayName: '', username: '', email: '', password: '' });
 const pending = ref<'login' | 'signup' | null>(null);
 const loginMessage = ref(session.state.error ?? '');
@@ -108,14 +108,15 @@ async function submit(kind: 'login' | 'signup') {
           @submit.prevent="submit('login')"
         >
           <h2 id="login-title">Welcome back</h2>
-          <label class="field" for="login-identifier">
-            <span>Email or username</span>
+          <label class="field" for="login-email">
+            <span>Email</span>
             <input
-              id="login-identifier"
-              v-model="login.identifier"
+              id="login-email"
+              v-model="login.email"
               class="field-input"
-              name="username"
-              autocomplete="username"
+              name="email"
+              type="email"
+              autocomplete="email"
               placeholder="you@example.com"
               required
             />
