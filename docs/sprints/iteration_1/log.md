@@ -55,3 +55,13 @@ A running record of what the team did and decided in iteration 1. The [release n
 ### 2026-11-06: Iteration 1 claim
 
 - Filled in [`CLAIM.md`](CLAIM.md): links on tag `iter-1` to the MVP, Vision and Definition of Done (iteration 0 folder), the release tags (frontend `v0.8.0`, backend `v0.7.0`), production and staging, the eight CI/CD workflows with one line each, the stories closed from 2026-10-26 to 2026-11-06 plus the ones in progress (#7, #28, #33, #31), this log as the retrospective, and the [LLM log](LLM_LOG.md).
+
+### 2026-11-07: Security review fixes on the auth PR (#116)
+
+- Fixed the findings of the OWASP review on PR [#116](https://github.com/MESW-LES-2627/les-project-group-6/pull/116), one commit each:
+  - **Critical.** `b3534fb` ([migration 0005](../../../apps/backend/src/database/migrations/0005_lock_public_schema.sql)): the browser now has the Supabase URL and publishable key, and the app tables live in that project's `public` schema, which PostgREST serves to `anon` and `authenticated`. Every public table now has RLS on with no policies, and those roles lose their table and sequence privileges, including on tables created later. The API connects as the table owner, so it is not affected. Checked on a scratch database with the two roles: `anon` gets `permission denied`.
+  - **High.** `1637375`: `DELETE /book/:id` is removed. Any reader could delete a shared book, and other readers' statuses, reviews and sessions cascaded with it. `POST /book` now sets `isCommunityAdded` on the server. *Rejected:* limiting the route to the reader who added the book, because nothing in the app deletes books.
+  - **Medium.** `00d9757`: a reader can only change their own reading status; another reader's entry answers `404`. `e847eb7`: `GET /groups/challenges/:id` and `GET /groups/book-clubs/:id` answer `404` to non-members, before any standings or poll data is read.
+  - **Low.** `7d8031b`: sign out uses Supabase's global scope, which revokes the refresh tokens, and falls back to a local sign-out. `fca6379`: the server closes a chat socket when its token expires, and the frontend reconnects with the refreshed token. `8cb2341`: the public username check is limited to 20 a minute per IP (`express-rate-limit`, new `TRUST_PROXY`). `1e1089c`: CORS and Socket.IO allow only `CORS_ORIGINS`, or any origin when it is empty.
+- **Tests.** Backend 186 passing, frontend 130 passing.
+- **Deploy:** set `TRUST_PROXY=1` and `CORS_ORIGINS=https://bookmarked-les.onrender.com` (and the staging origin on staging) on the backend services. Migration 0005 runs with the prod CD.

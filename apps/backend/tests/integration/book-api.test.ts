@@ -4,21 +4,37 @@ import { createApp } from '../../src/app.js';
 import { createDb } from '../../src/database/pool.js';
 import { DrizzleBookRepository } from '../../src/features/book/book-repository.js';
 import { Book, BookId } from '../../src/features/book/book.js';
+import { DrizzleUserRepository } from '../../src/features/user/user-repository.js';
+import { Email, User, UserId, Username } from '../../src/features/user/user.js';
+import { authHeader, FakeAuthProvider } from '../helpers/auth.js';
 import { createTestPool, truncateTables } from '../helpers/test-db.js';
 import { withApp } from '../helpers/http.js';
+
+const USER_ID = 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a31';
+const auth = authHeader(USER_ID);
+const json = { ...auth, 'Content-Type': 'application/json' };
 
 describe('Book API Endpoints', () => {
   const pool = createTestPool();
   const db = createDb(pool);
   const bookRepository = new DrizzleBookRepository(db);
-  const app = createApp({ bookRepository });
+  const userRepository = new DrizzleUserRepository(db);
+  const app = createApp({ authProvider: new FakeAuthProvider(), userRepository, bookRepository });
 
   beforeEach(async () => {
-    await truncateTables(pool, ['books']);
+    await truncateTables(pool, ['users', 'books']);
+    await userRepository.save(
+      User.register({
+        id: UserId.of(USER_ID),
+        email: Email.of('books@example.com'),
+        username: Username.of('book_api_reader'),
+        displayName: 'Book API Reader',
+      }),
+    );
   });
 
   after(async () => {
-    await truncateTables(pool, ['books']);
+    await truncateTables(pool, ['users', 'books']);
     await pool.end();
   });
 
@@ -26,13 +42,14 @@ describe('Book API Endpoints', () => {
     await withApp(app, async (baseUrl) => {
       const response = await fetch(`${baseUrl}/book`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: json,
         body: JSON.stringify({
           title: '1984',
           description: 'Dystopian classic',
           isbn13: '9780451524935',
           pageCount: 328,
           coverUrl: 'https://example.com/1984.jpg',
+          isCommunityAdded: false,
         }),
       });
 
@@ -45,6 +62,8 @@ describe('Book API Endpoints', () => {
       const saved = await bookRepository.findById(BookId.of(data.id));
       assert.ok(saved);
       assert.strictEqual(saved.title.value, '1984');
+      // The flag is set by the server, whatever the client sends.
+      assert.strictEqual(saved.isCommunityAdded, true);
     });
   });
 
@@ -52,7 +71,7 @@ describe('Book API Endpoints', () => {
     await withApp(app, async (baseUrl) => {
       const response = await fetch(`${baseUrl}/book`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: json,
         body: JSON.stringify({ description: 'No title provided' }),
       });
 
@@ -66,7 +85,7 @@ describe('Book API Endpoints', () => {
     await withApp(app, async (baseUrl) => {
       const response = await fetch(`${baseUrl}/book`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: json,
         body: JSON.stringify({ title: 'Dune', isbn13: '9780441172710' }),
       });
 
@@ -80,17 +99,10 @@ describe('Book API Endpoints', () => {
     await withApp(app, async (baseUrl) => {
       const response = await fetch(`${baseUrl}/book`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: json,
         body: '{"title": ',
       });
 
-      assert.strictEqual(response.status, 400);
-    });
-  });
-
-  test('DELETE /book/:id returns 400 when ID is not a valid UUID', async () => {
-    await withApp(app, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/book/not-a-valid-uuid`, { method: 'DELETE' });
       assert.strictEqual(response.status, 400);
     });
   });
@@ -103,7 +115,7 @@ describe('Book API Endpoints', () => {
     await bookRepository.save(book);
 
     await withApp(app, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/book/${book.id}`);
+      const response = await fetch(`${baseUrl}/book/${book.id}`, { headers: auth });
       assert.strictEqual(response.status, 200);
 
       const data = (await response.json()) as { id: string; title: string };
@@ -114,7 +126,9 @@ describe('Book API Endpoints', () => {
 
   test('GET /book/:id returns 404 when book ID does not exist', async () => {
     await withApp(app, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/book/00000000-0000-0000-0000-000000000000`);
+      const response = await fetch(`${baseUrl}/book/00000000-0000-0000-0000-000000000000`, {
+        headers: auth,
+      });
       assert.strictEqual(response.status, 404);
     });
   });
@@ -125,7 +139,7 @@ describe('Book API Endpoints', () => {
     await bookRepository.save(Book.create({ title: 'Second Foundation' }));
 
     await withApp(app, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/book?title=Empire`);
+      const response = await fetch(`${baseUrl}/book?title=Empire`, { headers: auth });
       assert.strictEqual(response.status, 200);
 
       const data = (await response.json()) as Array<{ title: string }>;
@@ -136,34 +150,22 @@ describe('Book API Endpoints', () => {
 
   test('GET /book/:id returns 404 when ID is not a valid UUID', async () => {
     await withApp(app, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/book/not-a-valid-uuid`);
+      const response = await fetch(`${baseUrl}/book/not-a-valid-uuid`, { headers: auth });
       assert.strictEqual(response.status, 404);
     });
   });
 
-  test('DELETE /book/:id deletes book and returns 204', async () => {
-    const book = Book.create({
-      title: 'To Be Deleted',
-    });
+  test('DELETE /book/:id is not exposed and leaves the book in the catalogue', async () => {
+    const book = Book.create({ title: 'Shared Book' });
     await bookRepository.save(book);
 
     await withApp(app, async (baseUrl) => {
-      const deleteResponse = await fetch(`${baseUrl}/book/${book.id}`, {
+      const response = await fetch(`${baseUrl}/book/${book.id}`, {
         method: 'DELETE',
-      });
-      assert.strictEqual(deleteResponse.status, 204);
-
-      const getResponse = await fetch(`${baseUrl}/book/${book.id}`);
-      assert.strictEqual(getResponse.status, 404);
-    });
-  });
-
-  test('DELETE /book/:id returns 404 for non-existent book', async () => {
-    await withApp(app, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/book/00000000-0000-0000-0000-000000000000`, {
-        method: 'DELETE',
+        headers: auth,
       });
       assert.strictEqual(response.status, 404);
+      assert.ok(await bookRepository.findById(book.id));
     });
   });
 });

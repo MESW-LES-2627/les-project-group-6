@@ -410,3 +410,19 @@ can you update the links of @docs/sprints/iteration_1/CLAIM.md ?
 
 #### Explanation of Changes
 Filled in `docs/sprints/iteration_1/CLAIM.md` from the repository: permalinks on `iter-1`, release tags from `git tag` and the diff of each release, the workflow table from the headers of `.github/workflows/*.yml`, and the stories from `gh issue list` (closed since 2026-10-26) and the open PRs that close issues. The in-progress list is inferred from open PRs and assignees, because the project board could not be read.
+
+### 2026-11-07: Security review fixes on the auth PR (#116)
+
+- **Date:** 2026-11-07
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, frontend, database, testing, docs
+
+#### Prompt
+```text
+ok, so, implement the fixes in this PR https://github.com/MESW-LES-2627/les-project-group-6/pull/116 and add to new commits and push
+```
+
+#### Explanation of Changes
+Implemented the findings of the OWASP review on PR #116, one commit per finding: a migration that turns on RLS and revokes the Supabase `anon`/`authenticated` privileges on the app tables, removal of `DELETE /book/:id` (with `isCommunityAdded` set by the server), ownership checks on reading-status updates, membership checks on the challenge and book club detail routes, global sign out, closing chat sockets when their token expires (with a frontend reconnect), a rate limit on the public username check, and a CORS allow-list. Added tests for each (backend 186, frontend 130) and updated the backend README and `.env.example`.

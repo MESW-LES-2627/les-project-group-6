@@ -1,6 +1,8 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError, type ApiMe, type CreateProfilePayload } from '@/services/api';
+import { TEST_ME } from '@/stores/__tests__/fake-session';
 import LoginView from '../LoginView.vue';
 
 type SdkResult = { data: { session: object | null }; error: { message: string } | null };
@@ -9,28 +11,59 @@ const sdk = vi.hoisted(() => ({
   createClient: vi.fn<(...args: unknown[]) => unknown>(),
   signInWithPassword: vi.fn<(input: unknown) => Promise<SdkResult>>(),
   signUp: vi.fn<(input: unknown) => Promise<SdkResult>>(),
+  getSession: vi.fn<() => Promise<{ data: { session: object | null } }>>(),
+  signOut: vi.fn<() => Promise<{ error: null }>>(),
+  onAuthStateChange: vi.fn<() => unknown>(() => ({
+    data: { subscription: { unsubscribe: () => {} } },
+  })),
 }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: sdk.createClient }));
+
+// The page → session store → Supabase adapter run for real; only our API is faked.
+const api = vi.hoisted(() => ({
+  getMe: vi.fn<() => Promise<ApiMe>>(),
+  createMe: vi.fn<(payload: CreateProfilePayload) => Promise<ApiMe>>(),
+  isUsernameAvailable: vi.fn<(username: string) => Promise<boolean>>(),
+}));
+vi.mock('@/services/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/api')>()),
+  ...api,
+}));
+
+const SDK_SESSION = {
+  access_token: 'jwt',
+  user: { id: TEST_ME.id, email: TEST_ME.email, user_metadata: {} },
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co');
   vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'test-public-key');
   sdk.createClient.mockReturnValue({ auth: sdk });
-  sdk.signInWithPassword.mockResolvedValue({ data: { session: {} }, error: null });
+  sdk.signInWithPassword.mockResolvedValue({ data: { session: SDK_SESSION }, error: null });
   sdk.signUp.mockResolvedValue({ data: { session: null }, error: null });
+  sdk.getSession.mockResolvedValue({ data: { session: SDK_SESSION } });
+  api.getMe.mockResolvedValue(TEST_ME);
+  api.createMe.mockImplementation(async (payload) => ({ ...TEST_ME, ...payload }));
+  api.isUsernameAvailable.mockResolvedValue(true);
 });
 afterEach(() => vi.unstubAllEnvs());
 
-async function render() {
+async function render(path = '/login') {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
       { path: '/login', component: LoginView },
       { path: '/home', component: { template: '<p>Home</p>' } },
+      { path: '/library', component: { template: '<p>Library</p>' } },
+      {
+        path: '/complete-profile',
+        name: 'complete-profile',
+        component: { template: '<p>Complete</p>' },
+      },
     ],
   });
-  await router.push('/login');
+  await router.push(path);
   await router.isReady();
   const wrapper = mount(LoginView, { global: { plugins: [router] } });
   return { wrapper, router };
@@ -160,6 +193,65 @@ describe('authentication page and Supabase integration', () => {
     await wrapper.get('#signup-username').setValue('eleanorreads');
     await wrapper.get('#signup-email').setValue('invalid-email');
     expect(form.element.checkValidity()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('returns to the page the visitor first opened after logging in', async () => {
+    const { wrapper, router } = await render('/login?redirect=/library');
+    await wrapper.get('#login-identifier').setValue('eleanor@example.com');
+    await wrapper.get('#login-password').setValue('long-password-123');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/library');
+    wrapper.unmount();
+  });
+
+  it('ignores redirects to other sites', async () => {
+    const { wrapper, router } = await render('/login?redirect=//evil.example');
+    await wrapper.get('#login-identifier').setValue('eleanor@example.com');
+    await wrapper.get('#login-password').setValue('long-password-123');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/home');
+    wrapper.unmount();
+  });
+
+  it('sends a reader without a profile to the complete-profile step', async () => {
+    api.getMe.mockRejectedValue(new ApiError('Complete your profile', 403, 'PROFILE_REQUIRED'));
+    const { wrapper, router } = await render();
+    await wrapper.get('#login-identifier').setValue('eleanor@example.com');
+    await wrapper.get('#login-password').setValue('long-password-123');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/complete-profile');
+    wrapper.unmount();
+  });
+
+  it('rejects a taken username before creating the account', async () => {
+    api.isUsernameAvailable.mockResolvedValue(false);
+    const { wrapper, router } = await render();
+    await fillSignup(wrapper);
+    await wrapper.get('form[aria-labelledby="signup-title"]').trigger('submit');
+    await flushPromises();
+    expect(api.isUsernameAvailable).toHaveBeenCalledWith('eleanorreads');
+    expect(wrapper.get('[role="alert"]').text()).toBe('This username is already taken');
+    expect(sdk.signUp).not.toHaveBeenCalled();
+    expect(router.currentRoute.value.path).toBe('/login');
+    wrapper.unmount();
+  });
+
+  it('creates the profile with the browser timezone and opens Home after an instant sign-up', async () => {
+    sdk.signUp.mockResolvedValue({ data: { session: SDK_SESSION }, error: null });
+    const { wrapper, router } = await render();
+    await fillSignup(wrapper);
+    await wrapper.get('form[aria-labelledby="signup-title"]').trigger('submit');
+    await flushPromises();
+    expect(api.createMe).toHaveBeenCalledExactlyOnceWith({
+      username: 'eleanorreads',
+      displayName: 'Eleanor Whitmore',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
+    expect(router.currentRoute.value.path).toBe('/home');
     wrapper.unmount();
   });
 });

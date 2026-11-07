@@ -16,6 +16,7 @@ import {
 import { DrizzleGroupMembership } from '../../src/features/group-chat/group-membership-query.js';
 import { DrizzleUserRepository } from '../../src/features/user/user-repository.js';
 import { Email, User, UserId, Username } from '../../src/features/user/user.js';
+import { authHeader, FakeAuthProvider, tokenFor } from '../helpers/auth.js';
 import { createTestPool, truncateTables } from '../helpers/test-db.js';
 
 const ADMIN = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
@@ -27,14 +28,16 @@ describe('Group chat API and socket', () => {
   const db = createDb(pool);
   const users = new DrizzleUserRepository(db);
   const io = new SocketServer();
+  const authProvider = new FakeAuthProvider();
   const app = createApp({
+    authProvider,
     userRepository: users,
     challengeGroupRepository: new DrizzleChallengeGroupRepository(db),
     standingsQuery: new StandingsQuery(db),
     chatMessageRepository: new DrizzleChatMessageRepository(db),
     groupMembership: new DrizzleGroupMembership(db),
     chatNotifier: new SocketIoChatNotifier(io),
-    onChatService: (chat) => registerChatSocket(io, (g, u) => chat.canListen(g, u)),
+    onChatService: (chat) => registerChatSocket(io, authProvider, (g, u) => chat.canListen(g, u)),
   });
   const server = app.listen(0);
   io.attach(server);
@@ -42,15 +45,19 @@ describe('Group chat API and socket', () => {
   const sockets: Socket[] = [];
   let groupId: string;
 
-  const request = (method: string, path: string, body?: object) =>
+  // Sends a request as `userId` (the signed-in reader comes from the token).
+  const request = (userId: string, method: string, path: string, body?: object) =>
     fetch(`${baseUrl}${path}`, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...authHeader(userId), 'Content-Type': 'application/json' },
       body: body && JSON.stringify(body),
     });
 
   const listen = async (userId: string): Promise<Socket> => {
-    const socket = connect(baseUrl, { auth: { userId }, transports: ['websocket'] });
+    const socket = connect(baseUrl, {
+      auth: { token: tokenFor(userId) },
+      transports: ['websocket'],
+    });
     sockets.push(socket);
     await new Promise<void>((resolve, reject) => {
       socket.once('connect', resolve);
@@ -74,8 +81,7 @@ describe('Group chat API and socket', () => {
         }),
       );
     }
-    const res = await request('POST', '/groups/challenges', {
-      userId: ADMIN,
+    const res = await request(ADMIN, 'POST', '/groups/challenges', {
       name: 'Sprint',
       startDate: '2026-11-01',
       durationDays: 7,
@@ -92,7 +98,7 @@ describe('Group chat API and socket', () => {
   });
 
   test('creating a challenge posts a system message', async () => {
-    const res = await request('GET', `/groups/${groupId}/messages?userId=${ADMIN}`);
+    const res = await request(ADMIN, 'GET', `/groups/${groupId}/messages`);
     const list = (await res.json()) as ChatMessageDto[];
     assert.equal(res.status, 200);
     assert.deepEqual(
@@ -102,19 +108,16 @@ describe('Group chat API and socket', () => {
   });
 
   test('send is idempotent per client id and history catches up with after', async () => {
-    const payload = { userId: ADMIN, clientId: crypto.randomUUID(), body: ' Hi all ' };
-    const first = await request('POST', `/groups/${groupId}/messages`, payload);
-    const retry = await request('POST', `/groups/${groupId}/messages`, payload);
+    const payload = { clientId: crypto.randomUUID(), body: ' Hi all ' };
+    const first = await request(ADMIN, 'POST', `/groups/${groupId}/messages`, payload);
+    const retry = await request(ADMIN, 'POST', `/groups/${groupId}/messages`, payload);
     const sent = (await first.json()) as ChatMessageDto;
     assert.equal(first.status, 201);
     assert.equal(retry.status, 200);
     assert.equal(((await retry.json()) as ChatMessageDto).id, sent.id);
     assert.equal(sent.body, 'Hi all');
 
-    const res = await request(
-      'GET',
-      `/groups/${groupId}/messages?userId=${ADMIN}&after=${sent.seq - 1}`,
-    );
+    const res = await request(ADMIN, 'GET', `/groups/${groupId}/messages?after=${sent.seq - 1}`);
     assert.deepEqual(
       ((await res.json()) as ChatMessageDto[]).map((m) => m.id),
       [sent.id],
@@ -122,15 +125,13 @@ describe('Group chat API and socket', () => {
   });
 
   test('outsiders get 403 and bad input gets 400', async () => {
-    const outsider = await request('POST', `/groups/${groupId}/messages`, {
-      userId: OUTSIDER,
+    const outsider = await request(OUTSIDER, 'POST', `/groups/${groupId}/messages`, {
       clientId: crypto.randomUUID(),
       body: 'hey',
     });
     assert.equal(outsider.status, 403);
 
-    const empty = await request('POST', `/groups/${groupId}/messages`, {
-      userId: ADMIN,
+    const empty = await request(ADMIN, 'POST', `/groups/${groupId}/messages`, {
       clientId: crypto.randomUUID(),
       body: '   ',
     });
@@ -143,8 +144,7 @@ describe('Group chat API and socket', () => {
     assert.deepEqual(joined, { ok: true });
 
     const pushed = new Promise<ChatMessageDto>((resolve) => socket.once('message:new', resolve));
-    const res = await request('POST', `/groups/${groupId}/messages`, {
-      userId: ADMIN,
+    const res = await request(ADMIN, 'POST', `/groups/${groupId}/messages`, {
       clientId: crypto.randomUUID(),
       body: 'Live!',
     });
@@ -152,19 +152,17 @@ describe('Group chat API and socket', () => {
     assert.equal((await pushed).id, sent.id);
 
     const deletedEvent = new Promise((resolve) => socket.once('message:deleted', resolve));
-    const del = await request('DELETE', `/groups/${groupId}/messages/${sent.id}`, {
-      userId: ADMIN,
-    });
+    const del = await request(ADMIN, 'DELETE', `/groups/${groupId}/messages/${sent.id}`);
     assert.equal(del.status, 204);
     assert.deepEqual(await deletedEvent, { id: sent.id, groupId, seq: sent.seq });
 
-    const history = await request('GET', `/groups/${groupId}/messages?userId=${ADMIN}`);
+    const history = await request(ADMIN, 'GET', `/groups/${groupId}/messages`);
     const stored = ((await history.json()) as ChatMessageDto[]).find((m) => m.id === sent.id)!;
     assert.equal(stored.body, null);
     assert.ok(stored.deletedAt);
   });
 
-  test('sockets cannot join groups the user is not in, or connect without a user', async () => {
+  test('sockets cannot join groups the user is not in, or connect without a valid token', async () => {
     const socket = await listen(OUTSIDER);
     assert.deepEqual(await socket.emitWithAck('group:join', groupId), {
       ok: false,
@@ -175,5 +173,27 @@ describe('Group chat API and socket', () => {
     sockets.push(anonymous);
     const error = await new Promise<Error>((resolve) => anonymous.once('connect_error', resolve));
     assert.equal(error.message, 'unauthorized');
+
+    const forged = connect(baseUrl, { auth: { token: 'not-a-token' }, transports: ['websocket'] });
+    sockets.push(forged);
+    const rejected = await new Promise<Error>((resolve) => forged.once('connect_error', resolve));
+    assert.equal(rejected.message, 'unauthorized');
+  });
+
+  test('the server closes a socket when its token expires', async () => {
+    const expiring = connect(baseUrl, {
+      auth: { token: tokenFor(ADMIN, undefined, new Date(Date.now() + 300)) },
+      transports: ['websocket'],
+      reconnection: false,
+    });
+    sockets.push(expiring);
+    await new Promise<void>((resolve, reject) => {
+      expiring.once('connect', resolve);
+      expiring.once('connect_error', reject);
+    });
+    assert.deepEqual(await expiring.emitWithAck('group:join', groupId), { ok: true });
+
+    const reason = await new Promise<string>((resolve) => expiring.once('disconnect', resolve));
+    assert.equal(reason, 'io server disconnect');
   });
 });

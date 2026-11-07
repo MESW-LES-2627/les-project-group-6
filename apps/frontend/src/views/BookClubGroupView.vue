@@ -83,7 +83,7 @@ async function act(work: () => Promise<unknown>, onDone?: () => void) {
 
 async function castVote(option: ProposalOption) {
   if (props.live) {
-    await act(() => voteForProposal(props.club.id, option.id, props.meId));
+    await act(() => voteForProposal(props.club.id, option.id));
     return;
   }
   const previous = options.value.find((o) => o.id === yourVote.value);
@@ -99,7 +99,7 @@ async function submitProposal() {
     const picked = pickedProposal.value;
     if (!picked) return;
     await act(
-      () => proposeBook(props.club.id, picked.id, props.meId),
+      () => proposeBook(props.club.id, picked.id),
       () => (pickedProposal.value = null),
     );
     return;
@@ -120,7 +120,7 @@ async function toggleAdmin() {
   showAdmin.value = !showAdmin.value;
   if (!showAdmin.value || !props.live || friends.value.length) return;
   try {
-    friends.value = await getFriends(props.meId);
+    friends.value = await getFriends();
   } catch (e) {
     actionError.value = (e as Error).message;
   }
@@ -129,7 +129,7 @@ async function toggleAdmin() {
 async function invite(friend: GroupMember) {
   actionError.value = '';
   try {
-    await inviteToGroup(props.club.id, friend.id, props.meId);
+    await inviteToGroup(props.club.id, friend.id);
     invited.value.push(friend.id);
     inviteMessage.value = `Invite sent to ${friend.name}.`;
   } catch (e) {
@@ -139,16 +139,14 @@ async function invite(friend: GroupMember) {
 
 async function openVote() {
   const closesAt = new Date(`${pollCloses.value}T18:00:00`).toISOString();
-  await act(() =>
-    openPoll(props.club.id, { closesAt, anonymous: pollAnonymous.value }, props.meId),
-  );
+  await act(() => openPoll(props.club.id, { closesAt, anonymous: pollAnonymous.value }));
 }
 
 async function startRound() {
   const picked = nextBook.value;
   if (!picked) return;
   await act(() =>
-    startNextRound(props.club.id, { bookId: picked.id, deadline: nextDeadline.value }, props.meId),
+    startNextRound(props.club.id, { bookId: picked.id, deadline: nextDeadline.value }),
   );
 }
 </script>

@@ -39,6 +39,8 @@ export const users = pgTable(
   (table) => [
     unique('users_email_key').on(table.email),
     unique('users_username_key').on(table.username),
+    // Usernames are unique ignoring case (F-AUTH-01).
+    uniqueIndex('users_username_lower_key').using('btree', sql`lower(${table.username})`),
   ],
 );
 

@@ -3,13 +3,24 @@ import { describe, expect, it, vi } from 'vitest';
 
 import router from '@/router';
 import {
-  DEMO_USER_ID,
   type ApiBookClubDetail,
   type ApiChallengeGroupDetail,
   type ApiChatMessage,
   type ApiPoll,
 } from '@/services/api';
+import { TEST_ME } from '@/stores/__tests__/fake-session';
 import GroupDetailView from '../GroupDetailView.vue';
+
+/** The signed-in reader of these tests. */
+const DEMO_USER_ID = TEST_ME.id;
+
+vi.mock('@/stores/session', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/stores/session')>();
+  const { readySession } = await import('@/stores/__tests__/fake-session');
+  const session = readySession(actual.createSession);
+  await session.ensure();
+  return { ...actual, session };
+});
 
 const getChallengeGroup = vi.hoisted(() =>
   vi.fn<(groupId: string) => Promise<ApiChallengeGroupDetail>>(),
@@ -269,7 +280,7 @@ describe('GroupDetailView', () => {
     const wrapper = mountGroup(apiClub.id);
     await flushPromises();
 
-    expect(getBookClub).toHaveBeenCalledWith(apiClub.id, DEMO_USER_ID);
+    expect(getBookClub).toHaveBeenCalledWith(apiClub.id);
     expect(wrapper.get('h1').text()).toBe('Sunday Classics');
     expect(wrapper.text()).toContain('Round 2 · Active');
     expect(wrapper.text()).toContain('1 of 2 finished');
@@ -287,7 +298,7 @@ describe('GroupDetailView', () => {
       .find((b) => b.text() === 'Vote for Piranesi')!
       .trigger('click');
     await flushPromises();
-    expect(voteForProposal).toHaveBeenCalledWith(apiClub.id, 'p1', DEMO_USER_ID);
+    expect(voteForProposal).toHaveBeenCalledWith(apiClub.id, 'p1');
     expect(getBookClub).toHaveBeenCalledTimes(2);
     wrapper.unmount();
   });
