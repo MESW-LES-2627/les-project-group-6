@@ -377,3 +377,19 @@ ok, so, you will notice that we already have the auth pages, sign up page and lo
 
 #### Explanation of Changes
 Implemented issue #7. Backend: `AuthProvider` port with a `SupabaseAuthProvider` (JWKS verification with `jose`, optional legacy HS256 secret), `authenticate`/`requireUser` middleware, `UserService` and `POST/GET/PATCH /me`, a public username availability check, a case-insensitive unique username index (migration 0004), and every route and the chat socket switched from a `userId` parameter to the token's user (`/user/:userId/...` → `/me/...`). Frontend: single Supabase client with "keep me signed in" storage, a session store, a router guard, a complete-profile page, sign out in the header, and the API client sending the bearer token. Updated and added backend tests (179) and frontend tests (125), and the READMEs.
+
+### 2026-11-07: Security review fixes on the auth PR (#116)
+
+- **Date:** 2026-11-07
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, frontend, database, testing, docs
+
+#### Prompt
+```text
+ok, so, implement the fixes in this PR https://github.com/MESW-LES-2627/les-project-group-6/pull/116 and add to new commits and push
+```
+
+#### Explanation of Changes
+Implemented the findings of the OWASP review on PR #116, one commit per finding: a migration that turns on RLS and revokes the Supabase `anon`/`authenticated` privileges on the app tables, removal of `DELETE /book/:id` (with `isCommunityAdded` set by the server), ownership checks on reading-status updates, membership checks on the challenge and book club detail routes, global sign out, closing chat sockets when their token expires (with a frontend reconnect), a rate limit on the public username check, and a CORS allow-list. Added tests for each (backend 186, frontend 130) and updated the backend README and `.env.example`.
