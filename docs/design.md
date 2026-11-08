@@ -152,7 +152,18 @@ The first design, made in the first week of the project, before any code was wri
 
 ### Event storming
 
-_Not added yet._
+![Event storming, iteration 1](oop_assets/eventstorming.png)
+
+The event flow of the app: actors (small yellow), commands (blue), domain events (orange), policies (pink) and external systems (red), split into subdomains (red boxes). The large yellow stickies are the aggregates.
+
+| Subdomain | Aggregates |
+|---|---|
+| **Authentication** | User Account |
+| **Search engine** | Book |
+| **Group Sessions** | Book Challenge, Reading Session |
+| **Chat** | Chat Message |
+| **Library** | Review, Reading Status |
+| **Profile** | None yet (streaks and badges come from policies) |
 
 ## Iteration 2
 

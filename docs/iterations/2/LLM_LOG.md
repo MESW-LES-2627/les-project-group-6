@@ -143,3 +143,20 @@ ok, so, about the section 7 of what is not ideal. can we do something to improve
 #### Result
 Added `ReadingActivityQuery` (reading-session) and `ReadingProgressQuery` (reading-status), and made the challenge standings and the book club progress use them instead of reading those tables (`d1f3e37`). Added `groups.kind` with migration 0006, filled in for existing groups, and removed the `book_clubs` joins from the group roster and invite repositories (`ee0c762`). Added 4 integration tests (190 passing) and simplified the change analysis, adding a section 7 on the fixes.
 
+### 2026-11-08: Event storming review and added to the design
+
+- **Date:** 2026-11-08
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs, architecture
+
+#### Prompt
+```text
+I made this eventstorming of the project. its correct? what can be the aggregates?
+about the point 1 what are the events you think we can change?
+now, add this image name as eventstorming in oop_assets and add to design.md as reference
+```
+
+#### Result
+Reviewed the event storming board: flagged UI interactions written as domain events (to remove or turn into read models), commands written as clicks, streak and badge policies triggered by opening the profile, and technical steps in the chat flow, and suggested aggregates per subdomain. Added the updated board as `docs/oop_assets/eventstorming.png` and filled in the event storming section of `design.md` with the image and a table of the aggregates per subdomain.

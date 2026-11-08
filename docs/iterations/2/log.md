@@ -73,3 +73,8 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Tests.** Backend 190 passing (4 new integration tests for the activity query and the challenge standings).
 - **Deploy:** migration 0006 runs with the CD on merge. No new environment variables.
 - **CI:** `scripts/check-commits.sh` was removed with the `scripts/` folder (`fbbdf9a`), but `commitlint.yml` still called it, so the commit check failed on every pull request. The same check now runs inline in the workflow, and the README no longer lists `infra/` and `scripts/`.
+
+### 2026-11-08: Event storming added to the design
+
+- New [event storming board](../../oop_assets/eventstorming.png), shown in [`design.md`](../../design.md) under iteration 1, which was a placeholder until now.
+- It maps the event flow in six subdomains (Authentication, Search engine, Group Sessions, Chat, Library, Profile) and marks the aggregates: User Account, Book, Book Challenge, Reading Session, Chat Message, Review and Reading Status.
