@@ -134,6 +134,8 @@ export const groups = pgTable(
     id: uuid().defaultRandom().primaryKey().notNull(),
     name: text().notNull(),
     description: text().notNull(),
+    /** 'challenge' or 'book-club', owned by the group kernel (see GROUP_KINDS). */
+    kind: varchar({ length: 20 }).notNull(),
     adminId: uuid('admin_id').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)

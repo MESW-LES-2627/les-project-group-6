@@ -55,3 +55,21 @@ A running record of what the team did and decided in iteration 2. The [release n
 - In project 23, add the views that the API cannot create: **Current sprint** (board, filter `iteration:@current`, columns by Status) and group **Prioritized backlog** by Iteration.
 - Check and close the open issues that look done in the code: #10 #25 (book page), #28 #30 (library and status), #43 #49 (session API and summary), #52 #55 #59 (group invites, done in #107).
 - Fill in [`release_notes.md`](release_notes.md) before running "Iteration release" for `iter-2`.
+
+### 2026-11-08: Component diagram updated to iteration 1
+
+- New [iteration 1 component diagram](../../oop_assets/component_diagram_iteration_1.png), explained in [`design.md`](../../design.md) next to the [iteration 0 one](../../oop_assets/component_diagram_iteration_0.png). Both show the target architecture, including components not built yet.
+- What changed from iteration 0: new Auth middleware, Users management, Social links, Group management and Book club services; Challenge management became the Book challenge service; the Leaderboard sync and Search engine services were removed (leaderboards are worked out when read, and book search is part of Books management).
+- `design.md` now has a contents list and is organised by OOP iteration (1 to 3), each with a class diagram and a component diagram, plus event storming in iteration 1 and a change analysis in iteration 2. The two existing component diagrams are under iterations 1 and 2.
+- Added UML class diagrams of the domain (Mermaid in [`design.md`](../../design.md), PNGs in `oop_assets/`) for OOP iterations 1 and 2. **Decision:** `Group` is an abstract class with `ChallengeGroup` and `BookClub` as subclasses, because both share members, roles, invites and chat; the leaderboard is a derived attribute instead of a stored class, matching the "computed on read" decision in `infra.md`.
+- Wrote the [change analysis](../../oop_assets/change_analysis.md) for OOP iteration 2, linked from `design.md`. Scenario: adding book clubs. It includes a coupling analysis with the Balanced Coupling model ([modularity skill](https://github.com/vladikk/modularity)), a cohesion analysis, and the decision: a shared `Group` kernel with one module per kind of group (`7a919bd`, `2f8830c`). It also records three follow-ups as debt. The critical one is that the challenge standings and the club progress queries both repeat the counted-minutes rule by reading `reading_sessions` directly.
+
+### 2026-11-08: Fixed the coupling problems found in the change analysis
+
+- Branch `refactor/group-coupling`, commits `d1f3e37` and `ee0c762`. Not merged yet.
+- **Reading activity through contracts.** Reading Session now publishes `ReadingActivityQuery` (which minutes count) and Reading Status publishes `ReadingProgressQuery`. Challenge standings and book club progress call them instead of reading `reading_sessions` and `reading_status` directly, so the counted-minutes rule lives in one place. *Rejected:* keeping the two read-side queries (CQRS) as they were, because they duplicated a core rule in two modules.
+- **Group kind stored on the group.** Migration [0006](../../../apps/backend/src/database/migrations/0006_group_kind.sql) adds `groups.kind`, filled from `book_clubs` for existing rows (checked on a scratch database). The group roster and invite repositories no longer join `book_clubs`.
+- Left as known debt: the club reads `updatedAt` as the finish date, and two modules still write their admin's `member` row. See section 7 of the [change analysis](../../oop_assets/change_analysis.md).
+- **Tests.** Backend 190 passing (4 new integration tests for the activity query and the challenge standings).
+- **Deploy:** migration 0006 runs with the CD on merge. No new environment variables.
+- **CI:** `scripts/check-commits.sh` was removed with the `scripts/` folder (`fbbdf9a`), but `commitlint.yml` still called it, so the commit check failed on every pull request. The same check now runs inline in the workflow, and the README no longer lists `infra/` and `scripts/`.

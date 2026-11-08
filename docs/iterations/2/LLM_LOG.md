@@ -78,3 +78,68 @@ add any missing one from https://github.com/orgs/MESW-LES-2627/projects/9
 #### Explanation of Changes
 Checked the code to see which features are still missing or mocked, and added the challenge winner story left over from project 9. Wrote 8 user stories with Gherkin scenarios as issues #120 to #127, moved the existing task issues under them as sub-issues, and closed the old parents. On project 23, changed the Iteration field to one-week sprints and gave each story a Priority, story points and Iteration 2. Added the user story issue template and updated the README and the iteration log. The team still has to review the points and priority order.
 
+
+### 2026-11-08: Component diagram for iteration 1
+
+- **Date:** 2026-11-08
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** architecture, docs
+
+#### Prompt
+```text
+@docs/oop_assets/component_diagram_iteration_0.png I made this diagram in the first week of the repo. Something changed during the realease iter-1? can I updated this somehow?
+```
+
+#### Result
+Compared the iteration 0 component diagram with the backend feature modules, `api_routes.md`, `infra.md` and the iteration 1 log, and listed what changed. Robert redrew the iteration 1 diagram by hand. Claude rewrote `docs/design.md` to explain both diagrams and reviewed the source and target of each arrow against the code.
+
+### 2026-11-08: UML class diagrams for OOP iterations 1 and 2
+
+- **Date:** 2026-11-08
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** architecture, docs
+
+#### Prompt
+```text
+ok, now, I need to create a class diagram using UML 2.0 for iteration 0 and iteration 1. Based on the differente of the component diagram of iteration 0 and 1, create for me. Some things I remember right now that could be helpful: challenge groups and book clubs maybe are inheritance of groups because they reuse classes. etc. help me, we already have some class implemented but this class diagram is not focused in  implementation but domain.
+```
+
+#### Result
+Generated two domain class diagrams in Mermaid (UML 2.0 notation: generalization, composition, multiplicities, enumerations, derived attributes) from the two component diagrams, the domain classes in `apps/backend/src/features/` and `table_UML.md`. Added them to `docs/design.md` with a list of what changed, and rendered PNGs to `docs/oop_assets/`.
+
+### 2026-11-08: Change analysis (adding book clubs)
+
+- **Date:** 2026-11-08
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5 (main agent and one subagent)
+- **Tool:** Claude Code
+- **Domain:** architecture, docs
+
+#### Prompt
+```text
+add the analysis in a separate md in oop_assets and just reference in design.md. For the coupling analysis you can use this skill: https://github.com/vladikk/modularity span a subagent to use this skill
+```
+
+#### Result
+A subagent applied the Balanced Coupling model from the modularity skill (integration strength, distance, volatility) to the book club change, comparing the code at `fd29f4b`, `7a919bd` and `2f8830c`. Claude wrote `docs/oop_assets/change_analysis.md` from that analysis. It covers the scenario, the coupling tables before and after, cohesion, the options and the decision, and is linked from `design.md`.
+
+### 2026-11-08: Reduce coupling between groups and reading data
+
+- **Date:** 2026-11-08
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database, docs
+
+#### Prompt
+```text
+ok, so, about the section 7 of what is not ideal. can we do something to improve this and reduce coupling?
+```
+
+#### Result
+Added `ReadingActivityQuery` (reading-session) and `ReadingProgressQuery` (reading-status), and made the challenge standings and the book club progress use them instead of reading those tables (`d1f3e37`). Added `groups.kind` with migration 0006, filled in for existing groups, and removed the `book_clubs` joins from the group roster and invite repositories (`ee0c762`). Added 4 integration tests (190 passing) and simplified the change analysis, adding a section 7 on the fixes.
+

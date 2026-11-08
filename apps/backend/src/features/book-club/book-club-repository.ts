@@ -67,6 +67,7 @@ export class DrizzleBookClubRepository implements IBookClubRepository {
           id: club.id.value,
           name: club.name.value,
           description: club.description,
+          kind: 'book-club',
           adminId: club.adminId.value,
           createdAt: club.createdAt.toISOString(),
         })

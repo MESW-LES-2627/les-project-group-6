@@ -56,6 +56,15 @@ export interface Membership {
 export const GROUP_KINDS = ['challenge', 'book-club'] as const;
 export type GroupKind = (typeof GROUP_KINDS)[number];
 
+function isGroupKind(raw: string): raw is GroupKind {
+  return (GROUP_KINDS as readonly string[]).includes(raw);
+}
+
+export function groupKindOf(raw: string): GroupKind {
+  if (!isGroupKind(raw)) throw new InvalidValueError(`Unknown group kind: ${raw}`);
+  return raw;
+}
+
 export class NotGroupAdminError extends ForbiddenError {
   constructor(action: string) {
     super(`Only the group admin can ${action}`);
