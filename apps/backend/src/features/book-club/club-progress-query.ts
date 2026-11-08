@@ -1,10 +1,19 @@
-import { and, eq, gte, inArray, isNotNull, lt, sql } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { books, readingSessions, readingStatus, users } from '../../database/schema.js';
+import { books, users } from '../../database/schema.js';
+import {
+  DrizzleReadingActivityQuery,
+  type ReadingActivityQuery,
+} from '../reading-session/reading-activity-query.js';
+import {
+  DrizzleReadingProgressQuery,
+  type ReadingProgressQuery,
+} from '../reading-status/reading-progress-query.js';
 import type { BookClub, Round } from './book-club.js';
 
 // Read side (CQRS): a round's progress joins members, users, reading sessions and
-// reading statuses, which does not fit one aggregate.
+// reading statuses, which does not fit one aggregate. Minutes and progress come
+// from the reading-session and reading-status contracts, not from their tables.
 export interface ClubStandingView {
   userId: string;
   displayName: string;
@@ -26,7 +35,11 @@ export interface ClubBookView {
 }
 
 export class ClubProgressQuery {
-  constructor(private readonly db: NodePgDatabase) {}
+  constructor(
+    private readonly db: NodePgDatabase,
+    private readonly activity: ReadingActivityQuery = new DrizzleReadingActivityQuery(db),
+    private readonly progress: ReadingProgressQuery = new DrizzleReadingProgressQuery(db),
+  ) {}
 
   /** Every member of the club on `round`, most counted minutes first. */
   async standings(club: BookClub, round: Round): Promise<ClubStandingView[]> {
@@ -38,30 +51,13 @@ export class ClubProgressQuery {
         .select({ id: users.id, displayName: users.displayName, username: users.username })
         .from(users)
         .where(inArray(users.id, ids)),
-      this.db
-        .select({
-          userId: readingSessions.userId,
-          minutes: sql<number>`coalesce(sum(${readingSessions.countedMinutes}), 0)::int`,
-        })
-        .from(readingSessions)
-        .where(
-          and(
-            inArray(readingSessions.userId, ids),
-            eq(readingSessions.bookId, bookId),
-            isNotNull(readingSessions.endedAt),
-            gte(readingSessions.endedAt, round.period.startsAt.toISOString()),
-            lt(readingSessions.endedAt, round.period.endsAt.toISOString()),
-          ),
-        )
-        .groupBy(readingSessions.userId),
-      this.db
-        .select({
-          userId: readingStatus.userId,
-          status: readingStatus.status,
-          currentPage: readingStatus.currentPage,
-        })
-        .from(readingStatus)
-        .where(and(inArray(readingStatus.userId, ids), eq(readingStatus.bookId, bookId))),
+      this.activity.countedMinutes({
+        userIds: ids,
+        bookId,
+        from: round.period.startsAt,
+        to: round.period.endsAt,
+      }),
+      this.progress.progressOf(ids, bookId),
       this.db.select({ pageCount: books.pageCount }).from(books).where(eq(books.id, bookId)),
     ]);
 
@@ -70,7 +66,7 @@ export class ClubProgressQuery {
       const id = m.userId.value;
       const person = people.find((p) => p.id === id);
       const status = statuses.find((s) => s.userId === id);
-      const finished = status?.status === 'finished';
+      const finished = status?.finished ?? false;
       const currentPage = status?.currentPage ?? 0;
       const percent = finished
         ? 100

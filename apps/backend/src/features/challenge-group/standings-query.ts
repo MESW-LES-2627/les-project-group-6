@@ -1,6 +1,10 @@
-import { and, eq, gte, inArray, isNotNull, lt, sql } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { books, readingSessions, users } from '../../database/schema.js';
+import { books, users } from '../../database/schema.js';
+import {
+  DrizzleReadingActivityQuery,
+  type ReadingActivityQuery,
+} from '../reading-session/reading-activity-query.js';
 import type { ChallengeGroup, WinMetricType } from './challenge-group.js';
 
 // Read side (CQRS): the leaderboard joins members, users, reading sessions and
@@ -63,37 +67,37 @@ export class StandingsQuery {
 }
 
 export class CountedMinutesScore implements ScoreStrategy {
-  constructor(private readonly db: NodePgDatabase) {}
+  constructor(
+    private readonly db: NodePgDatabase,
+    private readonly activity: ReadingActivityQuery = new DrizzleReadingActivityQuery(db),
+  ) {}
 
   /**
-   * Counted minutes of sessions finished inside the challenge period, per member
-   * and book: a reader can read several books in the same challenge.
+   * Counted minutes inside the challenge period, per member and book: a reader can
+   * read several books in the same challenge. Which minutes count is decided by
+   * the reading-session module, not here.
    */
   async byBook(group: ChallengeGroup, ids: string[]): Promise<Map<string, BookMinutesView[]>> {
     const { period } = group.challenge;
-    const rows = await this.db
-      .select({
-        userId: readingSessions.userId,
-        bookId: books.id,
-        title: books.title,
-        minutes: sql<number>`coalesce(sum(${readingSessions.countedMinutes}), 0)::int`,
-      })
-      .from(readingSessions)
-      .innerJoin(books, eq(readingSessions.bookId, books.id))
-      .where(
-        and(
-          inArray(readingSessions.userId, ids),
-          isNotNull(readingSessions.endedAt),
-          gte(readingSessions.endedAt, period.startsAt.toISOString()),
-          lt(readingSessions.endedAt, period.endsAt.toISOString()),
-        ),
-      )
-      .groupBy(readingSessions.userId, books.id, books.title);
+    const read = await this.activity.countedMinutes({
+      userIds: ids,
+      from: period.startsAt,
+      to: period.endsAt,
+    });
+    const bookIds = [...new Set(read.map((r) => r.bookId))];
+    const titles =
+      bookIds.length === 0
+        ? []
+        : await this.db
+            .select({ id: books.id, title: books.title })
+            .from(books)
+            .where(inArray(books.id, bookIds));
 
     const byUser = new Map<string, BookMinutesView[]>();
-    for (const row of rows) {
+    for (const row of read) {
+      const title = titles.find((t) => t.id === row.bookId)?.title ?? 'Unknown book';
       const list = byUser.get(row.userId) ?? [];
-      list.push({ bookId: row.bookId, title: row.title, minutes: row.minutes });
+      list.push({ bookId: row.bookId, title, minutes: row.minutes });
       byUser.set(row.userId, list);
     }
     for (const list of byUser.values()) list.sort((a, b) => b.minutes - a.minutes);
