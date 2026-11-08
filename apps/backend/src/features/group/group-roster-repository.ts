@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { bookClubs, groups, member } from '../../database/schema.js';
+import { groups, member } from '../../database/schema.js';
 import { UserId } from '../user/user.js';
-import { GroupId, GroupRoster, memberRoleOf, type Membership } from './group.js';
+import { GroupId, GroupRoster, groupKindOf, memberRoleOf, type Membership } from './group.js';
 
 export interface IGroupRosterRepository {
   findById(id: GroupId): Promise<GroupRoster | null>;
@@ -15,9 +15,8 @@ export class DrizzleGroupRosterRepository implements IGroupRosterRepository {
   async findById(id: GroupId): Promise<GroupRoster | null> {
     const [rows, members] = await Promise.all([
       this.db
-        .select({ name: groups.name, adminId: groups.adminId, clubId: bookClubs.groupId })
+        .select({ name: groups.name, kind: groups.kind, adminId: groups.adminId })
         .from(groups)
-        .leftJoin(bookClubs, eq(bookClubs.groupId, groups.id))
         .where(eq(groups.id, id.value))
         .limit(1),
       this.db.select().from(member).where(eq(member.groupId, id.value)),
@@ -27,7 +26,7 @@ export class DrizzleGroupRosterRepository implements IGroupRosterRepository {
     return new GroupRoster(
       id,
       row.name,
-      row.clubId ? 'book-club' : 'challenge',
+      groupKindOf(row.kind),
       UserId.of(row.adminId),
       members.map((m) => ({
         userId: UserId.of(m.userId),

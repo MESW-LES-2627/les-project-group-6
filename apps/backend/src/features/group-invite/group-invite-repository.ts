@@ -1,7 +1,7 @@
 import { and, desc, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { bookClubs, groupInvites, groups, users } from '../../database/schema.js';
-import { GroupId, type GroupKind } from '../group/group.js';
+import { groupInvites, groups, users } from '../../database/schema.js';
+import { GroupId, groupKindOf, type GroupKind } from '../group/group.js';
 import { UserId } from '../user/user.js';
 import { GroupInvite, InviteId, inviteStatusOf } from './group-invite.js';
 
@@ -62,20 +62,19 @@ export class DrizzleGroupInviteRepository implements IGroupInviteRepository {
       .select({
         invite: groupInvites,
         groupName: groups.name,
-        clubId: bookClubs.groupId,
+        groupKind: groups.kind,
         inviterName: users.displayName,
       })
       .from(groupInvites)
       .innerJoin(groups, eq(groupInvites.groupId, groups.id))
       .innerJoin(users, eq(groupInvites.inviterId, users.id))
-      .leftJoin(bookClubs, eq(bookClubs.groupId, groups.id))
       .where(and(eq(groupInvites.inviteeId, inviteeId.value), eq(groupInvites.status, 'pending')))
       .orderBy(desc(groupInvites.createdAt));
 
     return rows.map((row) => ({
       invite: toDomain(row.invite),
       groupName: row.groupName,
-      groupKind: row.clubId ? 'book-club' : 'challenge',
+      groupKind: groupKindOf(row.groupKind),
       inviterName: row.inviterName,
     }));
   }

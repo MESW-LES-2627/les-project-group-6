@@ -43,6 +43,13 @@
       "when": 1794065468370,
       "tag": "0005_lock_public_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794146979918,
+      "tag": "0006_group_kind",
+      "breakpoints": true
     }
   ]
 }
