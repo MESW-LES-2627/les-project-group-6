@@ -1,0 +1,38 @@
+name: User story
+description: A user-facing feature, written as a story with Gherkin acceptance criteria. Split the work into Task sub-issues.
+title: "[Story] "
+labels: ["user story"]
+type: Feature
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Add the story to the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23), then set its Priority, Estimate (story points) and Iteration (sprint) there.
+        After creating it, use **Create sub-issue** for each technical task (database, backend, frontend, tests).
+  - type: textarea
+    id: story
+    attributes:
+      label: User story
+      value: As a <type of user>, I want <goal>, so that <reason>.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: One scenario per rule or edge case.
+      render: gherkin
+      value: |
+        Feature: <name>
+
+          Scenario: <happy path>
+            Given <context>
+            When <action>
+            Then <outcome>
+    validations:
+      required: true
+  - type: input
+    id: requirement
+    attributes:
+      label: Related requirement
+      description: ID from `docs/requirements/requirements.md`, e.g. F-LIB-02.

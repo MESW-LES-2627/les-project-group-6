@@ -56,3 +56,25 @@ ok, so, I'm not being able to login with my username, just the email and pass. I
 
 #### Explanation of Changes
 Changed the login field from "Email or username" to an `Email` input (`type="email"`) in `LoginView.vue`. In `auth.ts`, `SignInInput.identifier` became `email`, and the unused `UsernameResolver` hook and its "Username sign-in is not available yet" error were removed. Updated `auth.spec.ts` (dropped the username tests), `LoginView.spec.ts`, the frontend README and the iteration 2 log.
+
+### 2026-11-08: Prioritized backlog and sprint plan with user stories
+
+- **Date:** 2026-11-08
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** planning, docs
+
+#### Prompt
+```text
+https://github.com/orgs/MESW-LES-2627/projects/23/views/1 I created a prioritized backlog that is empty right now. We already have a kanban but the teacher askes us to do like this:
+- plan the user stories to be done in each sprint (a week)
+currently we are just picking tasks and doing without priority, without planning, without gherkin user stories descriptions. Can we do this here?
+for this sprint (iteration_2) i was thinking of: [e2e tests for every page; search a book or add it manually; streak and total minutes on the profile; comments and reviews; library folders; explore page with trends, most read of the week and search; search a user by username, see the profile and send a friend request]
+add any missing one from https://github.com/orgs/MESW-LES-2627/projects/9
+```
+(Then: "can I organize by sprints?", and approved closing the old parent issues.)
+
+#### Explanation of Changes
+Checked the code to see which features are still missing or mocked, and added the challenge winner story left over from project 9. Wrote 8 user stories with Gherkin scenarios as issues #120 to #127, moved the existing task issues under them as sub-issues, and closed the old parents. On project 23, changed the Iteration field to one-week sprints and gave each story a Priority, story points and Iteration 2. Added the user story issue template and updated the README and the iteration log. The team still has to review the points and priority order.
+

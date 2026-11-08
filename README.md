@@ -94,7 +94,7 @@ Helper scripts for development and automation.
 
 ### `.github/`
 
-GitHub configuration: the pull request template, the issue templates (`ISSUE_TEMPLATE/`: feature, bug, refactor and tests) and the CI workflows (`workflows/`). Work is tracked on the org GitHub Project board (columns: To do, Doing, In review, QA, Done).
+GitHub configuration: the pull request template, the issue templates (`ISSUE_TEMPLATE/`: user story, feature, bug, refactor and tests) and the CI workflows (`workflows/`). Sprints are planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23) project: user stories with Gherkin acceptance criteria, a Priority, story points and a one-week Iteration (sprint); their tasks are sub-issues.
 
 #### Continuous integration
 
