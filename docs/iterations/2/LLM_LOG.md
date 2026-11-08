@@ -127,3 +127,19 @@ add the analysis in a separate md in oop_assets and just reference in design.md.
 #### Result
 A subagent applied the Balanced Coupling model from the modularity skill (integration strength, distance, volatility) to the book club change, comparing the code at `fd29f4b`, `7a919bd` and `2f8830c`. Claude wrote `docs/oop_assets/change_analysis.md` from that analysis. It covers the scenario, the coupling tables before and after, cohesion, the options and the decision, and is linked from `design.md`.
 
+### 2026-11-08: Reduce coupling between groups and reading data
+
+- **Date:** 2026-11-08
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database, docs
+
+#### Prompt
+```text
+ok, so, about the section 7 of what is not ideal. can we do something to improve this and reduce coupling?
+```
+
+#### Result
+Added `ReadingActivityQuery` (reading-session) and `ReadingProgressQuery` (reading-status), and made the challenge standings and the book club progress use them instead of reading those tables (`d1f3e37`). Added `groups.kind` with migration 0006, filled in for existing groups, and removed the `book_clubs` joins from the group roster and invite repositories (`ee0c762`). Added 4 integration tests (190 passing) and simplified the change analysis, adding a section 7 on the fixes.
+
