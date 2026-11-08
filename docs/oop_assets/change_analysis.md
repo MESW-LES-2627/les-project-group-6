@@ -131,7 +131,7 @@ Evidence in git (PR #112): first `7a919bd` moved members and roles to `features/
 
 ## 7. What we improved after the analysis
 
-The analysis found two weak points in the code, so we fixed them on the branch `refactor/group-coupling`. The app behaves the same, and all backend tests pass (190, including 4 new ones).
+Sections 1 to 6 describe the code as it was when we wrote this analysis. **We made the changes below after the analysis**, to fix the two weak points it found. They were merged in [PR #128](https://github.com/MESW-LES-2627/les-project-group-6/pull/128). The app behaves the same, and all backend tests pass (190, including 4 new ones).
 
 **1. The "which minutes count" rule is now in one place** (`d1f3e37`).
 
