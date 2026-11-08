@@ -72,3 +72,4 @@ A running record of what the team did and decided in iteration 2. The [release n
 - Left as known debt: the club reads `updatedAt` as the finish date, and two modules still write their admin's `member` row. See section 7 of the [change analysis](../../oop_assets/change_analysis.md).
 - **Tests.** Backend 190 passing (4 new integration tests for the activity query and the challenge standings).
 - **Deploy:** migration 0006 runs with the CD on merge. No new environment variables.
+- **CI:** `scripts/check-commits.sh` was removed with the `scripts/` folder (`fbbdf9a`), but `commitlint.yml` still called it, so the commit check failed on every pull request. The same check now runs inline in the workflow, and the README no longer lists `infra/` and `scripts/`.

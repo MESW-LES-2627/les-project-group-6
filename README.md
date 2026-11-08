@@ -30,8 +30,6 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 │   ├── product/
 │   ├── specs/
 │   └── sprints/
-├── infra/
-├── scripts/
 ├── .github/
 ├── .agents/
 ├── .claude/skills/            # project skills for Claude Code (e.g. oop-ddd-review)
@@ -84,14 +82,6 @@ All project documentation. See [docs/README.md](docs/README.md) for an index tha
 - `docs/product/`: documents about the business rules and design of the product, such as the [requirements](docs/product/requirements.md) and the [feature scope](docs/product/features_priority.md) (what is Core, Extra or Optional, and the sprint plan).
 - `docs/sprints/`: deliverables for the Software Engineering Lab classes (vision, MVP, vertical prototype, claims, release notes), organized by iteration (`iteration_0` to `iteration_4`). Each iteration can also have a `log.md`: a running record of what the team did and decided (see [iteration 0](docs/sprints/iteration_0/log.md)).
 
-### `infra/`
-
-Infrastructure and deployment configuration.
-
-### `scripts/`
-
-Helper scripts for development and automation.
-
 ### `.github/`
 
 GitHub configuration: the pull request template, the issue templates (`ISSUE_TEMPLATE/`: user story, feature, bug, refactor and tests) and the CI workflows (`workflows/`). Sprints are planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23) project: user stories with Gherkin acceptance criteria, a Priority, story points and a one-week Iteration (sprint); their tasks are sub-issues.
@@ -102,7 +92,7 @@ Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks a
 
 - `backend-ci.yml`: runs on every pull request to `main` when `apps/backend/`, the shared root config or the workflow itself changes. It installs with the locked dependencies, then runs lint, format check, typecheck, tests (against a Postgres service) and build.
 - `frontend-ci.yml`: the same steps for `apps/frontend/`: lint, format check, typecheck, component/router tests and build.
-- `commitlint.yml`: runs on every pull request to `main` and fails when a commit (merge commits aside) does not follow Conventional Commits: `<type>(<scope>)!: <description>` with type `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style` or `test`. Check locally with `scripts/check-commits.sh origin/main..HEAD`. Fix a bad message with `git commit --amend` or `git rebase -i` and force-push.
+- `commitlint.yml`: runs on every pull request to `main` and fails when a commit (merge commits aside) does not follow Conventional Commits: `<type>(<scope>)!: <description>` with type `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style` or `test`. Fix a bad message with `git commit --amend` or `git rebase -i` and force-push.
 
 #### Deploy (Render)
 
