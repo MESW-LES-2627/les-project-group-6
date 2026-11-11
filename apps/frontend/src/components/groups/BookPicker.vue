@@ -61,7 +61,7 @@ async function addTyped() {
   if (!title) return;
   busy.value = true;
   try {
-    pick(await addBook(title));
+    pick(await addBook({ title }));
   } catch (e) {
     error.value = (e as Error).message;
   } finally {

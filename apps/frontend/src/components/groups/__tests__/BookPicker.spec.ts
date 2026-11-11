@@ -5,7 +5,7 @@ import type { ApiBook } from '@/services/api';
 import BookPicker from '../BookPicker.vue';
 
 const searchBooks = vi.hoisted(() => vi.fn<(title: string) => Promise<ApiBook[]>>());
-const addBook = vi.hoisted(() => vi.fn<(title: string) => Promise<ApiBook>>());
+const addBook = vi.hoisted(() => vi.fn<(book: { title: string }) => Promise<ApiBook>>());
 
 vi.mock('@/services/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/api')>()),
@@ -58,7 +58,7 @@ describe('BookPicker', () => {
     await wrapper.get('.add').trigger('click');
     await vi.waitFor(() => expect(wrapper.emitted('update:modelValue')).toBeTruthy());
 
-    expect(addBook).toHaveBeenCalledWith('Middlemarch');
+    expect(addBook).toHaveBeenCalledWith({ title: 'Middlemarch' });
     expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ id: 'b9', title: 'Middlemarch' }]);
   });
 });

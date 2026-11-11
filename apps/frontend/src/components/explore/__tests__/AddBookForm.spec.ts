@@ -1,0 +1,43 @@
+import { mount } from '@vue/test-utils';
+import { describe, expect, it } from 'vitest';
+import AddBookForm from '../AddBookForm.vue';
+
+const mountForm = (initialTitle = '') =>
+  mount(AddBookForm, { props: { initialTitle, saving: false } });
+
+describe('AddBookForm', () => {
+  it('starts with the searched text as the title', () => {
+    const wrapper = mountForm("My grandmother's diary");
+    expect((wrapper.get('#add-book-title-input').element as HTMLInputElement).value).toBe(
+      "My grandmother's diary",
+    );
+  });
+
+  it('says the title is required and sends nothing without one', async () => {
+    const wrapper = mountForm('   ');
+    await wrapper.get('form').trigger('submit');
+
+    expect(wrapper.text()).toContain('Title is required');
+    expect(wrapper.emitted('submit')).toBeUndefined();
+  });
+
+  it('rejects a page count that is not a whole number above 0', async () => {
+    const wrapper = mountForm('Diary');
+    await wrapper.get('#add-book-pages').setValue('0');
+    await wrapper.get('form').trigger('submit');
+
+    expect(wrapper.text()).toContain('Pages must be a whole number above 0');
+    expect(wrapper.emitted('submit')).toBeUndefined();
+  });
+
+  it('sends only the fields that were filled in, trimmed', async () => {
+    const wrapper = mountForm(' Diary ');
+    await wrapper.get('#add-book-author').setValue(' Rosa ');
+    await wrapper.get('#add-book-pages').setValue('120');
+    await wrapper.get('form').trigger('submit');
+
+    expect(wrapper.emitted('submit')).toEqual([
+      [{ title: 'Diary', authors: ['Rosa'], pageCount: 120 }],
+    ]);
+  });
+});
