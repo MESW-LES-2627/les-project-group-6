@@ -160,3 +160,20 @@ now, add this image name as eventstorming in oop_assets and add to design.md as 
 
 #### Result
 Reviewed the event storming board: flagged UI interactions written as domain events (to remove or turn into read models), commands written as clicks, streak and badge policies triggered by opening the profile, and technical steps in the chat flow, and suggested aggregates per subdomain. Added the updated board as `docs/oop_assets/eventstorming.png` and filled in the event storming section of `design.md` with the image and a table of the aggregates per subdomain.
+
+### 2026-11-11: Auth middleware on the friend request API and merge with main
+
+- **Date:** 2026-11-11
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, testing, docs
+
+#### Prompt
+```text
+https://github.com/MESW-LES-2627/les-project-group-6/pull/114 and https://github.com/MESW-LES-2627/les-project-group-6/pull/115 these 2 PRs needs to add the auth middleware. Add for me and resolve the conflicts with main
+```
+
+#### Explanation of Changes
+Merged `main` into PR #114 and resolved the conflicts. The friend routes now take the acting reader from the token (`currentUserId`) instead of `requesterId`/`userId` in the body or path, and `GET /user/:userId/friend-requests` became `GET /me/friend-requests`. Rewrote the integration tests to authenticate with `FakeAuthProvider`, and moved the PR's docs from the old `docs/sprints/` folder into `docs/iterations/`.
+
