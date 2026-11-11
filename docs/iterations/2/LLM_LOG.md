@@ -264,3 +264,19 @@ my /explore route must debouce and return the books while I am writing. Also, I 
 
 #### Result
 Brainstormed the options (pg_trgm, full-text search, Elasticsearch) and wrote the [book search spec](../../superpowers/specs/2026-11-11-book-search-design.md): pg_trgm + unaccent over title, author and ISBN behind `GET /book?q=`, and a 300 ms search-as-you-type on Explore.
+
+### 2026-11-11: Fuzzy search-as-you-type implementation
+
+- **Date:** 2026-11-11
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5 (with Sonnet subagents for mechanical tasks)
+- **Tool:** Claude Code
+- **Domain:** database, backend, frontend, testing, docs
+
+#### Prompt
+```text
+Implement docs/superpowers/plans/2026-11-11-book-search.md (subagent-driven development)
+```
+
+#### Result
+Migration 0009 (`pg_trgm`, `unaccent`, trigram indexes), `IBookRepository.search` replacing `findByTitle` (rewritten to UNION indexed branches after code review), `Isbn13.prefixFrom`, `GET /book?q=`, a cancellable `searchBooks`, and a 300 ms search-as-you-type on Explore, with integration, unit and view tests.

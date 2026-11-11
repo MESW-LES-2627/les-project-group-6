@@ -53,7 +53,7 @@ CREATE INDEX books_title_trgm_idx ON books USING gin (f_unaccent(lower(title)) g
 CREATE INDEX authors_name_trgm_idx ON authors USING gin (f_unaccent(lower(name)) gin_trgm_ops);
 ```
 
-- `books.isbn13` already has a `UNIQUE` btree index, which serves the ISBN prefix match.
+- `books.isbn13` already has a `UNIQUE` btree index. Under the `en_US` collation it cannot serve `LIKE 'prefix%'`, so the ISBN match is a digit range instead (see below).
 - The migration is registered in Drizzle's `meta/_journal.json`, like `0000` to `0008`.
 - **Extension schema.** On Supabase, extensions usually live in the `extensions` schema. Locally (Docker `postgres:17-alpine`) `CREATE EXTENSION` puts them in `public`. A wrapper that hard-codes `public.unaccent` would then fail on Supabase. The wrapper looks up the schema where `unaccent` is installed (`pg_extension` joined with `pg_namespace`) and builds the function with `EXECUTE format(...)` in a `DO` block. The trigram operators also need that schema on the `search_path` in production. The plan must verify both against a Supabase database before merging.
 - Migration `0005` (RLS, Supabase API roles revoked) does not affect functions or indexes, so nothing else needs revoking.
@@ -64,10 +64,10 @@ CREATE INDEX authors_name_trgm_idx ON authors USING gin (f_unaccent(lower(name))
 This replaces `findByTitle`. `DrizzleBookRepository` builds one SQL query.
 
 1. **Normalise.** `q = f_unaccent(lower(:query))`. The query arrives already trimmed.
-2. **ISBN.** `digits = query` with `-` and spaces removed. If `digits` is 10 to 13 digits, `isbn13 LIKE digits || '%'` is one of the match conditions. Its rank is highest.
-3. **Text match.** This uses `LEFT JOIN book_authors` / `authors`, grouped by book, so a book with several authors appears once.
+2. **ISBN.** `Isbn13.prefixFrom(query)` removes `-` and spaces. If 6 to 13 digits remain (6, so a year such as "1984" stays a title and a half-typed ISBN still matches), the range `isbn13 >= digits AND isbn13 < next(digits)` is one of the match branches, which uses the btree. Its rank is highest. Only ISBN-13 is stored, so an ISBN-10 does not match.
+3. **Text match.** The WHERE is `books.id IN (title branch UNION author branch [UNION ISBN branch])`. Each branch uses its own index; a single `OR` across them forced a sequential scan (about 900 ms against 3–10 ms on 50k books). A book with several matching authors appears once.
    - If the query has 3 or more characters: `q <% f_unaccent(lower(books.title)) OR q <% f_unaccent(lower(authors.name))`.
-   - Otherwise: `f_unaccent(lower(title)) LIKE q || '%' OR f_unaccent(lower(name)) LIKE q || '%'`. Trigrams are unreliable on 1 or 2 characters.
+   - Otherwise: the title starts with `q`, or any word of an author's name starts with `q` ("sa" finds "José Saramago"). Trigrams are unreliable on 1 or 2 characters.
    - `%` and `_` in the reader's text are escaped before any `LIKE`.
 4. **Rank** (descending):
    1. ISBN match
