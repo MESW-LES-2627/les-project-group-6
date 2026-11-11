@@ -72,6 +72,11 @@ There is no `DELETE /book/:id`: other readers' statuses, reviews and sessions de
 | Method | Path | Description |
 |---|---|---|
 | GET | `/me/friends` | Lists the reader's friends. |
+| POST | `/friend-requests` | Sends a friend request from the reader to `targetUserId` (`201`, or `200` if one already exists). |
+| GET | `/me/friend-requests` | Lists the reader's incoming pending friend requests. |
+| POST | `/friend-requests/:id/accept` | The addressee accepts a pending request. |
+| POST | `/friend-requests/:id/decline` | The addressee declines a pending request (`204`). |
+| DELETE | `/friends/:userId` | Removes the friendship between the reader and that user (`204`). |
 
 ### Challenge groups (`features/challenge-group/challenge-group-routes.ts`)
 

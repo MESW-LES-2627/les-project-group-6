@@ -10,6 +10,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 |---|---|
 | Releases | One GitHub Release per sprint (`iter-0` to `iter-4`), made by hand with `iteration-release.yml`; `vX.Y.Z` stay as tags only. `iter-0` and `iter-1` released |
 | Auth (F-AUTH-01) | Login is email and password only; username login removed from the form |
+| Friends (F-SOC-01) | Friend request API (send, list incoming, accept, decline, remove) behind the auth middleware (PR #114) |
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
 
@@ -80,6 +81,12 @@ A running record of what the team did and decided in iteration 2. The [release n
 - New [event storming board](../../oop_assets/eventstorming.png), shown in [`design.md`](../../design.md) under iteration 1, which was a placeholder until now.
 - It maps the event flow in six subdomains (Authentication, Search engine, Group Sessions, Chat, Library, Profile) and marks the aggregates: User Account, Book, Book Challenge, Reading Session, Chat Message, Review and Reading Status.
 
+### 2026-11-11: Friend request API behind the auth middleware (#33)
+
+- PR [#114](https://github.com/MESW-LES-2627/les-project-group-6/pull/114) closing [#33](https://github.com/MESW-LES-2627/les-project-group-6/issues/33), for [F-SOC-01](../../requirements/requirements.md). Adds the `Friendship` aggregate (`request`, `accept`, `decline`), `FriendService`, the repository methods (`findById`, `findBetween`, `pendingFor`, `save`, `delete`) and [`friend-routes.ts`](../../../apps/backend/src/features/friend/friend-routes.ts). The original work log is in the [iteration 1 LLM log](../1/LLM_LOG.md).
+- The branch was written before auth landed, so the requester came from `requesterId`/`userId` in the body, query or path. After merging `main` the routes sit behind `authenticate` + `requireUser` and take the reader from the token (`currentUserId`), like every other protected route: `POST /friend-requests` only takes `targetUserId`, `GET /user/:userId/friend-requests` became `GET /me/friend-requests`, and accept, decline and remove no longer read a `userId`. `GET /me/friends` (already used by the frontend) is kept. *Rejected:* keeping `/user/:userId/...` paths, because any reader could read another reader's requests.
+- Integration tests now send a `FakeAuthProvider` token, check `401` without one, and check that a `requesterId` in the body is ignored. Documented in the [backend README](../../../apps/backend/README.md) and [`api_routes.md`](../../architecture/api_routes.md).
+
 ### 2026-11-11: Reading status dates and library routes behind the auth middleware (#28)
 
 - PR [#115](https://github.com/MESW-LES-2627/les-project-group-6/pull/115) for [F-LIB-01](../../requirements/requirements.md): `started_on`/`finished_on` on `reading_status`, set on status changes and checked (`finishedOn` not before `startedOn`), `ensureInProgress` when a reading session starts, and delete and library routes. The original work log is in the [iteration 1 LLM log](../1/LLM_LOG.md).
@@ -87,4 +94,3 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Auth.** After merging `main` every route takes the reader from the token: `userId` in the body, query or path is ignored, `DELETE /reading-status/:id` now reports another reader's entry as not found (like `PATCH`), `DELETE /user/:userId/library/:bookId` became `DELETE /me/library/:bookId`, and `GET /library?userId=` was removed because `GET /me/library` already does it. *Rejected:* keeping the `userId` routes, because any reader could change another reader's library.
 - **CI.** `scripts/check-commits.sh` was removed on `main`, so the PR's change allowing the `db` commit type moved into the inline check in [`commitlint.yml`](../../../.github/workflows/commitlint.yml) (the branch has a `db:` commit).
 - Documented in the [backend README](../../../apps/backend/README.md) and [`api_routes.md`](../../architecture/api_routes.md).
-

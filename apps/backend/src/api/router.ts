@@ -24,6 +24,7 @@ import { BookPollService } from '../features/book-club/book-poll-service.js';
 import type { ClubProgressQuery } from '../features/book-club/club-progress-query.js';
 import type { IFriendRepository } from '../features/friend/friend-repository.js';
 import { friendRoutes } from '../features/friend/friend-routes.js';
+import { FriendService } from '../features/friend/friend-service.js';
 import type { IGroupInviteRepository } from '../features/group-invite/group-invite-repository.js';
 import { groupInviteRoutes } from '../features/group-invite/group-invite-routes.js';
 import { GroupInviteService } from '../features/group-invite/group-invite-service.js';
@@ -185,8 +186,8 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
     router.use(bookClubRoutes(clubs, polls, clubProgressQuery));
   }
 
-  if (friendRepository) {
-    router.use(friendRoutes(friendRepository));
+  if (friendRepository && userRepository) {
+    router.use(friendRoutes(new FriendService(friendRepository, userRepository)));
   }
 
   if (userRepository && groupRosterRepository && friendRepository && groupInviteRepository) {
