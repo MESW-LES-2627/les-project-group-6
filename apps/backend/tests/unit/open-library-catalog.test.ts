@@ -91,4 +91,19 @@ describe('OpenLibraryCatalog', () => {
 
     assert.equal(calls.length, 2);
   });
+
+  test('does not log the search text when Open Library fails', async () => {
+    const { fn } = fakeFetch({}, 500);
+    const messages: string[] = [];
+    const catalog = new OpenLibraryCatalog({
+      baseUrl: 'https://ol.test',
+      fetchFn: fn,
+      logger: { warn: (message: string) => void messages.push(message) },
+    });
+
+    assert.deepEqual(await catalog.search('secret words', 20), []);
+
+    assert.equal(messages.length, 1);
+    assert.ok(!messages[0]!.includes('secret'));
+  });
 });

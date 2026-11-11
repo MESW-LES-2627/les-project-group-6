@@ -56,7 +56,7 @@ export class OpenLibraryCatalog implements BookCatalog {
       return found;
     } catch (error) {
       // Failures are not cached, so the next search tries again.
-      this.logger.warn(`Open Library search failed for "${query}": ${String(error)}`);
+      this.logger.warn(`Open Library search failed (${query.length} chars): ${String(error)}`);
       return [];
     }
   }
