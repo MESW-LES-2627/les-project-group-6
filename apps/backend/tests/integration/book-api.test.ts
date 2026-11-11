@@ -67,6 +67,24 @@ describe('Book API Endpoints', () => {
     });
   });
 
+  test('POST /book saves the authors so search finds the book by author', async () => {
+    await withApp(app, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/book`, {
+        method: 'POST',
+        headers: json,
+        body: JSON.stringify({ title: "My grandmother's diary", authors: ['Rosa Pereira'] }),
+      });
+      assert.strictEqual(response.status, 201);
+      const created = (await response.json()) as { id: string };
+
+      const found = await bookRepository.search('Rosa Pereira', 10);
+      assert.deepStrictEqual(
+        found.map((b) => b.id.value),
+        [created.id],
+      );
+    });
+  });
+
   test('POST /book returns 400 when title is missing', async () => {
     await withApp(app, async (baseUrl) => {
       const response = await fetch(`${baseUrl}/book`, {

@@ -8,16 +8,19 @@ export function bookRoutes(books: BookService): Router {
   const router = Router();
 
   router.post('/book', async (req, res) => {
-    const { title, description, isbn13, pageCount, coverUrl } = req.body;
-    const book = await books.register({
-      title,
-      description,
-      isbn13,
-      pageCount: pageCount !== undefined && pageCount !== null ? Number(pageCount) : null,
-      coverUrl,
-      // A book added through the API always comes from a reader, never from the catalogue.
-      isCommunityAdded: true,
-    });
+    const { title, description, isbn13, pageCount, coverUrl, authors } = req.body ?? {};
+    const book = await books.register(
+      {
+        title,
+        description,
+        isbn13,
+        pageCount: pageCount !== undefined && pageCount !== null ? Number(pageCount) : null,
+        coverUrl,
+        // A book added through the API always comes from a reader, never from the catalogue.
+        isCommunityAdded: true,
+      },
+      toAuthorNames(authors),
+    );
     res.status(201).json(toBookDto(book));
   });
 
@@ -37,4 +40,10 @@ export function bookRoutes(books: BookService): Router {
   // cascade from the book, and no reader owns the shared catalogue.
 
   return router;
+}
+
+// `authors` may be one name or a list; anything else is ignored.
+function toAuthorNames(raw: unknown): string[] {
+  const list = Array.isArray(raw) ? raw : [raw];
+  return list.filter((n): n is string => typeof n === 'string');
 }
