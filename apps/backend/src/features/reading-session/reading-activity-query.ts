@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, isNotNull, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { readingSessions } from '../../database/schema.js';
 
@@ -7,6 +7,21 @@ export interface MinutesRead {
   userId: string;
   bookId: string;
   minutes: number;
+}
+
+/** Counted minutes all readers read in one book. */
+export interface BookMinutes {
+  bookId: string;
+  minutes: number;
+}
+
+/** A time window and how many books a ranking keeps. */
+export interface RankingWindow {
+  /** Inclusive. */
+  from: Date;
+  /** Exclusive. */
+  to: Date;
+  limit: number;
 }
 
 export interface ActivityWindow {
@@ -30,6 +45,12 @@ export interface ReadingActivityQuery {
    * on the day it ended: it must end inside [from, to). Running sessions do not count.
    */
   countedMinutes(window: ActivityWindow): Promise<MinutesRead[]>;
+
+  /**
+   * Books ranked by the counted minutes of all readers, with the same rule as
+   * `countedMinutes`. Books with no counted minutes are left out.
+   */
+  topBooks(window: RankingWindow): Promise<BookMinutes[]>;
 }
 
 export class DrizzleReadingActivityQuery implements ReadingActivityQuery {
@@ -54,5 +75,24 @@ export class DrizzleReadingActivityQuery implements ReadingActivityQuery {
         ),
       )
       .groupBy(readingSessions.userId, readingSessions.bookId);
+  }
+
+  async topBooks(window: RankingWindow): Promise<BookMinutes[]> {
+    if (window.limit <= 0) return [];
+    const minutes = sql<number>`sum(${readingSessions.countedMinutes})::int`;
+    return this.db
+      .select({ bookId: readingSessions.bookId, minutes })
+      .from(readingSessions)
+      .where(
+        and(
+          isNotNull(readingSessions.endedAt),
+          gte(readingSessions.endedAt, window.from.toISOString()),
+          lt(readingSessions.endedAt, window.to.toISOString()),
+        ),
+      )
+      .groupBy(readingSessions.bookId)
+      .having(sql`sum(${readingSessions.countedMinutes}) > 0`)
+      .orderBy(desc(minutes), asc(readingSessions.bookId))
+      .limit(window.limit);
   }
 }
