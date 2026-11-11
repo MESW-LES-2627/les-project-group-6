@@ -68,6 +68,18 @@ CREATE TABLE book_authors (
     PRIMARY KEY (book_id, author_id)
 );
 
+-- F-EXP-01: fuzzy search on book titles and author names (migration 0009).
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+-- unaccent() is STABLE; this IMMUTABLE wrapper can be used in an index.
+CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text
+  LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT
+  AS $$ SELECT public.unaccent('public.unaccent'::regdictionary, $1) $$;
+
+CREATE INDEX books_title_trgm_idx ON books USING gin (f_unaccent(lower(title)) gin_trgm_ops);
+CREATE INDEX authors_name_trgm_idx ON authors USING gin (f_unaccent(lower(name)) gin_trgm_ops);
+
 -- Granular sub-classification or genre tag for books.
 CREATE TABLE genres (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

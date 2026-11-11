@@ -21,9 +21,10 @@ export function bookRoutes(books: BookService): Router {
     res.status(201).json(toBookDto(book));
   });
 
+  // F-EXP-01: ?q= is a title, author or ISBN; results come best match first.
   router.get('/book', async (req, res) => {
-    const title = typeof req.query.title === 'string' ? req.query.title : '';
-    const found = await books.search(title);
+    const query = typeof req.query.q === 'string' ? req.query.q : '';
+    const found = await books.search(query);
     res.status(200).json(found.map(toBookDto));
   });
 

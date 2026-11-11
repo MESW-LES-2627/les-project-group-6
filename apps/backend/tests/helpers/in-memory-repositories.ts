@@ -1,5 +1,5 @@
 import { BusinessRuleViolationError } from '../../src/utils/errors.js';
-import type { Book, BookId } from '../../src/features/book/book.js';
+import { Isbn13, type Book, type BookId } from '../../src/features/book/book.js';
 import type { IBookRepository } from '../../src/features/book/book-repository.js';
 import type {
   ReadingStatus,
@@ -57,9 +57,26 @@ export class InMemoryBookRepository implements IBookRepository {
     return this.books.get(id.value) ?? null;
   }
 
-  async findByTitle(title: string): Promise<Book[]> {
-    const query = title.toLowerCase();
-    return [...this.books.values()].filter((b) => b.title.value.toLowerCase().includes(query));
+  // Not fuzzy and title-only (Book has no authors): the integration tests cover real matching.
+  async search(query: string, limit: number): Promise<Book[]> {
+    const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+    const text = fold(query.trim());
+    if (!text || limit <= 0) return [];
+    const isbn = Isbn13.prefixFrom(query.trim());
+    // Like the SQL: under 3 characters only title prefixes match.
+    const prefixOnly = text.length < 3;
+    const rank = (book: Book): number => {
+      const title = fold(book.title.value);
+      if (isbn && book.isbn13?.value.startsWith(isbn)) return 0;
+      if (title.startsWith(text)) return 1;
+      return !prefixOnly && title.includes(text) ? 2 : -1;
+    };
+    return [...this.books.values()]
+      .map((book) => ({ book, rank: rank(book) }))
+      .filter((r) => r.rank >= 0)
+      .sort((a, b) => a.rank - b.rank || a.book.title.value.localeCompare(b.book.title.value))
+      .slice(0, limit)
+      .map((r) => r.book);
   }
 
   async findByIds(ids: readonly BookId[]): Promise<Book[]> {

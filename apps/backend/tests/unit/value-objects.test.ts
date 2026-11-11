@@ -44,6 +44,14 @@ describe('Value objects', () => {
     assert.throws(() => Isbn13.of('12345'), InvalidIsbnError);
   });
 
+  test('Isbn13.prefixFrom reads 6 to 13 ISBN digits from a search query', () => {
+    assert.strictEqual(Isbn13.prefixFrom('978-0-441 1'), '97804411');
+    assert.strictEqual(Isbn13.prefixFrom('9780441172719'), '9780441172719');
+    assert.strictEqual(Isbn13.prefixFrom('1984'), null);
+    assert.strictEqual(Isbn13.prefixFrom('97804411727190'), null);
+    assert.strictEqual(Isbn13.prefixFrom('978044117271X'), null);
+  });
+
   test('PageCount must be a positive integer', () => {
     assert.strictEqual(PageCount.of(328).value, 328);
     assert.throws(() => PageCount.of(0), InvalidPageCountError);

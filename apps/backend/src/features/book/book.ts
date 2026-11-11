@@ -62,6 +62,15 @@ export class Isbn13 {
     return new Isbn13(digits);
   }
 
+  /**
+   * The ISBN digits in a search query (hyphens and spaces removed), when it looks like a
+   * whole or partly typed ISBN. Six digits minimum, so a year such as "1984" stays a title.
+   */
+  static prefixFrom(query: string): string | null {
+    const digits = query.replace(/[-\s]/g, '');
+    return /^\d{6,13}$/.test(digits) ? digits : null;
+  }
+
   equals(other: Isbn13): boolean {
     return this.value === other.value;
   }

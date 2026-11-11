@@ -133,18 +133,40 @@ describe('Book API Endpoints', () => {
     });
   });
 
-  test('GET /book?title= searches books by title', async () => {
-    await bookRepository.save(Book.create({ title: 'Foundation' }));
-    await bookRepository.save(Book.create({ title: 'Foundation and Empire' }));
-    await bookRepository.save(Book.create({ title: 'Second Foundation' }));
+  test('GET /book?q= finds books despite a typo', async () => {
+    await bookRepository.save(Book.create({ title: "Harry Potter and the Philosopher's Stone" }));
+    await bookRepository.save(Book.create({ title: 'Dune' }));
 
     await withApp(app, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/book?title=Empire`, { headers: auth });
+      const response = await fetch(`${baseUrl}/book?q=${encodeURIComponent('hary poter')}`, {
+        headers: auth,
+      });
       assert.strictEqual(response.status, 200);
 
       const data = (await response.json()) as Array<{ title: string }>;
-      assert.strictEqual(data.length, 1);
-      assert.strictEqual(data[0]?.title, 'Foundation and Empire');
+      assert.deepStrictEqual(
+        data.map((b) => b.title),
+        ["Harry Potter and the Philosopher's Stone"],
+      );
+    });
+  });
+
+  test('GET /book returns an empty list without a query', async () => {
+    await bookRepository.save(Book.create({ title: 'Dune' }));
+
+    await withApp(app, async (baseUrl) => {
+      for (const path of ['/book', '/book?q=', '/book?q=%20%20']) {
+        const response = await fetch(`${baseUrl}${path}`, { headers: auth });
+        assert.strictEqual(response.status, 200);
+        assert.deepStrictEqual(await response.json(), []);
+      }
+    });
+  });
+
+  test('GET /book?q= requires a session', async () => {
+    await withApp(app, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/book?q=dune`);
+      assert.strictEqual(response.status, 401);
     });
   });
 

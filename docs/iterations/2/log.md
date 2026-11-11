@@ -12,7 +12,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Auth (F-AUTH-01) | Login is email and password only; username login removed from the form |
 | Friends (F-SOC-01) | Friend request API (send, list incoming, accept, decline, remove) behind the auth middleware (PR #114) |
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
-| Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with inline book search and Trending / Most read this week lists, `GET /explore`, migration 0008. Branch `feat/explore-page`, not merged yet |
+| Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with search-as-you-type (fuzzy title, author and ISBN via `pg_trgm`, `GET /book?q=`) and Trending / Most read this week lists, `GET /explore`, migrations 0008–0009. Explore page merged in PR #141; fuzzy search on branch `feat/fuzzy-book-search` |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
 
 ## Log
@@ -129,3 +129,25 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Decision: with no "added this week" activity, `GET /explore` returns `suggestions`**, up to 10 random books from the catalogue (`IBookRepository.random`, `ORDER BY random()`). The Trending tab shows them with a note, without the "#1" tag and with "A pick to start with" instead of a reader count. Real trending replaces them as soon as one book is added. *Rejected:* padding `trending` with random books, because it would show fake reader counts; and picking them in the frontend, because there is no endpoint that lists the catalogue.
 - "Most read this week" keeps its empty message.
 
+
+### 2026-11-11: Book search design: fuzzy, search-as-you-type (F-EXP-01)
+
+- [Spec](../../superpowers/specs/2026-11-11-book-search-design.md) for typo-tolerant search on title, author and ISBN, with results that update while the reader types on Explore. Not built yet.
+- **Decision: Postgres `pg_trgm` + `unaccent`** (migration 0009, GIN trigram indexes, `word_similarity`). *Rejected:* Elasticsearch / OpenSearch (another service to host and keep in sync, built for scale and features we don't need), and full-text search (no typo tolerance).
+- **Decision: `GET /book?q=` replaces `GET /book?title=`** for both Explore and the groups `BookPicker`, so the app has one search behaviour.
+- **Decision: Explore searches 300 ms after the last keystroke** (2+ characters), using `router.replace` while typing and `router.push` on Enter.
+
+### 2026-11-11: Fuzzy search-as-you-type built (F-EXP-01)
+
+- Built from the [spec](../../superpowers/specs/2026-11-11-book-search-design.md) and the [plan](../../superpowers/plans/2026-11-11-book-search.md), commits `9d81c81` to `66b44d4`.
+- **Backend.**
+  - [Migration 0009](../../../apps/backend/src/database/migrations/0009_book_search.sql) enables `pg_trgm` and `unaccent` and adds trigram indexes on book titles and author names.
+  - `IBookRepository.search` replaces `findByTitle`: typo-tolerant title and author matching (`word_similarity`, threshold 0.5), and an ISBN-13 prefix with or without hyphens. Results come best match first.
+  - `GET /book?q=` replaces `?title=` (see [API routes](../../architecture/api_routes.md)).
+- **Decision: threshold 0.5, not the default 0.6.** "hary poter" scores exactly 0.6 against "Harry Potter…". Known limit: a swapped-letter typo in a 4-letter word ("dnue") is not found.
+- **Decision: one indexed query per branch, joined with `UNION`.** A single `OR` across title, author and ISBN made Postgres scan every book (about 900 ms against 3–10 ms on 50k books, found in code review). For the same reason the ISBN prefix is a digit range on the btree, not `LIKE`.
+- **Frontend.**
+  - Explore searches 300 ms after the last keystroke (2+ characters). It replaces `?q=` while the reader types and pushes it on Enter, and cancels older requests.
+  - `BookPicker` uses the same search unchanged.
+- **Tests.** Backend 290 passing (19 new); frontend 145 passing (7 new).
+- Follow-up: an index on `book_authors(author_id)` would speed up author matches on large catalogues.

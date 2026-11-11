@@ -10,6 +10,7 @@ describe('ExploreSearchBar', () => {
     await wrapper.get('form').trigger('submit');
 
     expect(wrapper.get('label').text()).toBe('Search books');
+    expect(wrapper.get('.hint').text()).toBe('Title, author or ISBN');
     expect(wrapper.emitted('submit')).toEqual([['Dune']]);
     expect(wrapper.emitted('update:modelValue')).toContainEqual(['  Dune  ']);
   });

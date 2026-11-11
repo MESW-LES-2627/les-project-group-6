@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BookSearchResults from '@/components/explore/BookSearchResults.vue';
 import ExploreSearchBar from '@/components/explore/ExploreSearchBar.vue';
@@ -78,31 +78,61 @@ const cards = computed<{ book: LibraryBook; metric: string }[]>(() => {
   }));
 });
 
-// F-EXP-01: the search lives in `?q=`, so reload and back keep it.
+// F-EXP-01: the search lives in `?q=`, so reload and back keep it. Typing searches
+// 300 ms after the last keystroke (replacing the URL); Enter searches at once (pushing it).
+const MIN_QUERY_LENGTH = 2;
+const TYPING_DELAY_MS = 300;
+
+/** The `?q=` a text leads to: trimmed, or '' when too short to search. */
+function toQuery(text: string): string {
+  const trimmed = text.trim();
+  return trimmed.length >= MIN_QUERY_LENGTH ? trimmed : '';
+}
+
 const query = computed(() => (typeof route.query.q === 'string' ? route.query.q.trim() : ''));
 const draft = ref(query.value);
 const results = ref<LibraryBook[]>([]);
 const searching = ref(false);
 const searchError = ref(false);
 let latestSearch = 0;
+let inFlight: AbortController | undefined;
+let typingTimer: ReturnType<typeof setTimeout> | undefined;
+
+function routeTo(text: string) {
+  const q = toQuery(text);
+  return { name: 'explore', query: q ? { q } : {} };
+}
+
+watch(draft, (text) => {
+  clearTimeout(typingTimer);
+  if (toQuery(text) === query.value) return;
+  typingTimer = setTimeout(() => void router.replace(routeTo(text)), TYPING_DELAY_MS);
+});
 
 watch(
   query,
   async (q) => {
-    draft.value = q;
-    results.value = [];
+    // Back, forward, Clear and first load fill the field; typing never gets overwritten.
+    if (toQuery(draft.value) !== q) draft.value = q;
+    inFlight?.abort();
     searchError.value = false;
     const id = ++latestSearch;
     if (!q) {
+      results.value = [];
       searching.value = false;
       return;
     }
     searching.value = true;
+    const controller = (inFlight = new AbortController());
     try {
-      const found = await searchBooks(q);
+      const found = await searchBooks(q, controller.signal);
       if (id === latestSearch) results.value = found.map((b) => mapApiBookToLibraryBook(b));
     } catch {
-      if (id === latestSearch) searchError.value = true;
+      // A cancelled search is always an older one, so this guard drops it too.
+      if (id === latestSearch) {
+        results.value = [];
+        searchError.value = true;
+      }
     } finally {
       if (id === latestSearch) searching.value = false;
     }
@@ -110,9 +140,16 @@ watch(
   { immediate: true },
 );
 
-function search(q: string) {
-  void router.push({ name: 'explore', query: q ? { q } : {} });
+function search(text: string) {
+  clearTimeout(typingTimer);
+  void router.push(routeTo(text));
 }
+
+onBeforeUnmount(() => {
+  clearTimeout(typingTimer);
+  latestSearch++;
+  inFlight?.abort();
+});
 </script>
 
 <template>
@@ -129,7 +166,7 @@ function search(q: string) {
       v-if="query"
       :query="query"
       :books="results"
-      :loading="searching"
+      :loading="searching && results.length === 0"
       :error="searchError"
       @clear="search('')"
     />

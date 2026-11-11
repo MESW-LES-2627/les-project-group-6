@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The big search field of the Explore page (F-EXP-01). It searches books by title.
+// The big search field of the Explore page (F-EXP-01): title, author or ISBN.
 const query = defineModel<string>({ default: '' });
 const emit = defineEmits<{ submit: [query: string] }>();
 </script>
@@ -13,7 +13,7 @@ const emit = defineEmits<{ submit: [query: string] }>();
         v-model="query"
         class="field-input"
         type="search"
-        placeholder="Search by title"
+        placeholder="Try “hary poter” or an ISBN"
         autocomplete="off"
       />
       <button type="submit" class="button">
@@ -33,7 +33,7 @@ const emit = defineEmits<{ submit: [query: string] }>();
         Search
       </button>
     </div>
-    <p class="muted hint">Book title</p>
+    <p class="muted hint">Title, author or ISBN</p>
   </form>
 </template>
 
