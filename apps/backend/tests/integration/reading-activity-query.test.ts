@@ -131,4 +131,28 @@ describe('DrizzleReadingActivityQuery Integration', () => {
     ]);
     assert.equal(byUser.get(BEN), undefined);
   });
+  test('ranks books by counted minutes of all readers in the window', async () => {
+    await session(ANA, dune, '2026-11-02T10:00:00Z', 30);
+    await session(BEN, dune, '2026-11-03T10:00:00Z', 20);
+    await session(ANA, emma, '2026-11-04T10:00:00Z', 40);
+    await session(BEN, emma, null, 90);
+    await session(BEN, emma, '2026-10-31T10:00:00Z', 90);
+
+    const top = await activity.topBooks({ from: FROM, to: TO, limit: 10 });
+
+    assert.deepEqual(top, [
+      { bookId: dune.id.value, minutes: 50 },
+      { bookId: emma.id.value, minutes: 40 },
+    ]);
+  });
+
+  test('topBooks keeps only books with minutes and caps the list', async () => {
+    await session(ANA, dune, '2026-11-02T10:00:00Z', 0);
+    await session(ANA, emma, '2026-11-02T11:00:00Z', 5);
+
+    assert.deepEqual(await activity.topBooks({ from: FROM, to: TO, limit: 10 }), [
+      { bookId: emma.id.value, minutes: 5 },
+    ]);
+    assert.equal((await activity.topBooks({ from: FROM, to: TO, limit: 0 })).length, 0);
+  });
 });

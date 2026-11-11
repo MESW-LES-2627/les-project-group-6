@@ -12,6 +12,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Auth (F-AUTH-01) | Login is email and password only; username login removed from the form |
 | Friends (F-SOC-01) | Friend request API (send, list incoming, accept, decline, remove) behind the auth middleware (PR #114) |
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
+| Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with inline book search and Trending / Most read this week lists, `GET /explore`, migration 0008. Branch `feat/explore-page`, not merged yet |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
 
 ## Log
@@ -53,7 +54,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 ## Next steps
 
-- Split #125, #126 and #127 into Task sub-issues and assign owners.
+- Split #125, #126 and #127 into Task sub-issues and assign owners. #126 now has a [spec](../../superpowers/specs/2026-11-11-explore-page-design.md) to split from.
 - In project 23, add the views that the API cannot create: **Current sprint** (board, filter `iteration:@current`, columns by Status) and group **Prioritized backlog** by Iteration.
 - Check and close the open issues that look done in the code: #10 #25 (book page), #28 #30 (library and status), #43 #49 (session API and summary), #52 #55 #59 (group invites, done in #107).
 - Fill in [`release_notes.md`](release_notes.md) before running "Iteration release" for `iter-2`.
@@ -94,3 +95,37 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Auth.** After merging `main` every route takes the reader from the token: `userId` in the body, query or path is ignored, `DELETE /reading-status/:id` now reports another reader's entry as not found (like `PATCH`), `DELETE /user/:userId/library/:bookId` became `DELETE /me/library/:bookId`, and `GET /library?userId=` was removed because `GET /me/library` already does it. *Rejected:* keeping the `userId` routes, because any reader could change another reader's library.
 - **CI.** `scripts/check-commits.sh` was removed on `main`, so the PR's change allowing the `db` commit type moved into the inline check in [`commitlint.yml`](../../../.github/workflows/commitlint.yml) (the branch has a `db:` commit).
 - Documented in the [backend README](../../../apps/backend/README.md) and [`api_routes.md`](../../architecture/api_routes.md).
+
+### 2026-11-11: Explore page spec (#126)
+
+- Commit `8557e66`. New [Explore page design](../../superpowers/specs/2026-11-11-explore-page-design.md) for story [#126](https://github.com/MESW-LES-2627/les-project-group-6/issues/126) (F-EXP-04, F-EXP-01). It covers a big search bar, a "Trending" list (most readers who added the book in 7 days) and a "Most read this week" list (most counted minutes in 7 days). The layout follows the old Explore mockup (`08-explore.png`) and reuses the global classes, `BookCoverImage` and the page header.
+- **Decision: search is inline on Explore and reuses `GET /book?title=`.** When #120 lands, only the endpoint behind it changes. *Rejected:* a separate `/search` page, because that page belongs to #120.
+- **Decision: `GET /explore` is served by an `ExploreService` that asks the published read contracts** (`ReadingActivityQuery.topBooks`, `ReadingProgressQuery.mostAdded`) and loads books with `findByIds`. *Rejected:* a query that reads `reading_sessions` and `reading_status` directly, because it would bring back the coupling fixed in `d1f3e37`.
+- **Decision: "added to library" needs `reading_status.created_at`** (migration 0008, backfilled from `updated_at`), because `started_on` is the date reading started, not the date the book was added.
+- Out of scope: reader search, friends and genre trending, Open Library, and trending on Home.
+
+### 2026-11-11: Explore page built (#126)
+
+- Branch `feat/explore-page`, commits `b1bb54b` to `dbd1f85`, following the [spec](../../superpowers/specs/2026-11-11-explore-page-design.md) and the [plan](../../superpowers/plans/2026-11-11-explore-page.md). Not merged yet.
+- **Backend.**
+  - [Migration 0008](../../../apps/backend/src/database/migrations/0008_reading_status_created_at.sql) adds `reading_status.created_at`, filled from `updated_at` for existing rows. It runs with the CD on merge.
+  - The published contracts gained `ReadingActivityQuery.topBooks` (same counted-minutes rule) and `ReadingProgressQuery.mostAdded`, and `IBookRepository` gained `findByIds`.
+  - The new `ExploreService` builds both lists over the last 7 days (10 books each, ties by title) without reading another module's tables, and `GET /explore` serves them (see [API routes](../../architecture/api_routes.md)).
+- **Frontend.**
+  - New `/explore` page ([`ExploreView.vue`](../../../apps/frontend/src/views/ExploreView.vue)) and the header's Explore link.
+  - Built with `ExploreSearchBar`, `BookSearchResults` and `TrendingBookCard`, plus the existing global classes and `BookCoverImage`.
+  - The search uses the existing `GET /book?title=` and keeps the query in `?q=`.
+  - `GroupsPageHeader` moved to `layout/PageHeader`, since it has no groups logic.
+- **Tests.** Backend 271 passing (11 new); frontend 138 passing (11 new). The page was checked in a headless browser at desktop and 375px widths with a mocked API, because there was no local Supabase setup.
+- Open: when #120 lands, Explore's search should use its endpoint. Authors show "Unknown Author" until books store an author.
+
+### 2026-11-11: Header search removed (#126)
+
+- The header's search field (and its phone toggle) is gone: it emitted a `search` event nothing listened to, and book search now lives on the [Explore page](../../../apps/frontend/src/views/ExploreView.vue). The Explore column now takes the full page width like Home (`width: 100%`; the app shell is a flex column, so it had shrunk to its content).
+- The Explore API test now backdates its `reading_status` row: the Docker Postgres clock ran a few ms ahead of Node, so a row stamped `now()` fell just after the window end.
+
+### 2026-11-11: Trending suggestions while nothing trends (#126)
+
+- **Decision: with no "added this week" activity, `GET /explore` returns `suggestions`**, up to 10 random books from the catalogue (`IBookRepository.random`, `ORDER BY random()`). The Trending tab shows them with a note, without the "#1" tag and with "A pick to start with" instead of a reader count. Real trending replaces them as soon as one book is added. *Rejected:* padding `trending` with random books, because it would show fake reader counts; and picking them in the frontend, because there is no endpoint that lists the catalogue.
+- "Most read this week" keeps its empty message.
+

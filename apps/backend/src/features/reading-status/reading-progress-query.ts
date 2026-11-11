@@ -1,12 +1,19 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { readingStatus } from '../../database/schema.js';
+import type { RankingWindow } from '../reading-session/reading-activity-query.js';
 
 /** Where one reader is in one book. */
 export interface ReaderProgress {
   userId: string;
   currentPage: number;
   finished: boolean;
+}
+
+/** How many readers added one book to their library. */
+export interface BookReaders {
+  bookId: string;
+  readers: number;
 }
 
 /**
@@ -17,6 +24,9 @@ export interface ReaderProgress {
 export interface ReadingProgressQuery {
   /** Progress of the readers who have the book in their library; the others are left out. */
   progressOf(userIds: readonly string[], bookId: string): Promise<ReaderProgress[]>;
+
+  /** Books ranked by how many readers added them to their library in [from, to). */
+  mostAdded(window: RankingWindow): Promise<BookReaders[]>;
 }
 
 export class DrizzleReadingProgressQuery implements ReadingProgressQuery {
@@ -37,5 +47,22 @@ export class DrizzleReadingProgressQuery implements ReadingProgressQuery {
       currentPage: row.currentPage ?? 0,
       finished: row.status === 'finished',
     }));
+  }
+
+  async mostAdded(window: RankingWindow): Promise<BookReaders[]> {
+    if (window.limit <= 0) return [];
+    const readers = sql<number>`count(distinct ${readingStatus.userId})::int`;
+    return this.db
+      .select({ bookId: readingStatus.bookId, readers })
+      .from(readingStatus)
+      .where(
+        and(
+          gte(readingStatus.createdAt, window.from.toISOString()),
+          lt(readingStatus.createdAt, window.to.toISOString()),
+        ),
+      )
+      .groupBy(readingStatus.bookId)
+      .orderBy(desc(readers), asc(readingStatus.bookId))
+      .limit(window.limit);
   }
 }

@@ -193,3 +193,58 @@ push and merge both prs
 
 #### Explanation of Changes
 Merged `main` into PR #115 and resolved the conflicts. Regenerated the reading status dates migration as 0007, made every reading status and library route take the reader from the token, added an ownership check to `removeById`, replaced `DELETE /user/:userId/library/:bookId` with `DELETE /me/library/:bookId` and dropped `GET /library?userId=`. Rewrote the integration tests to use `FakeAuthProvider`, added `db` to the commit types in `commitlint.yml`, and moved the PR's docs into `docs/iterations/`.
+
+### 2026-11-11: Explore page spec
+
+- **Date:** 2026-11-11
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs, architecture, frontend, backend
+
+#### Prompt
+```text
+I will do this user story https://github.com/orgs/MESW-LES-2627/projects/23/views/10?pane=issue&itemId=297555567&issue=MESW-LES-2627%7Cles-project-group-6%7C126
+here some infos to create the spec:
+- keep the style patern of UI. reuse components if possible
+- We need to create the explore page. The explore page yill have a big search bar to search by books and below some books on trend.
+```
+
+#### Result
+Wrote the [Explore page design](../../superpowers/specs/2026-11-11-explore-page-design.md) after two questions: search is inline using the existing `GET /book`, and both lists from the story are built. The backend composes the published read contracts (`ReadingActivityQuery`, `ReadingProgressQuery`) and adds `reading_status.created_at` (migration 0008). The UI follows the old Explore mockup and reuses the global classes and existing components.
+
+### 2026-11-11: Explore page implementation
+
+- **Date:** 2026-11-11
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database, frontend, testing, docs
+
+#### Prompt
+```text
+implement the spec
+```
+
+#### Result
+Wrote the [implementation plan](../../superpowers/plans/2026-11-11-explore-page.md) and built it test-first.
+- **Backend:** migration 0008 (`reading_status.created_at`), the `topBooks` and `mostAdded` contract methods, `findByIds`, `ExploreService` and `GET /explore`.
+- **Frontend:** the `/explore` page with search, results and trending cards, the header link, and the move of the page header to `layout/`.
+- **Tests:** 22 new tests. All checks pass (backend 271 tests, frontend 138 tests, typecheck and lint).
+
+### 2026-11-11: Explore trending suggestions
+
+- **Date:** 2026-11-11
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, frontend, testing, docs
+
+#### Prompt
+```text
+nice, now, when we have no activity, can you get some random books to add on trending?
+```
+
+#### Result
+Added `IBookRepository.random`, a `suggestions` list in `ExploreService` and `GET /explore` (only while nothing trends), and the Trending tab's fallback cards with a note. Also removed the unused header search in favour of the Explore page. New tests for the repository, the service, the route and the view.
+
