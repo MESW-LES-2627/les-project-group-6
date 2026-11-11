@@ -70,7 +70,9 @@ describe('Explore API', () => {
       [USER_ID, dune.id.value],
     );
     await pool.query(
-      `INSERT INTO reading_status (user_id, book_id, status) VALUES ($1, $2, 'in-progress')`,
+      // Backdated: the database clock can run a few ms ahead of the app's window end
+      `INSERT INTO reading_status (user_id, book_id, status, created_at)
+       VALUES ($1, $2, 'in-progress', now() - interval '1 minute')`,
       [USER_ID, dune.id.value],
     );
 
