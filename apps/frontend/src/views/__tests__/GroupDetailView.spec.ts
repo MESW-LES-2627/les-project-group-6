@@ -3,13 +3,24 @@ import { describe, expect, it, vi } from 'vitest';
 
 import router from '@/router';
 import {
-  DEMO_USER_ID,
   type ApiBookClubDetail,
   type ApiChallengeGroupDetail,
   type ApiChatMessage,
   type ApiPoll,
 } from '@/services/api';
+import { TEST_ME } from '@/stores/__tests__/fake-session';
 import GroupDetailView from '../GroupDetailView.vue';
+
+/** The signed-in reader of these tests. */
+const DEMO_USER_ID = TEST_ME.id;
+
+vi.mock('@/stores/session', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/stores/session')>();
+  const { readySession } = await import('@/stores/__tests__/fake-session');
+  const session = readySession(actual.createSession);
+  await session.ensure();
+  return { ...actual, session };
+});
 
 const getChallengeGroup = vi.hoisted(() =>
   vi.fn<(groupId: string) => Promise<ApiChallengeGroupDetail>>(),
@@ -169,24 +180,28 @@ describe('GroupDetailView', () => {
     expect(wrapper.findAll('.messages > li')).toHaveLength(before);
   });
 
-  it('switches the challenge conversation tabs', async () => {
+  it('shows the reader rank, the fair-reading rules and the last result', async () => {
     const wrapper = mountGroup('october-sprint');
 
-    await wrapper
-      .findAll('.tab')
-      .find((t) => t.text().startsWith('Members'))!
-      .trigger('click');
+    expect(wrapper.get('.rank').text()).toBe('#2of 6');
+    expect(wrapper.findAll('.rules li')).toHaveLength(6);
+    expect(wrapper.text()).toContain('Completed · September Sprint');
 
-    expect(wrapper.findAll('.members li')).toHaveLength(6);
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Rematch September Sprint')!
+      .trigger('click');
+    expect(wrapper.get('[role="status"]').text()).toContain('A rematch with the same members');
   });
 
   it('shows the book club page with the round and the vote', () => {
     const wrapper = mountGroup('classics');
 
-    expect(wrapper.get('h1').text()).toBe('Classics, in good company.');
+    expect(wrapper.get('h1').text()).toBe('Classics');
     expect(wrapper.text()).toContain('2 of 6 finished');
-    expect(wrapper.text()).toContain('Start Emma session');
+    expect(wrapper.text()).toContain('Start reading Emma');
     expect(wrapper.findAll('.options > li')).toHaveLength(3);
+    expect(wrapper.text()).toContain('Round 3 · Completed');
   });
 
   it('changes the vote and adds a proposal', async () => {
@@ -203,7 +218,8 @@ describe('GroupDetailView', () => {
 
     const options = wrapper.findAll('.options > li');
     expect(options[0]!.text()).toContain('2 votes');
-    expect(options[1]!.text()).toMatch(/3 votes\s+· your vote/);
+    expect(options[1]!.text()).toContain('3 votes');
+    expect(options[1]!.get('.your-vote').text()).toBe('Your vote');
 
     await wrapper.get('#proposal-title').setValue('Middlemarch');
     await wrapper.get('.proposal').trigger('submit');
@@ -230,6 +246,20 @@ describe('GroupDetailView', () => {
     expect(wrapper.text()).not.toContain('Last month’s result');
   });
 
+  it('shows no rank while the challenge has no scores yet', async () => {
+    const untracked = {
+      ...apiGroup,
+      standings: apiGroup.standings.map((s) => ({ ...s, score: null, books: [] })),
+    };
+    getChallengeGroup.mockResolvedValueOnce(untracked);
+    const wrapper = mountGroup(apiGroup.id);
+    await flushPromises();
+
+    expect(wrapper.find('.rank-number').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Not ranked yet');
+    expect(wrapper.text()).not.toContain('#0');
+  });
+
   it('loads a book club from the API with progress, history, vote and chat', async () => {
     getChallengeGroup.mockRejectedValueOnce(new Error('HTTP 404'));
     getBookClub.mockResolvedValue(apiClub);
@@ -250,21 +280,16 @@ describe('GroupDetailView', () => {
     const wrapper = mountGroup(apiClub.id);
     await flushPromises();
 
-    expect(getBookClub).toHaveBeenCalledWith(apiClub.id, DEMO_USER_ID);
+    expect(getBookClub).toHaveBeenCalledWith(apiClub.id);
     expect(wrapper.get('h1').text()).toBe('Sunday Classics');
     expect(wrapper.text()).toContain('Round 2 · Active');
     expect(wrapper.text()).toContain('1 of 2 finished');
     expect(wrapper.text()).toContain('26 days to turn the last page');
-    expect(wrapper.text()).toContain('Your progress: 237/474 pages · 50%');
     expect(wrapper.get('.board').text()).toContain('Demo Reader · you');
     expect(wrapper.text()).toContain('System · Emma was selected by admin Maya Laurent.');
     // Not the admin: no settings button
     expect(wrapper.findAll('button').some((b) => b.text() === 'Admin & settings')).toBe(false);
 
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text().startsWith('Past rounds'))!
-      .trigger('click');
     expect(wrapper.text()).toContain('Round 1 · Not completed');
     expect(wrapper.text()).toContain('Persuasion · 1 of 2 finished');
 
@@ -273,7 +298,7 @@ describe('GroupDetailView', () => {
       .find((b) => b.text() === 'Vote for Piranesi')!
       .trigger('click');
     await flushPromises();
-    expect(voteForProposal).toHaveBeenCalledWith(apiClub.id, 'p1', DEMO_USER_ID);
+    expect(voteForProposal).toHaveBeenCalledWith(apiClub.id, 'p1');
     expect(getBookClub).toHaveBeenCalledTimes(2);
     wrapper.unmount();
   });

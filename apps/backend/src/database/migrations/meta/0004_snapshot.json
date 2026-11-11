@@ -1,5 +1,5 @@
 {
-  "id": "5f84b2e1-66ac-4253-a417-b0306e339a12",
+  "id": "3b450ea3-ea07-4a68-ad56-99f899b1d1b4",
   "prevId": "a04881fc-5ce7-4a90-a6d9-b9c2bd6afb68",
   "version": "7",
   "dialect": "postgresql",
@@ -2105,18 +2105,6 @@
           "notNull": true,
           "default": 0
         },
-        "started_on": {
-          "name": "started_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "finished_on": {
-          "name": "finished_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp with time zone",
@@ -2323,7 +2311,23 @@
           "default": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "users_username_lower_key": {
+          "name": "users_username_lower_key",
+          "columns": [
+            {
+              "expression": "lower(\"username\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {

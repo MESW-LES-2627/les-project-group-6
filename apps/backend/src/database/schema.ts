@@ -39,6 +39,8 @@ export const users = pgTable(
   (table) => [
     unique('users_email_key').on(table.email),
     unique('users_username_key').on(table.username),
+    // Usernames are unique ignoring case (F-AUTH-01).
+    uniqueIndex('users_username_lower_key').using('btree', sql`lower(${table.username})`),
   ],
 );
 
@@ -134,6 +136,8 @@ export const groups = pgTable(
     id: uuid().defaultRandom().primaryKey().notNull(),
     name: text().notNull(),
     description: text().notNull(),
+    /** 'challenge' or 'book-club', owned by the group kernel (see GROUP_KINDS). */
+    kind: varchar({ length: 20 }).notNull(),
     adminId: uuid('admin_id').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)

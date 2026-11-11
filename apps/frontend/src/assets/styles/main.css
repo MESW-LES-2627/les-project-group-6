@@ -196,6 +196,7 @@ main {
 /* Section heading used across the profile */
 .section-title {
   margin: 0;
+  font-family: var(--font-body);
   font-size: var(--font-size-md);
   font-weight: 600;
 }
@@ -277,6 +278,98 @@ main {
 }
 
 .tag-highlight {
+  background: var(--color-cream);
+  color: var(--color-dark-brown);
+}
+
+/* Open page sections split by thin rules, as on the profile */
+.section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.section-meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* Underlined tabs, like the header navigation */
+.page-tabs {
+  display: flex;
+  gap: 28px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border);
+  scrollbar-width: none;
+}
+
+.page-tab {
+  flex: none;
+  padding: 14px 0 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.page-tab:hover {
+  color: var(--color-text);
+}
+
+.page-tab.active {
+  border-bottom-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.page-tab .count {
+  margin-left: var(--space-1);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-normal);
+}
+
+/* Form fields on the page background */
+.field-input {
+  width: 100%;
+  height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.9375rem;
+}
+
+.field-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.field-input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+/* A plain text button in the primary color */
+.link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+::selection {
   background: var(--color-cream);
   color: var(--color-dark-brown);
 }

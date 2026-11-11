@@ -1,6 +1,8 @@
-# Checks that every commit of a pull request follows Conventional Commits
-# (scripts/check-commits.sh). Runs on every pull request to main, whatever
-# files it changes, so main keeps a history the version bump can read.
+# Checks that every commit of a pull request follows Conventional Commits:
+#   <type>(<optional scope>)!: <description>
+# GitHub's own "Revert "..."" messages are accepted too. Runs on every pull
+# request to main, whatever files it changes, so main keeps a history the
+# version bump can read.
 name: Commit messages
 
 on:
@@ -28,4 +30,19 @@ jobs:
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
-        run: bash scripts/check-commits.sh "$BASE..$HEAD"
+        run: |
+          types='build|chore|ci|db|docs|feat|fix|perf|refactor|revert|style|test'
+          pattern="^(($types)(\([a-z0-9._/-]+\))?!?: [^ ].*|Revert \".+\")$"
+          failed=0
+          while IFS= read -r line; do
+            sha=${line%% *}
+            subject=${line#* }
+            if ! grep -qE "$pattern" <<<"$subject"; then
+              echo "::error::${sha:0:7} \"$subject\" does not follow <type>(<scope>): <description> (types: ${types//|/, })"
+              failed=1
+            fi
+          done < <(git log --no-merges --format='%H %s' "$BASE..$HEAD")
+          if [ "$failed" -eq 0 ]; then
+            echo "All commits in $BASE..$HEAD follow the convention"
+          fi
+          exit "$failed"

@@ -8,14 +8,15 @@ export function bookRoutes(books: BookService): Router {
   const router = Router();
 
   router.post('/book', async (req, res) => {
-    const { title, description, isbn13, pageCount, coverUrl, isCommunityAdded } = req.body;
+    const { title, description, isbn13, pageCount, coverUrl } = req.body;
     const book = await books.register({
       title,
       description,
       isbn13,
       pageCount: pageCount !== undefined && pageCount !== null ? Number(pageCount) : null,
       coverUrl,
-      isCommunityAdded,
+      // A book added through the API always comes from a reader, never from the catalogue.
+      isCommunityAdded: true,
     });
     res.status(201).json(toBookDto(book));
   });
@@ -31,10 +32,8 @@ export function bookRoutes(books: BookService): Router {
     res.status(200).json(toBookDto(book));
   });
 
-  router.delete('/book/:id', async (req, res) => {
-    await books.remove(req.params.id);
-    res.status(204).send();
-  });
+  // There is no DELETE /book/:id: other readers' statuses, reviews and sessions
+  // cascade from the book, and no reader owns the shared catalogue.
 
   return router;
 }

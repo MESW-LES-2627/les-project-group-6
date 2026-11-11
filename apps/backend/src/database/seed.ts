@@ -149,6 +149,7 @@ async function seed(): Promise<void> {
       id: clubId,
       name: 'Sunday Classics',
       description: 'One classic a month, read slowly.',
+      kind: 'book-club',
       adminId: mayaId,
     })
     .onConflictDoNothing();

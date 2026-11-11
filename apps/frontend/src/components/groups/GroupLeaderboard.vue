@@ -13,130 +13,149 @@ defineProps<{
 <template>
   <ol :class="['board', { 'with-progress': withProgress }]">
     <li v-for="entry in entries" :key="entry.member.id" class="entry">
-      <div class="row">
-        <span v-if="!withProgress" class="rank">{{ entry.rank }}</span>
-        <MemberAvatar :initials="entry.member.initials" />
-        <div class="who">
-          <p class="name">
+      <span v-if="!withProgress" class="rank">{{ entry.rank || '–' }}</span>
+      <MemberAvatar :initials="entry.member.initials" :class="{ me: entry.member.id === meId }" />
+      <div class="who">
+        <div class="line">
+          <span :class="['name', { mine: entry.member.id === meId }]">
             {{ entry.member.name }}<template v-if="entry.member.id === meId"> · you</template>
-          </p>
-          <p class="note">
-            <span v-if="entry.finished" aria-hidden="true">✓ </span>{{ entry.note }}
-          </p>
-          <ul
-            v-if="entry.books?.length"
-            class="books"
-            :aria-label="`Books read by ${entry.member.name}`"
-          >
-            <li v-for="book in entry.books" :key="book.title">
-              <span class="book-title">{{ book.title }}</span>
-              <span class="book-score">{{ book.score }}</span>
-            </li>
-          </ul>
+          </span>
+          <span class="score">{{ entry.score }}</span>
         </div>
-        <span class="score">{{ entry.score }}</span>
+        <ul
+          v-if="entry.books?.length"
+          class="books"
+          :aria-label="`Books read by ${entry.member.name}`"
+        >
+          <li v-for="book in entry.books" :key="book.title">
+            <span class="book-title">{{ book.title }}</span>
+            <span class="book-score">{{ book.score }}</span>
+          </li>
+        </ul>
+        <div v-if="withProgress" class="bar-row">
+          <progress
+            :class="['progress-bar', 'bar', { done: entry.finished }]"
+            max="100"
+            :value="entry.progress ?? 0"
+            :aria-label="`${entry.member.name} progress: ${entry.progress ?? 0}%`"
+          ></progress>
+          <span class="state">{{ entry.finished ? 'Finished' : `${entry.progress ?? 0}%` }}</span>
+        </div>
       </div>
-      <progress
-        v-if="withProgress"
-        :class="['progress-bar', 'bar', { done: entry.finished }]"
-        max="100"
-        :value="entry.progress ?? 0"
-        :aria-label="`${entry.member.name} progress: ${entry.progress ?? 0}%`"
-      ></progress>
     </li>
   </ol>
 </template>
 
 <style scoped>
 .board {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .entry {
-  padding: var(--space-3) 0;
-}
-
-.board:not(.with-progress) .entry {
-  border-top: 1px solid var(--color-border);
-}
-
-.row {
   display: flex;
-  gap: var(--space-3);
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.with-progress .entry {
   align-items: center;
 }
 
 .rank {
-  width: 1rem;
-  font-family: var(--font-heading);
+  flex: none;
+  width: 20px;
+  padding-top: 9px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.me {
+  background: var(--color-avatar);
 }
 
 .who {
   flex: 1;
   min-width: 0;
+  padding-top: 8px;
 }
 
-.name,
-.note {
-  margin: 0;
+.with-progress .who {
+  padding-top: 0;
 }
 
-.books {
-  margin: var(--space-1) 0 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-}
-
-.books li {
+.line {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  align-items: baseline;
   justify-content: space-between;
 }
 
-.book-title {
-  overflow: hidden;
-  font-style: italic;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.book-score {
-  flex-shrink: 0;
-}
-
-.name {
-  font-size: var(--font-size-sm);
+.name.mine {
   font-weight: 600;
 }
 
-.note {
+.score {
+  flex: none;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.books {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--space-3);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
 }
 
-.score {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  white-space: nowrap;
+.book-title {
+  font-family: var(--font-heading);
+  font-style: italic;
+}
+
+.book-score::before {
+  content: ' · ';
+}
+
+.bar-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: 6px;
 }
 
 .bar {
-  margin-top: var(--space-2);
+  flex: 1;
 }
 
-.bar.done {
-  color: #4a6b4a;
+.bar:not(.done) {
+  color: var(--color-copper);
 }
 
-.bar.done::-webkit-progress-value {
-  background: #4a6b4a;
+.bar:not(.done)::-webkit-progress-value {
+  background: var(--color-copper);
 }
 
-.bar.done::-moz-progress-bar {
-  background: #4a6b4a;
+.bar:not(.done)::-moz-progress-bar {
+  background: var(--color-copper);
+}
+
+.state {
+  flex: none;
+  width: 4rem;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-align: right;
 }
 </style>

@@ -136,11 +136,16 @@ describe('BookClubService and BookPollService', () => {
     const { club } = await clubs.create(form());
     now = new Date('2026-12-01T00:00:00Z');
 
-    const view = await clubs.get(club.id.value);
+    const view = await clubs.get(club.id.value, ADMIN.value);
     assert.strictEqual(view.rounds[0]!.outcome, 'not-completed');
 
     const next = { userId: ADMIN.value, bookId: piranesi.id.value, deadline: '2026-12-31' };
     assert.strictEqual((await clubs.startNextRound(club.id.value, next)).rounds.length, 2);
+  });
+
+  test('a reader who is not a member gets the club as not found', async () => {
+    const { club } = await clubs.create(form());
+    await assert.rejects(clubs.get(club.id.value, MAYA.value), NotFoundError);
   });
 
   test('a new member gets the round book in their library', async () => {

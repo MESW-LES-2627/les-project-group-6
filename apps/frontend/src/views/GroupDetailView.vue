@@ -4,12 +4,12 @@ import { RouterLink } from 'vue-router';
 
 import { mockChallenge, mockClub } from '@/mocks/groups';
 import {
-  DEMO_USER_ID,
   getBookClub,
   getChallengeGroup,
   mapApiClubToDetail,
   mapApiGroupToChallengeDetail,
 } from '@/services/api';
+import { session } from '@/stores/session';
 import type { BookClubDetail, ChallengeDetail } from '@/types/groups';
 import BookClubGroupView from '@/views/BookClubGroupView.vue';
 import ChallengeGroupView from '@/views/ChallengeGroupView.vue';
@@ -28,9 +28,11 @@ const challenge = computed(() =>
 );
 const club = computed(() => (props.groupId === mockClub.id ? mockClub : apiClub.value));
 const isMock = computed(() => props.groupId === mockChallenge.id || props.groupId === mockClub.id);
+/** The signed-in reader (the router guard guarantees a profile). */
+const meId = computed(() => session.state.me?.id ?? '');
 
 async function loadClub() {
-  apiClub.value = mapApiClubToDetail(await getBookClub(props.groupId, DEMO_USER_ID), DEMO_USER_ID);
+  apiClub.value = mapApiClubToDetail(await getBookClub(props.groupId), meId.value);
   version.value += 1;
 }
 
@@ -38,7 +40,10 @@ onMounted(async () => {
   if (isMock.value) return;
   loading.value = true;
   try {
-    apiChallenge.value = mapApiGroupToChallengeDetail(await getChallengeGroup(props.groupId));
+    apiChallenge.value = mapApiGroupToChallengeDetail(
+      await getChallengeGroup(props.groupId),
+      meId.value,
+    );
   } catch {
     try {
       await loadClub();
@@ -64,22 +69,19 @@ async function reloadClub() {
     v-if="challenge"
     :key="challenge.id"
     :challenge="challenge"
-    :me-id="isMock ? undefined : DEMO_USER_ID"
+    :me-id="isMock ? undefined : meId"
     :live="!isMock"
   />
   <BookClubGroupView
     v-else-if="club"
     :key="`${club.id}-${version}`"
     :club="club"
-    :me-id="isMock ? undefined : DEMO_USER_ID"
+    :me-id="isMock ? undefined : meId"
     :live="!isMock"
     @changed="reloadClub"
   />
-  <main v-else-if="loading" class="page-column missing" aria-busy="true">
-    <p class="eyebrow">Groups</p>
-  </main>
+  <main v-else-if="loading" class="page-column missing" aria-busy="true"></main>
   <main v-else class="page-column missing">
-    <p class="eyebrow">Groups</p>
     <h1>This group could not be found.</h1>
     <p>Open October Sprint or Classics to see the challenge and book club pages.</p>
     <RouterLink class="button" :to="{ name: 'groups' }">Back to groups</RouterLink>

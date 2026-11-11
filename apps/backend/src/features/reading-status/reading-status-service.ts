@@ -17,7 +17,8 @@ export interface SetReadingStatusCommand {
 
 export interface UpdateReadingStatusCommand {
   id?: unknown;
-  userId?: unknown;
+  /** The acting reader; only their own entries can be changed. */
+  userId: unknown;
   bookId?: unknown;
   status?: unknown;
   currentPage?: unknown;
@@ -61,7 +62,10 @@ export class ReadingStatusService {
   /** Changes the status and/or page of an existing entry in the reader's library. */
   async update(command: UpdateReadingStatusCommand): Promise<ReadingStatus> {
     const status = await this.findEntry(command);
-    if (!status) throw new NotFoundError('Reading status');
+    // Another reader's entry is reported as not found, so its id is not revealed.
+    if (!status || !status.userId.equals(UserId.of(command.userId))) {
+      throw new NotFoundError('Reading status');
+    }
 
     const book = await this.books.findById(status.bookId);
     if (!book) throw new NotFoundError('Book');
@@ -86,9 +90,13 @@ export class ReadingStatusService {
     if (!deleted) throw new NotFoundError('Reading status');
   }
 
-  /** Removes a reading status entry by its ID. */
-  async removeById(id: unknown): Promise<void> {
-    const deleted = await this.readingStatuses.deleteById(ReadingStatusId.of(id));
+  /** Removes one of the reader's entries by its ID; another reader's entry is reported as not found. */
+  async removeById(userId: unknown, id: unknown): Promise<void> {
+    const status = await this.readingStatuses.findById(ReadingStatusId.of(id));
+    if (!status || !status.userId.equals(UserId.of(userId))) {
+      throw new NotFoundError('Reading status');
+    }
+    const deleted = await this.readingStatuses.deleteById(status.id);
     if (!deleted) throw new NotFoundError('Reading status');
   }
 

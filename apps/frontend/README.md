@@ -48,38 +48,42 @@ Lint uses Oxlint and ESLint with `eslint-plugin-vue`. Formatting uses the root P
 ## Source layout and design
 
 - `src/assets/styles/tokens.css`: brand colors, semantic aliases, typography, spacing, radii and layout/motion tokens. Use the `--font-size-*` scale for font sizes.
-- `src/assets/styles/main.css`: global styles and shared classes (`.page-column`, `.button`, `.text-link`, `.book-link`, `.progress-bar`, `.section-title`, `.sr-only`).
-- `src/views/`: the authentication screen, the home page prototype (`HomeView`, mock data in `src/mocks/home.ts`), the not-found placeholder, the profile, library, book-detail and active-session prototypes, and the groups pages (`GroupsView`, `CreateGroupView`, `GroupDetailView`, which shows `ChallengeGroupView` or `BookClubGroupView`); view tests live in `__tests__/`.
-- `src/components/layout/`: `AppHeader` and `AppFooter`, hidden on routes with `meta.hideAppChrome` (Login).
-- `src/components/library/`: reusable book card, shelves sidebar and book-detail panels.
+- `src/assets/styles/main.css`: global styles and shared classes (`.page-column`, `.button`, `.text-link`, `.book-link`, `.progress-bar`, `.section-title`, `.section-heading`, `.page-tabs`, `.field-input`, `.link-button`, `.sr-only`).
+- `src/views/`: the authentication screen, the complete-profile step (`CompleteProfileView`), the home page prototype (`HomeView`, mock data in `src/mocks/home.ts`), the not-found placeholder, the profile, library, book-detail and active-session prototypes, and the groups pages (`GroupsView`, `CreateGroupView`, `GroupDetailView`, which shows `ChallengeGroupView` or `BookClubGroupView`); view tests live in `__tests__/`.
+- `src/components/layout/`: `AppHeader` and `AppFooter`, hidden on routes with `meta.hideAppChrome` (Login), and `PagePlate`, the burgundy band that opens the library and groups pages (the same plate as the profile's bookplate).
+- `src/components/library/`: book card, `BookCoverImage` (a 2:3 cover that shows the title when the image is missing), folders and tags sidebar, and book-detail panels.
 - `src/components/groups/`: the groups building blocks (`GroupCard`, `GroupLeaderboard`, `GroupChat`, `GroupsPageHeader`, `InfoNote`, `ToggleSwitch`, `MemberAvatar`).
 - `src/components/profile/`: profile sections with their empty states.
 - `src/components/session/`: reading timer with pause, resume and stop events.
 - `src/mocks/`, `src/types/`, `src/utils/`: domain types, helpers and typed prototype data.
-- `src/assets/covers/`: book cover crops; `src/assets/auth/`: the authentication reference photo crop.
-- `src/router/`: routes and router tests.
-- `src/services/api.ts`: health request and response validation; `src/services/auth.ts`: the Supabase adapter; `src/services/chat-socket.ts`: the listen-only Socket.IO wrapper for the group chat (ADR-0006); `src/services/__tests__/`: adapter tests.
+- `src/assets/covers/`: book cover crops (2:3).
+- `src/router/`: routes, the auth guard and router tests.
+- `src/stores/`: the session store (`session.ts`) and its test doubles.
+- `src/services/api.ts`: health request and response validation; `src/services/auth.ts`: the Supabase adapter (see [Authentication](#authentication)); `src/services/chat-socket.ts`: the listen-only Socket.IO wrapper for the group chat (ADR-0006); `src/services/__tests__/`: adapter tests.
 
-The [Home](../../docs/design/screens/05-home.png) and [authentication](../../docs/design/screens/01-authentication.png) screenshots guide typography: [Lora](https://fonts.google.com/specimen/Lora) for headings, book titles and editorial text; [Inter](https://fonts.google.com/specimen/Inter) for body copy, navigation, labels and controls. `index.html` loads both with `display=swap`, with local serif/sans-serif fallbacks. Warm neutral background, surface, muted text and border tokens follow the screenshots; the five brand colors are unchanged.
+The [Home](../../docs/design/screens/05-home.png) and [authentication](../../docs/design/screens/01-authentication.png) screenshots guide typography: [Lora](https://fonts.google.com/specimen/Lora) for book titles, quotes and editorial text; [Inter](https://fonts.google.com/specimen/Inter) for body copy, navigation, labels and controls, and for page and section titles on the profile, library, groups and login pages, which share the profile's look (see `PRODUCT.md`). `index.html` loads both with `display=swap`, with local serif/sans-serif fallbacks. Warm neutral background, surface, muted text and border tokens follow the screenshots; the five brand colors are unchanged.
 
-## Authentication skeleton
+## Authentication
 
-`/` redirects to `/login`, which contains both forms from [01-authentication.png](../../docs/design/screens/01-authentication.png). It intentionally uses the screenshot’s “Re”/“Marginalia” branding and has no invented provider buttons. The reading photograph in `src/assets/auth/reading-by-window.png` is cropped directly from that reference (x=48, y=406, 440×350), with no generated replacement. Shared tokens, `.button`, `.muted` and `.sr-only` are reused. Existing app chrome is hidden via the route’s `hideAppChrome` metadata because it differs from the reference.
+Every page except `/login` needs a signed-in reader (F-AUTH-01, [issue #7](https://github.com/MESW-LES-2627/les-project-group-6/issues/7)). Identity (email, password, session) is Supabase Auth; the profile (username, display name, timezone) is our `users` row behind `POST/GET /me`.
 
-The page calls our `AuthProvider` interface in `src/services/auth.ts`; the adapter lazily creates the official Supabase client. Copy these public values from `.env.example` into `.env.local` when the project is ready, then restart Vite:
+Set the public project values in `apps/frontend/.env.local` (copy `.env.example`) and restart Vite. In production they are environment variables of the **frontend** static site on Render, read at build time, so a change needs a redeploy. Never use a service-role or secret key in `VITE_*` variables. The backend needs `SUPABASE_URL` (see its README).
 
 ```dotenv
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your-public-publishable-key
 ```
 
-Leave them empty for now. Submitting without configuration shows an availability error and never simulates a session. Never use a service-role or secret key in browser variables.
+In Supabase, add `http://localhost:5173/login` and the production `/login` URL to the allowed redirect URLs (the sign-up confirmation email links there).
 
-- Email/password login uses [`signInWithPassword`](https://supabase.com/docs/reference/javascript/auth-signinwithpassword). Home navigation requires an actual returned session. “Keep me signed in” selects local storage; otherwise the client uses session storage.
-- Signup uses [`signUp`](https://supabase.com/docs/reference/javascript/auth-signup), passing display name and normalized username as profile metadata. Without a returned session, the page asks the user to confirm their email. With a session, it currently opens Home; onboarding is not implemented yet.
-- Username login is an explicit `UsernameResolver` dependency in `createAuthProvider`. Supabase password login accepts email/phone, so a trusted backend flow is still needed. Until supplied, username login shows an explanatory error; there is no invented email-lookup endpoint. The reference email label is retained, with “or username” included in its accessible label.
-- `signInWithOidc(provider)` prepares the SDK’s [`signInWithOAuth`](https://supabase.com/docs/reference/javascript/auth-signinwithoauth) provider redirect with `/home` as callback. Configure and choose the provider in Supabase before enabling it. Provider buttons are awaiting an approved design; none exist in the supplied screenshot.
+How it fits together:
 
-Before live authentication: configure allowed redirect URLs (`/login` and `/home`) and email delivery/confirmation, wire the trusted username resolver and server-enforced username uniqueness/profile creation, and finish callback/session restoration, logout, route guards and onboarding. Signup metadata alone does not enforce username uniqueness or create the application’s user row. Other prototype pages remain accessible with mock data while this is a skeleton. Password recovery currently reports that it is unavailable; footer/legal destinations are not implemented. The username helper states the permitted characters rather than falsely asserting availability.
+- `src/services/auth.ts`: the Supabase adapter (`AuthProvider`): sign in, sign up, sign out, the current account, the access token and session changes, all in our own types. One client; “Keep me signed in” picks local storage, otherwise session storage (`rememberAwareStorage`).
+- `src/stores/session.ts`: the session store (`session.state.status` is `signed-out`, `profile-required`, `ready` or `error`, plus `me`). Sign-up first checks `GET /usernames/:username/availability`, so a taken username never creates a Supabase account. When Supabase returns a session at once, it calls `POST /me` with the browser timezone and opens Home. With email confirmation on, the reader confirms, logs in and the store finishes the profile from the sign-up metadata; if that fails (e.g. the username was taken meanwhile), they land on `/complete-profile`.
+- `src/router/index.ts`: `installAuthGuard` sends visitors to `/login?redirect=…` (only same-site paths are followed, `src/utils/redirect.ts`), readers without a profile to `/complete-profile`, and signed-in readers away from both.
+- `src/services/api.ts`: every request goes through `apiFetch`, which adds `Authorization: Bearer <token>`; the API takes the user from the token, so no call sends a `userId`. A `401` signs the reader out and shows the login page. The chat socket sends the token in its handshake.
+- **Sign out** is in the header's account menu (and on the complete-profile page).
 
-`src/services/__tests__/auth.spec.ts` tests adapter behavior against the mocked SDK; `src/views/__tests__/LoginView.spec.ts` exercises the actual page → adapter → mocked SDK integration. No tests contact Supabase or require credentials.
+Login is by email and password only: Supabase signs in by email, and a public username → email lookup would leak emails, so username login is not offered. Password recovery (F-AUTH-02) and social login are not implemented.
+
+Tests never contact Supabase: `src/services/__tests__/auth.spec.ts` mocks the SDK, `src/stores/__tests__/session.spec.ts` and the router guard tests use the doubles in `src/stores/__tests__/fake-session.ts`, and `LoginView.spec.ts` / `CompleteProfileView.spec.ts` run the pages through the store with a faked API.

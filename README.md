@@ -30,8 +30,6 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 │   ├── product/
 │   ├── specs/
 │   └── sprints/
-├── infra/
-├── scripts/
 ├── .github/
 ├── .agents/
 ├── .claude/skills/            # project skills for Claude Code (e.g. oop-ddd-review)
@@ -54,8 +52,8 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 The application source code. Each app is a pnpm workspace with its own `package.json`, `tsconfig.json` (extending the root base) and ESLint config. Tooling shared by every app lives in the repository root (see [Root config](#root-config)).
 
 - `apps/frontend/`: the Vue 3 web client with shared CSS tokens, a home page prototype, a profile page prototype and groups pages (list, create, challenge, book club) backed by the API with mock groups kept for the design demo, and other prototypes with mock data, router and component tests, ESLint, Prettier, vue-tsc and Vitest. See [apps/frontend/README.md](apps/frontend/README.md) for commands and production API routing.
-  Authentication is at `/login`: the reference-based login/sign-up screen, an SDK-backed Supabase skeleton in `src/services/auth.ts`, integration tests, and the reference photo in `src/assets/auth/`. See the frontend guide for credentials and remaining integration work.
-- `apps/backend/`: the server, API and business logic (TypeScript, Node.js, Express). See [apps/backend/README.md](apps/backend/README.md) for how to run it.
+  Authentication uses Supabase Auth: `/login` (log in / sign up), a session store in `src/stores/`, a router guard, `/complete-profile` and sign out from the header. Every API call sends the Supabase token. See the frontend guide for the environment variables.
+- `apps/backend/`: the server, API and business logic (TypeScript, Node.js, Express). Every route except `/health` verifies the Supabase JWT and takes the user from it; `/me` creates and reads the reader's profile. See [apps/backend/README.md](apps/backend/README.md) for how to run it.
 
 ### Makefile
 
@@ -77,32 +75,24 @@ Per-app files stay in each app: `package.json`, `tsconfig.json`, ESLint config, 
 All project documentation. See [docs/README.md](docs/README.md) for an index that explains each folder and file.
 
 - `docs/ADRs/`: Architecture Decision Records. The technical decisions the team makes, with their context and consequences.
-- `docs/architecture/`: technical models of the system, such as the [database tables UML](docs/architecture/table_UML.md) and the [infrastructure](docs/architecture/infra.md).
+- `docs/architecture/`: technical models of the system, such as the [database tables UML](docs/architecture/table_UML.md), the [API routes and chat WebSocket](docs/architecture/api_routes.md) and the [infrastructure](docs/architecture/infra.md).
 - `docs/design/`: UI design (Figma link, screen snapshots and the color palette).
 - `docs/specs/`: feature specs, the technical design of a feature written before it is built (for example [book clubs](docs/specs/book-clubs.md)).
 - `docs/OOP_documents/`: deliverables for the OOP classes (domain model, component diagrams, event storming, coupling analysis, patterns used, refactored code), organized by iteration (`iteration_0` to `iteration_4`).
 - `docs/product/`: documents about the business rules and design of the product, such as the [requirements](docs/product/requirements.md) and the [feature scope](docs/product/features_priority.md) (what is Core, Extra or Optional, and the sprint plan).
 - `docs/sprints/`: deliverables for the Software Engineering Lab classes (vision, MVP, vertical prototype, claims, release notes), organized by iteration (`iteration_0` to `iteration_4`). Each iteration can also have a `log.md`: a running record of what the team did and decided (see [iteration 0](docs/sprints/iteration_0/log.md)).
 
-### `infra/`
-
-Infrastructure and deployment configuration.
-
-### `scripts/`
-
-Helper scripts for development and automation.
-
 ### `.github/`
 
-GitHub configuration: the pull request template, the issue templates (`ISSUE_TEMPLATE/`: feature, bug, refactor and tests) and the CI workflows (`workflows/`). Work is tracked on the org GitHub Project board (columns: To do, Doing, In review, QA, Done).
+GitHub configuration: the pull request template, the issue templates (`ISSUE_TEMPLATE/`: user story, feature, bug, refactor and tests) and the CI workflows (`workflows/`). Sprints are planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23) project: user stories with Gherkin acceptance criteria, a Priority, story points and a one-week Iteration (sprint); their tasks are sub-issues.
 
 #### Continuous integration
 
-Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks and `<app>-cd-<env>.yml` for deploys (`release.yml` tags the versions), so each app's CI stays separate. A change to one app does not run the other app's checks:
+Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks and `<app>-cd-<env>.yml` for deploys (`release.yml` tags the versions, `iteration-release.yml` makes the sprint releases), so each app's CI stays separate. A change to one app does not run the other app's checks:
 
 - `backend-ci.yml`: runs on every pull request to `main` when `apps/backend/`, the shared root config or the workflow itself changes. It installs with the locked dependencies, then runs lint, format check, typecheck, tests (against a Postgres service) and build.
 - `frontend-ci.yml`: the same steps for `apps/frontend/`: lint, format check, typecheck, component/router tests and build.
-- `commitlint.yml`: runs on every pull request to `main` and fails when a commit (merge commits aside) does not follow Conventional Commits: `<type>(<scope>)!: <description>` with type `build`, `chore`, `ci`, `db`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style` or `test`. Check locally with `scripts/check-commits.sh origin/main..HEAD`. Fix a bad message with `git commit --amend` or `git rebase -i` and force-push.
+- `commitlint.yml`: runs on every pull request to `main` and fails when a commit (merge commits aside) does not follow Conventional Commits: `<type>(<scope>)!: <description>` with type `build`, `chore`, `ci`, `db`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style` or `test`. Fix a bad message with `git commit --amend` or `git rebase -i` and force-push.
 
 #### Deploy (Render)
 
@@ -130,7 +120,8 @@ Every merge to `main` deploys the apps it changed, each in its own workflow (the
 
 - **Backend CD (prod)** (`backend-cd-prod.yml`): `ci` (calls `backend-ci.yml`), `migrate` (`db:migrate` on the prod database with `PROD_DATABASE_URL`), then `deploy`: start the Render deploy of that commit, wait while Render builds the image and goes live, print the Render build log, check `/health`.
 - **Frontend CD (prod)** (`frontend-cd-prod.yml`): `ci` (calls `frontend-ci.yml`), then `deploy`: the same Render steps for the static site, ending with a check that the site answers. It does not wait for the backend deploy of the same merge.
-- **Release** (`release.yml`): runs when a prod CD succeeds and, once every prod CD of that commit has succeeded, creates the version tag `vX.Y.Z` and a GitHub Release of the same name with generated notes, made by [semantic-release](https://semantic-release.gitbook.io/) from the commits since the last tag (config in the `release` key of the root `package.json`). `feat` bumps minor, `fix`/`perf`/`revert` bump patch, a breaking change (`type!:` or `BREAKING CHANGE:`) bumps major. A merge with only `docs`, `chore`, `ci`, `style`, `test`, `build` or `refactor` commits makes no release, and a failed deploy is never tagged. Versions started from a hand-made `v0.1.0` (semantic-release would otherwise start at `v1.0.0`).
+- **Release** (`release.yml`): runs when a prod CD succeeds and, once every prod CD of that commit has succeeded, creates the version tag `vX.Y.Z` (a tag only, no GitHub Release), made by [semantic-release](https://semantic-release.gitbook.io/) from the commits since the last tag (config in the `release` key of the root `package.json`). `feat` bumps minor, `fix`/`perf`/`revert` bump patch, a breaking change (`type!:` or `BREAKING CHANGE:`) bumps major. A merge with only `docs`, `chore`, `ci`, `style`, `test`, `build` or `refactor` commits makes no release, and a failed deploy is never tagged. Versions started from a hand-made `v0.1.0` (semantic-release would otherwise start at `v1.0.0`).
+- **Iteration release** (`iteration-release.yml`): the only GitHub Releases, one per sprint, named `iter-0` to `iter-4`. Run it by hand at the end of the sprint (Actions, "Iteration release", "Run workflow"), pick the iteration and the commit or branch (default `main`). It tags that commit `iter-N` and creates the release of the same name, marked as latest, with `docs/sprints/iteration_N/release_notes.md` (when filled in) followed by the pull requests merged since the previous `iter-*` tag. It refuses to run when the release already exists, or when the tag already exists on another commit.
 
 Setup (repo admin): secrets `RENDER_API_KEY` and `PROD_DATABASE_URL`, variables `RENDER_BACKEND_PROD_SERVICE_ID` and `RENDER_FRONTEND_PROD_SERVICE_ID`, and Auto-Deploy turned off on both prod services.
 

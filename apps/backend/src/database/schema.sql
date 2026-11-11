@@ -26,6 +26,9 @@ CREATE TABLE users (
     hit_streak BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+-- Usernames are unique ignoring case (F-AUTH-01).
+CREATE UNIQUE INDEX users_username_lower_key ON users (lower(username));
+
 -- Represents mutual social connections and pending friend requests between users.
 CREATE TABLE friendships (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -120,6 +123,7 @@ CREATE TABLE groups (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     description TEXT NOT NULL,
+    kind VARCHAR(20) NOT NULL,
     admin_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -360,3 +364,22 @@ CREATE TABLE book_club_votes (
     cast_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (poll_id, user_id)
 );
+
+-- Same as migration 0005: deny the Supabase API roles (anon, authenticated)
+-- any access to the app tables; only the Express API reaches them.
+DO $$
+DECLARE
+  t record;
+BEGIN
+  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t.tablename);
+  END LOOP;
+
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+    REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
+  END IF;
+END $$;

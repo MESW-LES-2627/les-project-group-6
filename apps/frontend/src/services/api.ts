@@ -10,11 +10,110 @@ import type {
   WinMetric,
 } from '@/types/groups';
 import type { LibraryBook, ReadingStatus } from '@/types/library';
+import { authProvider, isAuthConfigured } from '@/services/auth';
 import { formatLongDate, formatPeriod, initialsOf } from '@/utils/groups';
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
 
-export const DEMO_USER_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+/** The API answered with an error status; `code` is set for auth errors (e.g. `PROFILE_REQUIRED`). */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+let onUnauthorized: () => void = () => {};
+
+/** Called whenever the API answers 401 (expired or revoked session). */
+export function setUnauthorizedHandler(handler: () => void): void {
+  onUnauthorized = handler;
+}
+
+/**
+ * Every API request goes through here: it adds the Supabase access token as
+ * `Authorization: Bearer` (F-AUTH-01). The API takes the user from that token.
+ */
+async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  headers.set('Accept', 'application/json');
+  const token = isAuthConfigured() ? await authProvider.accessToken() : null;
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const response = await fetch(`${baseUrl}${path}`, {
+    signal: AbortSignal.timeout(10_000),
+    ...init,
+    headers,
+  });
+  if (response.status === 401) onUnauthorized();
+  return response;
+}
+
+/** Throws an ApiError with the server's message when the response is not ok. */
+async function ensureOk(response: Response, fallback: string): Promise<Response> {
+  if (response.ok) return response;
+  let message = `${fallback}: HTTP ${response.status}`;
+  let code: string | undefined;
+  try {
+    const body = (await response.json()) as { error?: string; code?: string };
+    message = body.error ?? message;
+    code = body.code;
+  } catch {
+    // Not JSON: keep the fallback message.
+  }
+  throw new ApiError(message, response.status, code);
+}
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+// ---------------------------------------------------------------------------
+// The signed-in reader's profile (F-AUTH-01)
+// ---------------------------------------------------------------------------
+
+export interface ApiMe {
+  id: string;
+  email: string;
+  username: string;
+  displayName: string;
+  timezone: string;
+  photoUrl: string | null;
+  profileVisibility: string;
+  createdAt: string;
+}
+
+export interface CreateProfilePayload {
+  username: string;
+  displayName: string;
+  timezone: string;
+}
+
+/** The reader's profile; rejects with ApiError code `PROFILE_REQUIRED` before sign-up is finished. */
+export async function getMe(): Promise<ApiMe> {
+  const response = await ensureOk(await apiFetch('/me'), 'Failed to load your profile');
+  return response.json() as Promise<ApiMe>;
+}
+
+/** Creates the `users` row for the signed-in Supabase account. */
+export async function createMe(payload: CreateProfilePayload): Promise<ApiMe> {
+  const response = await ensureOk(
+    await apiFetch('/me', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(payload) }),
+    'Failed to create your profile',
+  );
+  return response.json() as Promise<ApiMe>;
+}
+
+/** Public check used by the sign-up form before the account is created. */
+export async function isUsernameAvailable(username: string): Promise<boolean> {
+  const response = await ensureOk(
+    await apiFetch(`/usernames/${encodeURIComponent(username)}/availability`),
+    'Failed to check the username',
+  );
+  const body = (await response.json()) as { available?: unknown };
+  return body.available === true;
+}
 
 export interface ApiBook {
   id: string;
@@ -114,10 +213,7 @@ export function mapApiBookToLibraryBook(
 }
 
 export async function getHealth(): Promise<string> {
-  const response = await fetch(`${baseUrl}/health`, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(10_000),
-  });
+  const response = await apiFetch('/health');
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
@@ -136,15 +232,9 @@ export async function getHealth(): Promise<string> {
   return body.status;
 }
 
-export async function getUserLibrary(
-  userId: string = DEMO_USER_ID,
-  statusFilter?: ReadingStatus,
-): Promise<ApiLibraryItem[]> {
+export async function getUserLibrary(statusFilter?: ReadingStatus): Promise<ApiLibraryItem[]> {
   const query = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : '';
-  const response = await fetch(`${baseUrl}/user/${encodeURIComponent(userId)}/library${query}`, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(10_000),
-  });
+  const response = await apiFetch(`/me/library${query}`);
 
   if (!response.ok) {
     throw new Error(`Failed to load user library: HTTP ${response.status}`);
@@ -154,10 +244,7 @@ export async function getUserLibrary(
 }
 
 export async function getBook(bookId: string): Promise<ApiBook> {
-  const response = await fetch(`${baseUrl}/book/${encodeURIComponent(bookId)}`, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(10_000),
-  });
+  const response = await apiFetch(`/book/${encodeURIComponent(bookId)}`);
 
   if (!response.ok) {
     throw new Error(`Failed to load book: HTTP ${response.status}`);
@@ -167,24 +254,18 @@ export async function getBook(bookId: string): Promise<ApiBook> {
 }
 
 export async function updateReadingStatus(payload: {
-  userId?: string;
   bookId: string;
   status: ReadingStatus;
   currentPage?: number;
 }): Promise<unknown> {
-  const response = await fetch(`${baseUrl}/reading-status`, {
+  const response = await apiFetch('/reading-status', {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
+    headers: JSON_HEADERS,
     body: JSON.stringify({
-      userId: payload.userId || DEMO_USER_ID,
       bookId: payload.bookId,
       status: payload.status,
       currentPage: payload.currentPage ?? 0,
     }),
-    signal: AbortSignal.timeout(10_000),
   });
 
   if (!response.ok) {
@@ -220,15 +301,11 @@ async function errorMessage(response: Response, fallback: string): Promise<strin
 }
 
 /** Starts the timer on a book, or resumes the session already running on it. */
-export async function startReadingSession(
-  bookId: string,
-  userId: string = DEMO_USER_ID,
-): Promise<ApiReadingSession> {
-  const response = await fetch(`${baseUrl}/reading-sessions`, {
+export async function startReadingSession(bookId: string): Promise<ApiReadingSession> {
+  const response = await apiFetch('/reading-sessions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ userId, bookId }),
-    signal: AbortSignal.timeout(10_000),
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ bookId }),
   });
 
   if (!response.ok) {
@@ -241,19 +318,10 @@ export async function startReadingSession(
 }
 
 /** Stops the timer; the server decides how many minutes the session counts. */
-export async function finishReadingSession(
-  sessionId: string,
-  userId: string = DEMO_USER_ID,
-): Promise<ApiReadingSession> {
-  const response = await fetch(
-    `${baseUrl}/reading-sessions/${encodeURIComponent(sessionId)}/finish`,
-    {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ userId }),
-      signal: AbortSignal.timeout(10_000),
-    },
-  );
+export async function finishReadingSession(sessionId: string): Promise<ApiReadingSession> {
+  const response = await apiFetch(`/reading-sessions/${encodeURIComponent(sessionId)}/finish`, {
+    method: 'PATCH',
+  });
 
   if (!response.ok) {
     throw new Error(
@@ -264,11 +332,8 @@ export async function finishReadingSession(
   return response.json() as Promise<ApiReadingSession>;
 }
 
-export async function getReadingStats(userId: string = DEMO_USER_ID): Promise<ApiReadingStats> {
-  const response = await fetch(`${baseUrl}/user/${encodeURIComponent(userId)}/reading-stats`, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(10_000),
-  });
+export async function getReadingStats(): Promise<ApiReadingStats> {
+  const response = await apiFetch('/me/reading-stats');
 
   if (!response.ok) {
     throw new Error(`Failed to load reading stats: HTTP ${response.status}`);
@@ -278,15 +343,9 @@ export async function getReadingStats(userId: string = DEMO_USER_ID): Promise<Ap
 }
 
 /** Discards a running session started by mistake; no minutes are saved. */
-export async function cancelReadingSession(
-  sessionId: string,
-  userId: string = DEMO_USER_ID,
-): Promise<void> {
-  const response = await fetch(`${baseUrl}/reading-sessions/${encodeURIComponent(sessionId)}`, {
+export async function cancelReadingSession(sessionId: string): Promise<void> {
+  const response = await apiFetch(`/reading-sessions/${encodeURIComponent(sessionId)}`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ userId }),
-    signal: AbortSignal.timeout(10_000),
   });
 
   if (!response.ok) {
@@ -374,9 +433,10 @@ export function mapApiGroupToSummary(group: ApiChallengeGroup, now = new Date())
   };
 }
 
-/** Builds the challenge page from the API; chat and history are not stored yet. */
+/** Builds the challenge page from the API; `meId` is the reader viewing it. */
 export function mapApiGroupToChallengeDetail(
   group: ApiChallengeGroupDetail,
+  meId: string,
   now = new Date(),
 ): ChallengeDetail {
   const days = durationDays(group);
@@ -406,7 +466,7 @@ export function mapApiGroupToChallengeDetail(
     };
   });
 
-  const me = leaderboard.find((e) => e.member.id === DEMO_USER_ID);
+  const me = leaderboard.find((e) => e.member.id === meId);
 
   return {
     id: group.id,
@@ -443,13 +503,11 @@ export function mapApiGroupToChallengeDetail(
 
 export async function createChallengeGroup(
   payload: CreateChallengeGroupPayload,
-  userId: string = DEMO_USER_ID,
 ): Promise<ApiChallengeGroup> {
-  const response = await fetch(`${baseUrl}/groups/challenges`, {
+  const response = await apiFetch('/groups/challenges', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ userId, ...payload }),
-    signal: AbortSignal.timeout(10_000),
+    headers: JSON_HEADERS,
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -462,10 +520,7 @@ export async function createChallengeGroup(
 }
 
 export async function getChallengeGroup(groupId: string): Promise<ApiChallengeGroupDetail> {
-  const response = await fetch(`${baseUrl}/groups/challenges/${encodeURIComponent(groupId)}`, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(10_000),
-  });
+  const response = await apiFetch(`/groups/challenges/${encodeURIComponent(groupId)}`);
 
   if (!response.ok) {
     throw new Error(`Failed to load group: HTTP ${response.status}`);
@@ -474,11 +529,8 @@ export async function getChallengeGroup(groupId: string): Promise<ApiChallengeGr
   return response.json() as Promise<ApiChallengeGroupDetail>;
 }
 
-export async function getUserGroups(userId: string = DEMO_USER_ID): Promise<ApiChallengeGroup[]> {
-  const response = await fetch(`${baseUrl}/user/${encodeURIComponent(userId)}/groups`, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(10_000),
-  });
+export async function getUserGroups(): Promise<ApiChallengeGroup[]> {
+  const response = await apiFetch('/me/groups');
 
   if (!response.ok) {
     throw new Error(`Failed to load groups: HTTP ${response.status}`);
@@ -504,15 +556,12 @@ export interface ApiChatMessage {
 export async function getGroupMessages(
   groupId: string,
   cursor: { after?: number; before?: number } = {},
-  userId: string = DEMO_USER_ID,
 ): Promise<ApiChatMessage[]> {
-  const query = new URLSearchParams({ userId });
+  const query = new URLSearchParams();
   if (cursor.after !== undefined) query.set('after', String(cursor.after));
   if (cursor.before !== undefined) query.set('before', String(cursor.before));
-  const response = await fetch(
-    `${baseUrl}/groups/${encodeURIComponent(groupId)}/messages?${query}`,
-    { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10_000) },
-  );
+  const search = query.size ? `?${query}` : '';
+  const response = await apiFetch(`/groups/${encodeURIComponent(groupId)}/messages${search}`);
 
   if (!response.ok) {
     throw new Error(
@@ -527,13 +576,11 @@ export async function getGroupMessages(
 export async function sendGroupMessage(
   groupId: string,
   payload: { clientId: string; body: string },
-  userId: string = DEMO_USER_ID,
 ): Promise<ApiChatMessage> {
-  const response = await fetch(`${baseUrl}/groups/${encodeURIComponent(groupId)}/messages`, {
+  const response = await apiFetch(`/groups/${encodeURIComponent(groupId)}/messages`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ userId, ...payload }),
-    signal: AbortSignal.timeout(10_000),
+    headers: JSON_HEADERS,
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -545,19 +592,10 @@ export async function sendGroupMessage(
   return response.json() as Promise<ApiChatMessage>;
 }
 
-export async function deleteGroupMessage(
-  groupId: string,
-  messageId: string,
-  userId: string = DEMO_USER_ID,
-): Promise<void> {
-  const response = await fetch(
-    `${baseUrl}/groups/${encodeURIComponent(groupId)}/messages/${encodeURIComponent(messageId)}`,
-    {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ userId }),
-      signal: AbortSignal.timeout(10_000),
-    },
+export async function deleteGroupMessage(groupId: string, messageId: string): Promise<void> {
+  const response = await apiFetch(
+    `/groups/${encodeURIComponent(groupId)}/messages/${encodeURIComponent(messageId)}`,
+    { method: 'DELETE' },
   );
 
   if (!response.ok) {
@@ -578,13 +616,7 @@ export function apiEndpoint(): { origin: string; path: string } {
 // ---------------------------------------------------------------------------
 
 async function getJson<T>(path: string, fallback: string): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!response.ok) {
-    throw new Error(await errorMessage(response, `${fallback}: HTTP ${response.status}`));
-  }
+  const response = await ensureOk(await apiFetch(path), fallback);
   return response.json() as Promise<T>;
 }
 
@@ -594,15 +626,10 @@ async function sendJson<T>(
   body: unknown,
   fallback: string,
 ): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`, {
-    method,
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!response.ok) {
-    throw new Error(await errorMessage(response, `${fallback}: HTTP ${response.status}`));
-  }
+  const response = await ensureOk(
+    await apiFetch(path, { method, headers: JSON_HEADERS, body: JSON.stringify(body) }),
+    fallback,
+  );
   return response.json() as Promise<T>;
 }
 
@@ -663,44 +690,24 @@ export function mapApiFriend(friend: ApiFriend): GroupMember {
   };
 }
 
-export async function getFriends(userId: string = DEMO_USER_ID): Promise<GroupMember[]> {
-  const friends = await getJson<ApiFriend[]>(
-    `/user/${id(userId)}/friends`,
-    'Failed to load friends',
-  );
+export async function getFriends(): Promise<GroupMember[]> {
+  const friends = await getJson<ApiFriend[]>('/me/friends', 'Failed to load friends');
   return friends.map(mapApiFriend);
 }
 
-export async function inviteToGroup(
-  groupId: string,
-  inviteeId: string,
-  userId: string = DEMO_USER_ID,
-): Promise<ApiGroupInvite> {
-  return sendJson(
-    'POST',
-    `/groups/${id(groupId)}/invites`,
-    { userId, inviteeId },
-    'Failed to invite',
-  );
+export async function inviteToGroup(groupId: string, inviteeId: string): Promise<ApiGroupInvite> {
+  return sendJson('POST', `/groups/${id(groupId)}/invites`, { inviteeId }, 'Failed to invite');
 }
 
-export async function getPendingInvites(
-  userId: string = DEMO_USER_ID,
-): Promise<ApiPendingInvite[]> {
-  return getJson(`/user/${id(userId)}/group-invites`, 'Failed to load invites');
+export async function getPendingInvites(): Promise<ApiPendingInvite[]> {
+  return getJson('/me/group-invites', 'Failed to load invites');
 }
 
 export async function answerInvite(
   inviteId: string,
   answer: 'accept' | 'decline',
-  userId: string = DEMO_USER_ID,
 ): Promise<ApiGroupInvite> {
-  return sendJson(
-    'POST',
-    `/group-invites/${id(inviteId)}/${answer}`,
-    { userId },
-    `Failed to ${answer}`,
-  );
+  return sendJson('POST', `/group-invites/${id(inviteId)}/${answer}`, {}, `Failed to ${answer}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -823,10 +830,7 @@ function closesLabel(iso: string): string {
 }
 
 /** Builds the club page from the API; `meId` is the reader viewing it. */
-export function mapApiClubToDetail(
-  club: ApiBookClubDetail,
-  meId: string = DEMO_USER_ID,
-): BookClubDetail {
+export function mapApiClubToDetail(club: ApiBookClubDetail, meId: string): BookClubDetail {
   const { round } = club;
   const book = round.book;
   const pages = book?.pageCount ?? 0;
@@ -908,33 +912,26 @@ export function mapApiClubToDetail(
   };
 }
 
-export async function createBookClub(
-  payload: CreateBookClubPayload,
-  userId: string = DEMO_USER_ID,
-): Promise<ApiBookClub> {
-  return sendJson('POST', '/groups/book-clubs', { userId, ...payload }, 'Failed to create club');
+export async function createBookClub(payload: CreateBookClubPayload): Promise<ApiBookClub> {
+  return sendJson('POST', '/groups/book-clubs', payload, 'Failed to create club');
 }
 
-export async function getBookClub(
-  groupId: string,
-  userId: string = DEMO_USER_ID,
-): Promise<ApiBookClubDetail> {
-  return getJson(`/groups/book-clubs/${id(groupId)}?userId=${id(userId)}`, 'Failed to load club');
+export async function getBookClub(groupId: string): Promise<ApiBookClubDetail> {
+  return getJson(`/groups/book-clubs/${id(groupId)}`, 'Failed to load club');
 }
 
-export async function getUserBookClubs(userId: string = DEMO_USER_ID): Promise<ApiBookClub[]> {
-  return getJson(`/user/${id(userId)}/book-clubs`, 'Failed to load book clubs');
+export async function getUserBookClubs(): Promise<ApiBookClub[]> {
+  return getJson('/me/book-clubs', 'Failed to load book clubs');
 }
 
 export async function startNextRound(
   groupId: string,
   payload: { bookId: string; deadline: string },
-  userId: string = DEMO_USER_ID,
 ): Promise<ApiBookClub> {
   return sendJson(
     'POST',
     `/groups/book-clubs/${id(groupId)}/rounds`,
-    { userId, ...payload },
+    payload,
     'Failed to start the round',
   );
 }
@@ -942,38 +939,29 @@ export async function startNextRound(
 export async function openPoll(
   groupId: string,
   payload: { closesAt: string; anonymous: boolean },
-  userId: string = DEMO_USER_ID,
 ): Promise<ApiPoll> {
   return sendJson(
     'POST',
     `/groups/book-clubs/${id(groupId)}/poll`,
-    { userId, ...payload },
+    payload,
     'Failed to open the vote',
   );
 }
 
-export async function proposeBook(
-  groupId: string,
-  bookId: string,
-  userId: string = DEMO_USER_ID,
-): Promise<ApiPoll> {
+export async function proposeBook(groupId: string, bookId: string): Promise<ApiPoll> {
   return sendJson(
     'POST',
     `/groups/book-clubs/${id(groupId)}/poll/proposals`,
-    { userId, bookId },
+    { bookId },
     'Failed to propose',
   );
 }
 
-export async function voteForProposal(
-  groupId: string,
-  proposalId: string,
-  userId: string = DEMO_USER_ID,
-): Promise<ApiPoll> {
+export async function voteForProposal(groupId: string, proposalId: string): Promise<ApiPoll> {
   return sendJson(
     'PUT',
     `/groups/book-clubs/${id(groupId)}/poll/vote`,
-    { userId, proposalId },
+    { proposalId },
     'Failed to vote',
   );
 }

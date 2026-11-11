@@ -12,7 +12,7 @@ The "Repository structure" section of `README.md` documents the folder layout. W
 
 ## Keep the iteration log up to date
 
-Each iteration has a running log at `docs/sprints/iteration_N/log.md` (currently [iteration 0](docs/sprints/iteration_0/log.md)). Whenever something new is added or decided in the project, update the log of the current iteration in the same change. This includes:
+Each iteration has a running log at `docs/sprints/iteration_N/log.md` (currently [iteration 2](docs/sprints/iteration_2/log.md)). Whenever something new is added or decided in the project, update the log of the current iteration in the same change. This includes:
 
 - a new document, requirement change, design or screen
 - a new ADR or any technical decision
@@ -33,7 +33,7 @@ The log is the day-to-day history. The `release_notes.md` of the iteration is th
 
 ## Keep the LLM log up to date
 
-Every major change in content and major code generation performed with AI must be logged in the current iteration's LLM log at `docs/sprints/iteration_N/LLM_LOG.md` (currently [iteration 0](docs/sprints/iteration_0/LLM_LOG.md)), determined by the context of the conversation.
+Every major change in content and major code generation performed with AI must be logged in the current iteration's LLM log at `docs/sprints/iteration_N/LLM_LOG.md` (currently [iteration 2](docs/sprints/iteration_2/LLM_LOG.md)), determined by the context of the conversation.
 
 Follow the template defined at the top of the respective `LLM_LOG.md` file:
 

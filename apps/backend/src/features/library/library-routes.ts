@@ -1,6 +1,6 @@
 import { Router } from 'express';
+import { currentUser } from '../../middleware/auth.js';
 import { READING_STATUS_TYPES, type ReadingStatusType } from '../reading-status/reading-state.js';
-import { UserId } from '../user/user.js';
 import type { LibraryQuery } from './library-query.js';
 
 const isReadingStatusType = (value: unknown): value is ReadingStatusType =>
@@ -9,16 +9,9 @@ const isReadingStatusType = (value: unknown): value is ReadingStatusType =>
 export function libraryRoutes(libraryQuery: LibraryQuery): Router {
   const router = Router();
 
-  router.get('/user/:userId/library', async (req, res) => {
+  router.get('/me/library', async (req, res) => {
     const status = isReadingStatusType(req.query.status) ? req.query.status : undefined;
-    const library = await libraryQuery.forUser(UserId.of(req.params.userId), status);
-    res.status(200).json(library);
-  });
-
-  router.get('/library', async (req, res) => {
-    const userId = (req.query.userId as string) ?? (req.headers['x-user-id'] as string);
-    const status = isReadingStatusType(req.query.status) ? req.query.status : undefined;
-    const library = await libraryQuery.forUser(UserId.of(userId), status);
+    const library = await libraryQuery.forUser(currentUser(res).id, status);
     res.status(200).json(library);
   });
 

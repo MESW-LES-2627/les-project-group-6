@@ -59,6 +59,7 @@ export class DrizzleChallengeGroupRepository implements IChallengeGroupRepositor
         id: group.id.value,
         name: group.name.value,
         description: group.description,
+        kind: 'challenge',
         adminId: group.adminId.value,
         createdAt: group.createdAt.toISOString(),
       });

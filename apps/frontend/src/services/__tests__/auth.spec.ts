@@ -7,6 +7,9 @@ const sdk = vi.hoisted(() => ({
   signInWithPassword: vi.fn<(input: unknown) => Promise<SdkResult>>(),
   signUp: vi.fn<(input: unknown) => Promise<SdkResult>>(),
   signInWithOAuth: vi.fn<(input: unknown) => Promise<{ error: { message: string } | null }>>(),
+  signOut: vi.fn<(input: unknown) => Promise<{ error: { message: string } | null }>>(),
+  getSession: vi.fn<() => Promise<{ data: { session: object | null } }>>(),
+  onAuthStateChange: vi.fn<(cb: (event: string, session: unknown) => void) => unknown>(),
 }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: sdk.createClient }));
 
@@ -21,6 +24,10 @@ beforeEach(async () => {
   sdk.signInWithPassword.mockResolvedValue({ data: { session: {} }, error: null });
   sdk.signUp.mockResolvedValue({ data: { session: null }, error: null });
   sdk.signInWithOAuth.mockResolvedValue({ error: null });
+  sdk.signOut.mockResolvedValue({ error: null });
+  sdk.getSession.mockResolvedValue({ data: { session: null } });
+  window.localStorage.clear();
+  window.sessionStorage.clear();
   auth = await import('../auth');
 });
 afterEach(() => vi.unstubAllEnvs());
@@ -30,7 +37,7 @@ describe('Supabase auth adapter', () => {
     vi.stubEnv('VITE_SUPABASE_URL', '');
     await expect(
       auth.authProvider.signIn({
-        identifier: 'reader@example.com',
+        email: 'reader@example.com',
         password: 'secret',
         remember: false,
       }),
@@ -44,7 +51,7 @@ describe('Supabase auth adapter', () => {
     async (remember) => {
       await expect(
         auth.authProvider.signIn({
-          identifier: ' reader@example.com ',
+          email: ' reader@example.com ',
           password: 'secret',
           remember,
         }),
@@ -59,37 +66,21 @@ describe('Supabase auth adapter', () => {
         {
           auth: {
             persistSession: true,
-            storage: remember ? window.localStorage : window.sessionStorage,
+            storage: auth.rememberAwareStorage,
             autoRefreshToken: true,
             detectSessionInUrl: true,
           },
         },
       );
+      // The session the SDK stores lands in the storage the checkbox chose.
+      auth.rememberAwareStorage.setItem('sb-session', 'value');
+      const chosen = remember ? window.localStorage : window.sessionStorage;
+      const other = remember ? window.sessionStorage : window.localStorage;
+      expect(chosen.getItem('sb-session')).toBe('value');
+      expect(other.getItem('sb-session')).toBeNull();
+      expect(auth.rememberAwareStorage.getItem('sb-session')).toBe('value');
     },
   );
-
-  it.each(['reader_name', '@reader_name'])(
-    'resolves username %s through the injected backend hook',
-    async (identifier) => {
-      const resolve = vi
-        .fn<(username: string) => Promise<string>>()
-        .mockResolvedValue('reader@example.com');
-      const provider = auth.createAuthProvider(auth.getSupabaseClient, resolve);
-      await provider.signIn({ identifier, password: 'secret', remember: false });
-      expect(resolve).toHaveBeenCalledExactlyOnceWith('reader_name');
-      expect(sdk.signInWithPassword).toHaveBeenCalledExactlyOnceWith({
-        email: 'reader@example.com',
-        password: 'secret',
-      });
-    },
-  );
-
-  it('does not invent a username lookup when the backend is not ready', async () => {
-    await expect(
-      auth.authProvider.signIn({ identifier: 'reader_name', password: 'secret', remember: false }),
-    ).rejects.toThrow('Username sign-in is not available yet');
-    expect(sdk.createClient).not.toHaveBeenCalled();
-  });
 
   it('maps signup profile metadata and waits for email confirmation', async () => {
     await expect(
@@ -135,7 +126,7 @@ describe('Supabase auth adapter', () => {
       data: { session: null },
       error: { message: 'Invalid login credentials' },
     });
-    const input = { identifier: 'reader@example.com', password: 'secret', remember: false };
+    const input = { email: 'reader@example.com', password: 'secret', remember: false };
     await expect(auth.authProvider.signIn(input)).rejects.toThrow('Invalid login credentials');
     sdk.signInWithPassword.mockResolvedValueOnce({ data: { session: null }, error: null });
     await expect(auth.authProvider.signIn(input)).rejects.toThrow('did not create a session');
@@ -155,5 +146,67 @@ describe('Supabase auth adapter', () => {
     await expect(auth.authProvider.signInWithOidc('google')).rejects.toThrow(
       'Provider unavailable',
     );
+  });
+
+  it('signs out globally so Supabase revokes the refresh tokens', async () => {
+    auth.rememberAwareStorage.setItem('sb-session', 'value');
+    await auth.authProvider.signOut();
+    expect(sdk.signOut).toHaveBeenCalledExactlyOnceWith();
+    auth.rememberAwareStorage.removeItem('sb-session');
+    expect(auth.rememberAwareStorage.getItem('sb-session')).toBeNull();
+  });
+
+  it('still signs out locally when the global sign-out fails', async () => {
+    sdk.signOut
+      .mockResolvedValueOnce({ error: { message: 'Network error' } })
+      .mockResolvedValueOnce({ error: null });
+    await auth.authProvider.signOut();
+    expect(sdk.signOut).toHaveBeenNthCalledWith(2, { scope: 'local' });
+  });
+
+  it('reports an error when even the local sign-out fails', async () => {
+    sdk.signOut.mockResolvedValue({ error: { message: 'Storage unavailable' } });
+    await expect(auth.authProvider.signOut()).rejects.toThrow('Storage unavailable');
+  });
+
+  it('exposes the access token and the account without SDK types', async () => {
+    expect(await auth.authProvider.accessToken()).toBeNull();
+    expect(await auth.authProvider.currentAccount()).toBeNull();
+
+    sdk.getSession.mockResolvedValue({
+      data: {
+        session: {
+          access_token: 'jwt-token',
+          user: {
+            id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+            email: 'reader@example.com',
+            user_metadata: { username: 'reader_name', display_name: 'Reader' },
+          },
+        },
+      },
+    });
+    expect(await auth.authProvider.accessToken()).toBe('jwt-token');
+    expect(await auth.authProvider.currentAccount()).toEqual({
+      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      email: 'reader@example.com',
+      username: 'reader_name',
+      displayName: 'Reader',
+    });
+  });
+
+  it('notifies session changes as our account shape', () => {
+    const unsubscribe = vi.fn<() => void>();
+    let callback!: (event: string, session: unknown) => void;
+    sdk.onAuthStateChange.mockImplementation((cb) => {
+      callback = cb;
+      return { data: { subscription: { unsubscribe } } };
+    });
+    const listener = vi.fn<(account: unknown) => void>();
+    const stop = auth.authProvider.onChange(listener);
+
+    callback('SIGNED_OUT', null);
+    expect(listener).toHaveBeenCalledWith(null);
+    stop();
+    expect(unsubscribe).toHaveBeenCalled();
   });
 });

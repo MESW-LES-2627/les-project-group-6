@@ -15,6 +15,7 @@ import {
 } from '../helpers/in-memory-repositories.js';
 
 const USER_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+const OTHER_USER_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12';
 
 describe('ReadingStatusService', () => {
   let books: InMemoryBookRepository;
@@ -74,11 +75,11 @@ describe('ReadingStatusService', () => {
       bookId: book.id.value,
       status: 'in-progress',
     });
-    const updated = await service.update({ id: entry.id.value, currentPage: 300 });
+    const updated = await service.update({ id: entry.id.value, userId: USER_ID, currentPage: 300 });
     assert.strictEqual(updated.progress.page, 300);
 
     await assert.rejects(
-      service.update({ id: entry.id.value, currentPage: 689 }),
+      service.update({ id: entry.id.value, userId: USER_ID, currentPage: 689 }),
       InvalidPageProgressError,
     );
   });
@@ -90,7 +91,7 @@ describe('ReadingStatusService', () => {
       status: 'not-started',
     });
     await assert.rejects(
-      service.update({ id: entry.id.value, status: 'did-not-finish' }),
+      service.update({ id: entry.id.value, userId: USER_ID, status: 'did-not-finish' }),
       InvalidReadingTransitionError,
     );
     await assert.rejects(
@@ -101,7 +102,11 @@ describe('ReadingStatusService', () => {
 
   test('update fails when the entry does not exist', async () => {
     await assert.rejects(
-      service.update({ id: '00000000-0000-0000-0000-000000000000', status: 'finished' }),
+      service.update({
+        id: '00000000-0000-0000-0000-000000000000',
+        userId: USER_ID,
+        status: 'finished',
+      }),
       NotFoundError,
     );
   });
@@ -127,6 +132,7 @@ describe('ReadingStatusService', () => {
       });
       const updated = await service.update({
         id: entry.id.value,
+        userId: USER_ID,
         startedOn: '2026-09-01',
         finishedOn: '2026-09-20',
       });
@@ -151,8 +157,18 @@ describe('ReadingStatusService', () => {
         bookId: book.id.value,
         status: 'in-progress',
       });
-      await service.removeById(entry.id.value);
-      await assert.rejects(service.removeById(entry.id.value), NotFoundError);
+      await service.removeById(USER_ID, entry.id.value);
+      await assert.rejects(service.removeById(USER_ID, entry.id.value), NotFoundError);
+    });
+
+    test("removeById reports another reader's entry as not found and keeps it", async () => {
+      const entry = await service.set({
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'in-progress',
+      });
+      await assert.rejects(service.removeById(OTHER_USER_ID, entry.id.value), NotFoundError);
+      assert.ok(await statuses.findById(entry.id));
     });
   });
 
@@ -181,5 +197,19 @@ describe('ReadingStatusService', () => {
         NotFoundError,
       );
     });
+  });
+
+  test("update reports another reader's entry as not found and leaves it unchanged", async () => {
+    const entry = await service.set({
+      userId: USER_ID,
+      bookId: book.id.value,
+      status: 'in-progress',
+    });
+
+    await assert.rejects(
+      service.update({ id: entry.id.value, userId: OTHER_USER_ID, status: 'finished' }),
+      NotFoundError,
+    );
+    assert.strictEqual((await statuses.findById(entry.id))?.status, 'in-progress');
   });
 });

@@ -1,19 +1,36 @@
 import { Router, type RequestHandler } from 'express';
+import { currentUserId } from '../../middleware/auth.js';
 import type { ReadingStatusService } from './reading-status-service.js';
 import { toReadingStatusDto } from './reading-status-dto.js';
 
+// Mounted behind `authenticate` + `requireUser`: the reader always comes from the token,
+// never from a `userId` in the body, query or path.
 export function readingStatusRoutes(readingStatuses: ReadingStatusService): Router {
   const router = Router();
 
   router.put('/reading-status', async (req, res) => {
-    const entry = await readingStatuses.set(req.body);
+    const { bookId, status, currentPage, startedOn, finishedOn } = req.body ?? {};
+    const entry = await readingStatuses.set({
+      userId: currentUserId(res),
+      bookId,
+      status,
+      currentPage,
+      startedOn,
+      finishedOn,
+    });
     res.status(200).json(toReadingStatusDto(entry));
   });
 
   const update: RequestHandler = async (req, res) => {
+    const { bookId, status, currentPage, startedOn, finishedOn } = req.body ?? {};
     const entry = await readingStatuses.update({
-      ...req.body,
       id: req.params.id ?? req.body?.id,
+      userId: currentUserId(res),
+      bookId,
+      status,
+      currentPage,
+      startedOn,
+      finishedOn,
     });
     res.status(200).json(toReadingStatusDto(entry));
   };
@@ -23,35 +40,36 @@ export function readingStatusRoutes(readingStatuses: ReadingStatusService): Rout
   router.patch('/reading-status', update);
 
   router.delete('/reading-status/:id', async (req, res) => {
-    await readingStatuses.removeById(req.params.id);
+    await readingStatuses.removeById(currentUserId(res), req.params.id);
     res.status(204).end();
   });
 
   router.delete('/reading-status', async (req, res) => {
-    const userId = (req.query.userId as string) ?? req.body?.userId;
-    const bookId = (req.query.bookId as string) ?? req.body?.bookId;
-    await readingStatuses.remove(userId, bookId);
-    res.status(204).end();
-  });
-
-  router.delete('/user/:userId/library/:bookId', async (req, res) => {
-    await readingStatuses.remove(req.params.userId, req.params.bookId);
+    const bookId = req.query.bookId ?? req.body?.bookId;
+    await readingStatuses.remove(currentUserId(res), bookId);
     res.status(204).end();
   });
 
   router.put('/library/:bookId', async (req, res) => {
+    const { status, currentPage, startedOn, finishedOn } = req.body ?? {};
     const entry = await readingStatuses.set({
-      ...req.body,
+      userId: currentUserId(res),
       bookId: req.params.bookId,
+      status,
+      currentPage,
+      startedOn,
+      finishedOn,
     });
     res.status(200).json(toReadingStatusDto(entry));
   });
 
-  router.delete('/library/:bookId', async (req, res) => {
-    const userId = (req.query.userId as string) ?? req.body?.userId;
-    await readingStatuses.remove(userId, req.params.bookId);
+  const removeFromLibrary: RequestHandler = async (req, res) => {
+    await readingStatuses.remove(currentUserId(res), req.params.bookId);
     res.status(204).end();
-  });
+  };
+
+  router.delete('/library/:bookId', removeFromLibrary);
+  router.delete('/me/library/:bookId', removeFromLibrary);
 
   return router;
 }

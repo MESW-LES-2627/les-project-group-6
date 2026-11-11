@@ -98,8 +98,11 @@ export class BookClubService implements MemberJoinedListener {
     return this.view(club);
   }
 
-  async get(id: unknown): Promise<BookClubView> {
-    return this.view(await this.load(id));
+  /** The club as seen by one of its members; anyone else gets 404, as if it did not exist. */
+  async get(id: unknown, readerId: unknown): Promise<BookClubView> {
+    const club = await this.load(id);
+    if (!club.isMember(UserId.of(readerId))) throw new NotFoundError('Book club');
+    return this.view(club);
   }
 
   async forMember(userId: unknown): Promise<BookClubView[]> {
