@@ -88,4 +88,15 @@ describe('DrizzleBookRepository Integration', () => {
     const deletedAgain = await repo.delete(book.id);
     assert.strictEqual(deletedAgain, false);
   });
+  test('findByIds returns the books that exist and ignores unknown ids', async () => {
+    const dune = Book.create({ title: 'Dune' });
+    const emma = Book.create({ title: 'Emma' });
+    await repo.save(dune);
+    await repo.save(emma);
+
+    const found = await repo.findByIds([dune.id, BookId.generate(), emma.id]);
+
+    assert.deepEqual(found.map((b) => b.title.value).sort(), ['Dune', 'Emma']);
+    assert.deepEqual(await repo.findByIds([]), []);
+  });
 });

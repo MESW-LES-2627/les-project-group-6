@@ -1,4 +1,4 @@
-import { eq, ilike } from 'drizzle-orm';
+import { eq, ilike, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { books } from '../../database/schema.js';
 import { Book, BookId, BookTitle, Isbn13, PageCount } from './book.js';
@@ -6,6 +6,8 @@ import { Book, BookId, BookTitle, Isbn13, PageCount } from './book.js';
 export interface IBookRepository {
   findById(id: BookId): Promise<Book | null>;
   findByTitle(title: string): Promise<Book[]>;
+  /** The books that exist among these ids, in no particular order. */
+  findByIds(ids: readonly BookId[]): Promise<Book[]>;
   save(book: Book): Promise<void>;
   delete(id: BookId): Promise<boolean>;
 }
@@ -53,6 +55,20 @@ export class DrizzleBookRepository implements IBookRepository {
       .select()
       .from(books)
       .where(ilike(books.title, `%${title}%`));
+    return rows.map(toDomain);
+  }
+
+  async findByIds(ids: readonly BookId[]): Promise<Book[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db
+      .select()
+      .from(books)
+      .where(
+        inArray(
+          books.id,
+          ids.map((id) => id.value),
+        ),
+      );
     return rows.map(toDomain);
   }
 
