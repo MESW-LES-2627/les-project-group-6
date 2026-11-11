@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { Book } from '../../src/features/book/book.js';
+import { Book, type Isbn13 } from '../../src/features/book/book.js';
 import { BookService } from '../../src/features/book/book-service.js';
 import type { BookCatalog, CatalogBook } from '../../src/features/book/book-catalog.js';
 import { InMemoryBookRepository } from '../helpers/in-memory-repositories.js';
@@ -11,6 +11,21 @@ class RecordingBookRepository extends InMemoryBookRepository {
   override async search(query: string, limit: number): Promise<Book[]> {
     this.calls.push([query, limit]);
     return super.search(query, limit);
+  }
+}
+
+class CountingBookRepository extends InMemoryBookRepository {
+  readonly lookups: (readonly Isbn13[])[] = [];
+  readonly saved: string[] = [];
+
+  override async findByIsbns(isbns: readonly Isbn13[]): Promise<Book[]> {
+    this.lookups.push(isbns);
+    return super.findByIsbns(isbns);
+  }
+
+  override async saveWithAuthors(book: Book): Promise<Book> {
+    this.saved.push(book.title.value);
+    return super.saveWithAuthors(book);
   }
 }
 
@@ -139,5 +154,29 @@ describe('BookService.search with a catalogue', () => {
     const found = await new BookService(books, new FakeCatalog(many)).search('book');
 
     assert.equal(found.length, 20);
+  });
+
+  test('looks the ISBNs up in one query and saves only the missing books', async () => {
+    const books = new CountingBookRepository();
+    const existing = Book.create({ title: 'Other Title', isbn13: '9780441172719' });
+    await books.save(existing);
+    const catalog = new FakeCatalog([
+      remote('Dune', '9780441172719'),
+      remote('Dune Messiah', '9780441172696'),
+      remote('Broken', '1234567890123'),
+    ]);
+
+    const found = await new BookService(books, catalog).search('dune');
+
+    assert.equal(books.lookups.length, 1);
+    assert.deepEqual(
+      books.lookups[0]!.map((i) => i.value),
+      ['9780441172719', '9780441172696'],
+    );
+    assert.deepEqual(books.saved, ['Dune Messiah']);
+    assert.deepEqual(
+      found.map((b) => b.title.value),
+      ['Other Title', 'Dune Messiah'],
+    );
   });
 });

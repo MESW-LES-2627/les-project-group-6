@@ -40,12 +40,21 @@ export class BookService {
 
     const results = [...local];
     const seen = new Set(local.flatMap((b) => (b.isbn13 ? [b.isbn13.value] : [])));
-    for (const found of await this.catalog.search(query, SEARCH_LIMIT)) {
+    const found = (await this.catalog.search(query, SEARCH_LIMIT)).flatMap((hit) => {
+      const isbn = BookService.parseIsbn(hit.isbn13);
+      return isbn ? [{ hit, isbn }] : [];
+    });
+    const existing = new Map(
+      (await this.books.findByIsbns(found.map((f) => f.isbn))).flatMap((b) =>
+        b.isbn13 ? [[b.isbn13.value, b] as const] : [],
+      ),
+    );
+    for (const { hit, isbn } of found) {
       if (results.length >= SEARCH_LIMIT) break;
-      if (seen.has(found.isbn13)) continue;
-      const book = await this.importBook(found);
+      if (seen.has(isbn.value)) continue;
+      const book = existing.get(isbn.value) ?? (await this.importBook(hit));
       if (!book || results.some((b) => b.id.equals(book.id))) continue;
-      seen.add(found.isbn13);
+      seen.add(isbn.value);
       results.push(book);
     }
     return results;
@@ -53,8 +62,6 @@ export class BookService {
 
   private async importBook(found: CatalogBook): Promise<Book | null> {
     try {
-      const existing = await this.books.findByIsbn(Isbn13.of(found.isbn13));
-      if (existing) return existing;
       const book = Book.create({
         title: found.title,
         description: found.description,
@@ -66,6 +73,15 @@ export class BookService {
       return await this.books.saveWithAuthors(book, found.authors);
     } catch (error) {
       // One bad record from the catalogue must not break the search.
+      if (error instanceof InvalidValueError) return null;
+      throw error;
+    }
+  }
+
+  private static parseIsbn(raw: string): Isbn13 | null {
+    try {
+      return Isbn13.of(raw);
+    } catch (error) {
       if (error instanceof InvalidValueError) return null;
       throw error;
     }

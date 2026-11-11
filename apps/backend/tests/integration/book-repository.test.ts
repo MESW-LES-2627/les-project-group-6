@@ -110,6 +110,23 @@ describe('DrizzleBookRepository Integration', () => {
     assert.equal(await repo.findByIsbn(Isbn13.of('9780451524935')), null);
   });
 
+  test('findByIsbns returns the books with those ISBN-13s in one call', async () => {
+    const dune = Book.create({ title: 'Dune', isbn13: '9780441172719' });
+    const mort = Book.create({ title: 'Mort', isbn13: '9780062225719' });
+    await repo.save(dune);
+    await repo.save(mort);
+    await repo.save(Book.create({ title: 'No ISBN' }));
+
+    const found = await repo.findByIsbns([
+      Isbn13.of('9780441172719'),
+      Isbn13.of('9780062225719'),
+      Isbn13.of('9780451524935'),
+    ]);
+
+    assert.deepEqual(titles(found).sort(), ['Dune', 'Mort']);
+    assert.deepEqual(await repo.findByIsbns([]), []);
+  });
+
   test('saveWithAuthors links the authors, reusing one that already exists', async () => {
     const first = Book.create({ title: 'Good Omens', isbn13: '9780060853983' });
     const saved = await repo.saveWithAuthors(first, ['Terry Pratchett', 'Neil Gaiman']);

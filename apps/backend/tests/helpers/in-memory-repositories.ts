@@ -87,6 +87,12 @@ export class InMemoryBookRepository implements IBookRepository {
     return [...this.books.values()].find((b) => b.isbn13?.equals(isbn)) ?? null;
   }
 
+  async findByIsbns(isbns: readonly Isbn13[]): Promise<Book[]> {
+    return [...this.books.values()].filter(
+      (b) => b.isbn13 && isbns.some((i) => i.equals(b.isbn13!)),
+    );
+  }
+
   // Authors are ignored: Book has none, and search here is title-only.
   async saveWithAuthors(book: Book): Promise<Book> {
     const existing = book.isbn13 ? await this.findByIsbn(book.isbn13) : null;

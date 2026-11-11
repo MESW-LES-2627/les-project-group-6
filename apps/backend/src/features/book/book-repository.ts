@@ -14,6 +14,8 @@ export interface IBookRepository {
   /** The books that exist among these ids, in no particular order. */
   findByIds(ids: readonly BookId[]): Promise<Book[]>;
   findByIsbn(isbn: Isbn13): Promise<Book | null>;
+  /** The books that exist among these ISBN-13s, in no particular order. */
+  findByIsbns(isbns: readonly Isbn13[]): Promise<Book[]>;
   /**
    * Saves a new book with its authors (an author with the same name is reused). If another
    * book already has this ISBN-13, nothing is written and that book is returned instead.
@@ -169,6 +171,20 @@ export class DrizzleBookRepository implements IBookRepository {
     const rows = await this.db.select().from(books).where(eq(books.isbn13, isbn.value)).limit(1);
     const row = rows[0];
     return row ? toDomain(row) : null;
+  }
+
+  async findByIsbns(isbns: readonly Isbn13[]): Promise<Book[]> {
+    if (isbns.length === 0) return [];
+    const rows = await this.db
+      .select()
+      .from(books)
+      .where(
+        inArray(
+          books.isbn13,
+          isbns.map((isbn) => isbn.value),
+        ),
+      );
+    return rows.map(toDomain);
   }
 
   async saveWithAuthors(book: Book, authorNames: readonly string[]): Promise<Book> {
