@@ -151,3 +151,9 @@ A running record of what the team did and decided in iteration 2. The [release n
   - `BookPicker` uses the same search unchanged.
 - **Tests.** Backend 290 passing (19 new); frontend 145 passing (7 new).
 - Follow-up: an index on `book_authors(author_id)` would speed up author matches on large catalogues.
+
+### 2026-11-11: Open Library fallback designed (#120, F-EXP-01)
+
+- New [spec](../../superpowers/specs/2026-11-11-open-library-fallback-design.md). When the local search finds fewer than 5 books, `GET /book?q=` asks Open Library through a `BookCatalog` port and imports the hits (keyed by ISBN-13) into `books`, so the database stays the source of truth and the frontend does not change.
+- **Decision: import on search.** *Rejected:* import only when a reader picks a result (temporary ids, a new endpoint, frontend changes) and adding more seed books only (does not deliver #120).
+- **Decision: no Redis.** Postgres caches book data; an in-memory `TtlCache` (1 h) caches Open Library queries; covers stay in the browser's HTTP cache. An Explore list cache is a follow-up.
