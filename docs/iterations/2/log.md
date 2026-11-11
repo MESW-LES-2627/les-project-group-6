@@ -12,6 +12,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Auth (F-AUTH-01) | Login is email and password only; username login removed from the form |
 | Friends (F-SOC-01) | Friend request API (send, list incoming, accept, decline, remove) behind the auth middleware (PR #114) |
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
+| Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with inline book search and Trending / Most read this week lists, `GET /explore`, migration 0008. Branch `feat/explore-page`, not merged yet |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
 
 ## Log
@@ -102,3 +103,19 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Decision: `GET /explore` is served by an `ExploreService` that asks the published read contracts** (`ReadingActivityQuery.topBooks`, `ReadingProgressQuery.mostAdded`) and loads books with `findByIds`. *Rejected:* a query that reads `reading_sessions` and `reading_status` directly, because it would bring back the coupling fixed in `d1f3e37`.
 - **Decision: "added to library" needs `reading_status.created_at`** (migration 0008, backfilled from `updated_at`), because `started_on` is the date reading started, not the date the book was added.
 - Out of scope: reader search, friends and genre trending, Open Library, and trending on Home.
+
+### 2026-11-11: Explore page built (#126)
+
+- Branch `feat/explore-page`, commits `b1bb54b` to `dbd1f85`, following the [spec](../../superpowers/specs/2026-11-11-explore-page-design.md) and the [plan](../../superpowers/plans/2026-11-11-explore-page.md). Not merged yet.
+- **Backend.**
+  - [Migration 0008](../../../apps/backend/src/database/migrations/0008_reading_status_created_at.sql) adds `reading_status.created_at`, filled from `updated_at` for existing rows. It runs with the CD on merge.
+  - The published contracts gained `ReadingActivityQuery.topBooks` (same counted-minutes rule) and `ReadingProgressQuery.mostAdded`, and `IBookRepository` gained `findByIds`.
+  - The new `ExploreService` builds both lists over the last 7 days (10 books each, ties by title) without reading another module's tables, and `GET /explore` serves them (see [API routes](../../architecture/api_routes.md)).
+- **Frontend.**
+  - New `/explore` page ([`ExploreView.vue`](../../../apps/frontend/src/views/ExploreView.vue)) and the header's Explore link.
+  - Built with `ExploreSearchBar`, `BookSearchResults` and `TrendingBookCard`, plus the existing global classes and `BookCoverImage`.
+  - The search uses the existing `GET /book?title=` and keeps the query in `?q=`.
+  - `GroupsPageHeader` moved to `layout/PageHeader`, since it has no groups logic.
+- **Tests.** Backend 271 passing (11 new); frontend 138 passing (11 new). The page was checked in a headless browser at desktop and 375px widths with a mocked API, because there was no local Supabase setup.
+- Open: when #120 lands, Explore's search should use its endpoint. Authors show "Unknown Author" until books store an author.
+

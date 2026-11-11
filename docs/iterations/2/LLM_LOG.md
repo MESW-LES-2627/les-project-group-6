@@ -212,3 +212,23 @@ here some infos to create the spec:
 
 #### Result
 Wrote the [Explore page design](../../superpowers/specs/2026-11-11-explore-page-design.md) after two questions: search is inline using the existing `GET /book`, and both lists from the story are built. The backend composes the published read contracts (`ReadingActivityQuery`, `ReadingProgressQuery`) and adds `reading_status.created_at` (migration 0008). The UI follows the old Explore mockup and reuses the global classes and existing components.
+
+### 2026-11-11: Explore page implementation
+
+- **Date:** 2026-11-11
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database, frontend, testing, docs
+
+#### Prompt
+```text
+implement the spec
+```
+
+#### Result
+Wrote the [implementation plan](../../superpowers/plans/2026-11-11-explore-page.md) and built it test-first.
+- **Backend:** migration 0008 (`reading_status.created_at`), the `topBooks` and `mostAdded` contract methods, `findByIds`, `ExploreService` and `GET /explore`.
+- **Frontend:** the `/explore` page with search, results and trending cards, the header link, and the move of the page header to `layout/`.
+- **Tests:** 22 new tests. All checks pass (backend 271 tests, frontend 138 tests, typecheck and lint).
+
