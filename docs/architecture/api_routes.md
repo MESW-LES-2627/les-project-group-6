@@ -33,7 +33,7 @@ Wiring: [`apps/backend/src/api/router.ts`](../../apps/backend/src/api/router.ts)
 | Method | Path | Description |
 |---|---|---|
 | POST | `/book` | Registers a book in the catalog (title, description, ISBN-13, page count, cover). The server marks it community-added. |
-| GET | `/book?q=` | Searches the catalog by title, author or ISBN (F-EXP-01). Tolerates small typos and missing accents (`pg_trgm` + `unaccent`); 6 to 13 digits (hyphens and spaces ignored) also match an ISBN-13 prefix. Best match first, at most 20. An empty `q` returns `[]`. |
+| GET | `/book?q=` | Searches the catalog by title, author or ISBN (F-EXP-01). Tolerates small typos and missing accents (`pg_trgm` + `unaccent`); 6 to 13 digits (hyphens and spaces ignored) also match an ISBN-13 prefix. Best match first, at most 20. An empty `q` returns `[]`. When fewer than 5 books match, Open Library is searched too; its books (with an ISBN-13) are added to the catalog and returned after the local ones. |
 | GET | `/book/:id` | Returns one book by id. |
 
 There is no `DELETE /book/:id`: other readers' statuses, reviews and sessions depend on a book, and no reader owns the shared catalog.

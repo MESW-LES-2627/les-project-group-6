@@ -296,3 +296,19 @@ What do you suggest in this phase, add more books to the database or connect to 
 
 #### Result
 Design spec for an Open Library fallback behind a `BookCatalog` port, with import on search, an in-memory `LRUCache` (lru-cache package) for Open Library queries and no Redis.
+
+### 2026-11-11: Open Library fallback implementation
+
+- **Date:** 2026-11-11
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5 (with Sonnet subagents per task)
+- **Tool:** Claude Code
+- **Domain:** backend, testing, docs
+
+#### Prompt
+```text
+Implement docs/superpowers/plans/2026-11-11-open-library-fallback.md (subagent-driven development)
+```
+
+#### Result
+`BookCatalog` port, `OpenLibraryCatalog` adapter with an `lru-cache` query cache, import on search in `BookService`, `findByIsbn` and `saveWithAuthors`, wiring and 14 new tests.
