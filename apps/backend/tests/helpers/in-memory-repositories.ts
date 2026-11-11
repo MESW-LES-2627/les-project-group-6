@@ -1,3 +1,4 @@
+import { BusinessRuleViolationError } from '../../src/utils/errors.js';
 import type { Book, BookId } from '../../src/features/book/book.js';
 import type { IBookRepository } from '../../src/features/book/book-repository.js';
 import type {
@@ -41,7 +42,12 @@ import type { GroupMembership } from '../../src/features/group-chat/group-member
 import type { SystemMessages } from '../../src/features/group-chat/chat-service.js';
 import type { IChallengeGroupRepository } from '../../src/features/challenge-group/challenge-group-repository.js';
 import type { IUserRepository } from '../../src/features/user/user-repository.js';
-import type { User, UserId, Username } from '../../src/features/user/user.js';
+import {
+  UsernameTakenError,
+  type User,
+  type UserId,
+  type Username,
+} from '../../src/features/user/user.js';
 
 // Test doubles that honour the repository contracts without a database.
 export class InMemoryBookRepository implements IBookRepository {
@@ -127,10 +133,23 @@ export class InMemoryUserRepository implements IUserRepository {
   }
 
   async findByUsername(username: Username): Promise<User | null> {
-    return [...this.users.values()].find((u) => u.username.equals(username)) ?? null;
+    const wanted = username.value.toLowerCase();
+    return [...this.users.values()].find((u) => u.username.value.toLowerCase() === wanted) ?? null;
+  }
+
+  async add(user: User): Promise<void> {
+    if (this.users.has(user.id.value)) {
+      throw new BusinessRuleViolationError('Your profile already exists');
+    }
+    if ([...this.users.values()].some((u) => u.email.equals(user.email))) {
+      throw new BusinessRuleViolationError('This email is already registered');
+    }
+    await this.save(user);
   }
 
   async save(user: User): Promise<void> {
+    const holder = await this.findByUsername(user.username);
+    if (holder && !holder.id.equals(user.id)) throw new UsernameTakenError();
     this.users.set(user.id.value, user);
   }
 }

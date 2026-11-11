@@ -63,9 +63,12 @@ export class ChallengeGroupService {
     return this.view(group);
   }
 
-  async get(id: unknown): Promise<ChallengeGroupView> {
+  /** The group as seen by one of its members; anyone else gets 404, as if it did not exist. */
+  async get(id: unknown, readerId: unknown): Promise<ChallengeGroupView> {
     const group = await this.groups.findById(GroupId.of(id));
-    if (!group) throw new NotFoundError('Challenge group');
+    if (!group || !group.isMember(UserId.of(readerId))) {
+      throw new NotFoundError('Challenge group');
+    }
     return this.view(group);
   }
 

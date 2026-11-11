@@ -10,11 +10,13 @@ describe('HomeView content', () => {
   it('shows the greeting, the bedside book, the streak and the goals', () => {
     const wrapper = mountView();
 
-    expect(wrapper.get('h1').text()).toBe('A little reading, a little wonder.');
+    expect(wrapper.get('h1').text()).toBe('Good morning, Eleanor.');
+    expect(wrapper.get('#bedside-title').text()).toBe('Emma');
     expect(wrapper.text()).toContain('Page 294 of 474 · 62%');
-    expect(wrapper.text()).toContain('12 day streak');
-    expect(wrapper.text()).toContain('18/24');
-    expect(wrapper.text()).toContain('6 books and 1,720 counted minutes to go');
+    expect(wrapper.get('.streak-line').text()).toBe('12 days in a row');
+    expect(wrapper.findAll('.week-day.read')).toHaveLength(7);
+    expect(wrapper.text()).toContain('18 of 24 books');
+    expect(wrapper.text()).toContain('6 books and 1,720 min to go');
     wrapper.unmount();
   });
 
@@ -37,7 +39,7 @@ describe('HomeView content', () => {
     expect(wrapper.get('[role="status"]').text()).toBe('You and Sofia Chen are now friends.');
 
     await button('Decline').trigger('click');
-    expect(wrapper.text()).not.toContain('A seat saved for you');
+    expect(wrapper.text()).not.toContain('Waiting for you');
     wrapper.unmount();
   });
 });

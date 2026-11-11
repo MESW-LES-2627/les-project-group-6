@@ -5,6 +5,7 @@ import { createDb } from '../../src/database/pool.js';
 import { DrizzleFriendRepository } from '../../src/features/friend/friend-repository.js';
 import { DrizzleUserRepository } from '../../src/features/user/user-repository.js';
 import { Email, User, UserId, Username } from '../../src/features/user/user.js';
+import { authHeader, FakeAuthProvider } from '../helpers/auth.js';
 import { withApp } from '../helpers/http.js';
 import { createTestPool, truncateTables } from '../helpers/test-db.js';
 
@@ -13,7 +14,11 @@ describe('Friend API Endpoints', () => {
   const db = createDb(pool);
   const friendRepository = new DrizzleFriendRepository(db);
   const userRepository = new DrizzleUserRepository(db);
-  const app = createApp({ friendRepository, userRepository });
+  const app = createApp({
+    authProvider: new FakeAuthProvider(),
+    friendRepository,
+    userRepository,
+  });
 
   const aliceId = UserId.of('11111111-1111-4111-8111-111111111111');
   const bobId = UserId.of('22222222-2222-4222-8222-222222222222');
@@ -40,6 +45,19 @@ describe('Friend API Endpoints', () => {
     displayName: 'Charlie C',
   });
 
+  // Sends a request as `as` (the signed-in reader comes from the token).
+  const call = (baseUrl: string, as: UserId, method: string, path: string, body?: object) =>
+    fetch(`${baseUrl}${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...authHeader(as.value) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+  const sendRequest = (baseUrl: string, from: UserId, to: UserId | string) =>
+    call(baseUrl, from, 'POST', '/friend-requests', {
+      targetUserId: typeof to === 'string' ? to : to.value,
+    });
+
   beforeEach(async () => {
     await truncateTables(pool, ['friendships', 'users']);
     await userRepository.save(alice);
@@ -52,12 +70,26 @@ describe('Friend API Endpoints', () => {
     await pool.end();
   });
 
-  test('POST /friend-requests creates a new pending request and returns 201', async () => {
+  test('friend routes answer 401 without a token', async () => {
     await withApp(app, async (baseUrl) => {
-      const res = await fetch(`${baseUrl}/friend-requests`, {
+      const post = await fetch(`${baseUrl}/friend-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requesterId: aliceId.value, targetUserId: bobId.value }),
+        body: JSON.stringify({ targetUserId: bobId.value }),
+      });
+      assert.equal(post.status, 401);
+
+      const list = await fetch(`${baseUrl}/me/friend-requests`);
+      assert.equal(list.status, 401);
+    });
+  });
+
+  test('POST /friend-requests creates a new pending request from the signed-in reader (201)', async () => {
+    await withApp(app, async (baseUrl) => {
+      // A requesterId in the body is ignored: the requester is the token's reader.
+      const res = await call(baseUrl, aliceId, 'POST', '/friend-requests', {
+        requesterId: charlieId.value,
+        targetUserId: bobId.value,
       });
 
       assert.equal(res.status, 201);
@@ -76,59 +108,34 @@ describe('Friend API Endpoints', () => {
 
   test('POST /friend-requests returns 400 when friending self', async () => {
     await withApp(app, async (baseUrl) => {
-      const res = await fetch(`${baseUrl}/friend-requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requesterId: aliceId.value, targetUserId: aliceId.value }),
-      });
-
+      const res = await sendRequest(baseUrl, aliceId, aliceId);
       assert.equal(res.status, 400);
     });
   });
 
   test('POST /friend-requests returns 400 when user does not exist', async () => {
     await withApp(app, async (baseUrl) => {
-      const res = await fetch(`${baseUrl}/friend-requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requesterId: aliceId.value,
-          targetUserId: '99999999-9999-4999-8999-999999999999',
-        }),
-      });
-
+      const res = await sendRequest(baseUrl, aliceId, '99999999-9999-4999-8999-999999999999');
       assert.equal(res.status, 400);
     });
   });
 
   test('POST /friend-requests returns 200 (no_changes) when already requested or friends', async () => {
     await withApp(app, async (baseUrl) => {
-      const first = await fetch(`${baseUrl}/friend-requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requesterId: aliceId.value, targetUserId: bobId.value }),
-      });
+      const first = await sendRequest(baseUrl, aliceId, bobId);
       assert.equal(first.status, 201);
 
       // Repeat request
-      const second = await fetch(`${baseUrl}/friend-requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requesterId: aliceId.value, targetUserId: bobId.value }),
-      });
+      const second = await sendRequest(baseUrl, aliceId, bobId);
       assert.equal(second.status, 200);
     });
   });
 
-  test('GET /user/:userId/friend-requests returns pending incoming requests', async () => {
+  test('GET /me/friend-requests returns the pending incoming requests of the signed-in reader', async () => {
     await withApp(app, async (baseUrl) => {
-      await fetch(`${baseUrl}/friend-requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requesterId: aliceId.value, targetUserId: bobId.value }),
-      });
+      await sendRequest(baseUrl, aliceId, bobId);
 
-      const res = await fetch(`${baseUrl}/user/${bobId.value}/friend-requests`);
+      const res = await call(baseUrl, bobId, 'GET', '/me/friend-requests');
       assert.equal(res.status, 200);
       const pending = (await res.json()) as Array<{
         id: string;
@@ -140,7 +147,7 @@ describe('Friend API Endpoints', () => {
       assert.equal(pending[0]?.status, 'pending');
 
       // Alice has no incoming requests
-      const aliceRes = await fetch(`${baseUrl}/user/${aliceId.value}/friend-requests`);
+      const aliceRes = await call(baseUrl, aliceId, 'GET', '/me/friend-requests');
       const alicePending = (await aliceRes.json()) as unknown[];
       assert.equal(alicePending.length, 0);
     });
@@ -148,25 +155,17 @@ describe('Friend API Endpoints', () => {
 
   test('POST /friend-requests/:id/accept accepts a pending request', async () => {
     await withApp(app, async (baseUrl) => {
-      const createRes = await fetch(`${baseUrl}/friend-requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requesterId: aliceId.value, targetUserId: bobId.value }),
-      });
+      const createRes = await sendRequest(baseUrl, aliceId, bobId);
       const created = (await createRes.json()) as { id: string };
 
       // Bob accepts
-      const acceptRes = await fetch(`${baseUrl}/friend-requests/${created.id}/accept`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: bobId.value }),
-      });
+      const acceptRes = await call(baseUrl, bobId, 'POST', `/friend-requests/${created.id}/accept`);
       assert.equal(acceptRes.status, 200);
       const data = (await acceptRes.json()) as { status: string };
       assert.equal(data.status, 'accepted');
 
-      // Now friendsOf should list them
-      const friendsRes = await fetch(`${baseUrl}/user/${aliceId.value}/friends`);
+      // Now Alice's friends list shows Bob
+      const friendsRes = await call(baseUrl, aliceId, 'GET', '/me/friends');
       const friends = (await friendsRes.json()) as Array<{ userId: string }>;
       assert.equal(friends.length, 1);
       assert.equal(friends[0]?.userId, bobId.value);
@@ -175,41 +174,44 @@ describe('Friend API Endpoints', () => {
 
   test('POST /friend-requests/:id/accept returns 404 if someone other than the addressee attempts to accept', async () => {
     await withApp(app, async (baseUrl) => {
-      const createRes = await fetch(`${baseUrl}/friend-requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requesterId: aliceId.value, targetUserId: bobId.value }),
-      });
+      const createRes = await sendRequest(baseUrl, aliceId, bobId);
       const created = (await createRes.json()) as { id: string };
 
       // Charlie tries to accept Alice and Bob's request
-      const charlieRes = await fetch(`${baseUrl}/friend-requests/${created.id}/accept`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: charlieId.value }),
-      });
+      const charlieRes = await call(
+        baseUrl,
+        charlieId,
+        'POST',
+        `/friend-requests/${created.id}/accept`,
+      );
       assert.equal(charlieRes.status, 404);
+
+      // The requester cannot accept their own request either
+      const aliceRes = await call(
+        baseUrl,
+        aliceId,
+        'POST',
+        `/friend-requests/${created.id}/accept`,
+      );
+      assert.equal(aliceRes.status, 404);
     });
   });
 
   test('POST /friend-requests/:id/decline declines a pending request', async () => {
     await withApp(app, async (baseUrl) => {
-      const createRes = await fetch(`${baseUrl}/friend-requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requesterId: aliceId.value, targetUserId: bobId.value }),
-      });
+      const createRes = await sendRequest(baseUrl, aliceId, bobId);
       const created = (await createRes.json()) as { id: string };
 
-      const declineRes = await fetch(`${baseUrl}/friend-requests/${created.id}/decline`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: bobId.value }),
-      });
+      const declineRes = await call(
+        baseUrl,
+        bobId,
+        'POST',
+        `/friend-requests/${created.id}/decline`,
+      );
       assert.equal(declineRes.status, 204);
 
       // Verify no pending requests remain
-      const pendingRes = await fetch(`${baseUrl}/user/${bobId.value}/friend-requests`);
+      const pendingRes = await call(baseUrl, bobId, 'GET', '/me/friend-requests');
       const pending = (await pendingRes.json()) as unknown[];
       assert.equal(pending.length, 0);
     });
@@ -217,40 +219,24 @@ describe('Friend API Endpoints', () => {
 
   test('DELETE /friends/:userId removes a mutual friendship', async () => {
     await withApp(app, async (baseUrl) => {
-      const createRes = await fetch(`${baseUrl}/friend-requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requesterId: aliceId.value, targetUserId: bobId.value }),
-      });
+      const createRes = await sendRequest(baseUrl, aliceId, bobId);
       const created = (await createRes.json()) as { id: string };
 
-      await fetch(`${baseUrl}/friend-requests/${created.id}/accept`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: bobId.value }),
-      });
+      await call(baseUrl, bobId, 'POST', `/friend-requests/${created.id}/accept`);
 
       // Alice removes Bob
-      const deleteRes = await fetch(`${baseUrl}/friends/${bobId.value}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: aliceId.value }),
-      });
+      const deleteRes = await call(baseUrl, aliceId, 'DELETE', `/friends/${bobId.value}`);
       assert.equal(deleteRes.status, 204);
 
       // Verify both friends lists are empty
-      const aliceFriendsRes = await fetch(`${baseUrl}/user/${aliceId.value}/friends`);
+      const aliceFriendsRes = await call(baseUrl, aliceId, 'GET', '/me/friends');
       assert.deepEqual(await aliceFriendsRes.json(), []);
 
-      const bobFriendsRes = await fetch(`${baseUrl}/user/${bobId.value}/friends`);
+      const bobFriendsRes = await call(baseUrl, bobId, 'GET', '/me/friends');
       assert.deepEqual(await bobFriendsRes.json(), []);
 
       // Deleting again returns 404
-      const secondDelete = await fetch(`${baseUrl}/friends/${bobId.value}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: aliceId.value }),
-      });
+      const secondDelete = await call(baseUrl, aliceId, 'DELETE', `/friends/${bobId.value}`);
       assert.equal(secondDelete.status, 404);
     });
   });

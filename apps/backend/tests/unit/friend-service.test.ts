@@ -27,6 +27,10 @@ class FakeUserRepository implements IUserRepository {
     return [...this.users.values()].find((u) => u.username.equals(username)) ?? null;
   }
 
+  async add(user: User): Promise<void> {
+    this.users.set(user.id.value, user);
+  }
+
   async save(user: User): Promise<void> {
     this.users.set(user.id.value, user);
   }

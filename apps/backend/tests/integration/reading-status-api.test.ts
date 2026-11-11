@@ -7,11 +7,14 @@ import { DrizzleReadingStatusRepository } from '../../src/features/reading-statu
 import { DrizzleLibraryQuery } from '../../src/features/library/library-query.js';
 import { DrizzleUserRepository } from '../../src/features/user/user-repository.js';
 import { Book } from '../../src/features/book/book.js';
+import { ReadingStatusId } from '../../src/features/reading-status/reading-status.js';
 import { Email, User, UserId, Username } from '../../src/features/user/user.js';
+import { authHeader, FakeAuthProvider } from '../helpers/auth.js';
 import { createTestPool, truncateTables } from '../helpers/test-db.js';
 import { withApp } from '../helpers/http.js';
 
 const USER_ID = 'f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a61';
+const OTHER_USER_ID = 'f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a62';
 
 interface StatusBody {
   id: string;
@@ -26,24 +29,39 @@ describe('Reading status API Endpoints', () => {
   const bookRepository = new DrizzleBookRepository(db);
   const readingStatusRepository = new DrizzleReadingStatusRepository(db);
   const libraryQuery = new DrizzleLibraryQuery(db);
-  const app = createApp({ bookRepository, readingStatusRepository, libraryQuery });
+  const userRepository = new DrizzleUserRepository(db);
+  const app = createApp({
+    authProvider: new FakeAuthProvider(),
+    userRepository,
+    bookRepository,
+    readingStatusRepository,
+    libraryQuery,
+  });
   let book: Book;
 
-  const send = (baseUrl: string, method: string, path: string, body: object) =>
+  const send = (baseUrl: string, method: string, path: string, body: object, as = USER_ID) =>
     fetch(`${baseUrl}${path}`, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...authHeader(as), 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
   beforeEach(async () => {
     await truncateTables(pool, ['users', 'books', 'reading_status']);
-    await new DrizzleUserRepository(db).save(
+    await userRepository.save(
       User.register({
         id: UserId.of(USER_ID),
         email: Email.of('api@example.com'),
         username: Username.of('api_reader'),
         displayName: 'API Reader',
+      }),
+    );
+    await userRepository.save(
+      User.register({
+        id: UserId.of(OTHER_USER_ID),
+        email: Email.of('other@example.com'),
+        username: Username.of('other_reader'),
+        displayName: 'Other Reader',
       }),
     );
     book = Book.create({ title: 'Circe', pageCount: 393 });
@@ -59,7 +77,6 @@ describe('Reading status API Endpoints', () => {
     await withApp(app, async (baseUrl) => {
       const bookId = book.id.value;
       const first = await send(baseUrl, 'PUT', '/reading-status', {
-        userId: USER_ID,
         bookId,
         status: 'in-progress',
         currentPage: 10,
@@ -68,7 +85,6 @@ describe('Reading status API Endpoints', () => {
       const created = (await first.json()) as StatusBody;
 
       const second = await send(baseUrl, 'PUT', '/reading-status', {
-        userId: USER_ID,
         bookId,
         status: 'in-progress',
         currentPage: 50,
@@ -82,7 +98,6 @@ describe('Reading status API Endpoints', () => {
   test('PUT /reading-status returns 400 for an unknown status', async () => {
     await withApp(app, async (baseUrl) => {
       const response = await send(baseUrl, 'PUT', '/reading-status', {
-        userId: USER_ID,
         bookId: book.id.value,
         status: 'reading',
       });
@@ -94,7 +109,6 @@ describe('Reading status API Endpoints', () => {
     await withApp(app, async (baseUrl) => {
       const created = (await (
         await send(baseUrl, 'PUT', '/reading-status', {
-          userId: USER_ID,
           bookId: book.id.value,
           status: 'in-progress',
         })
@@ -111,7 +125,6 @@ describe('Reading status API Endpoints', () => {
     await withApp(app, async (baseUrl) => {
       const created = (await (
         await send(baseUrl, 'PUT', '/reading-status', {
-          userId: USER_ID,
           bookId: book.id.value,
           status: 'not-started',
         })
@@ -136,15 +149,48 @@ describe('Reading status API Endpoints', () => {
     });
   });
 
-  test('GET /user/:userId/library returns the entries with their book', async () => {
+  test("PATCH /reading-status/:id returns 404 for another reader's entry", async () => {
+    await withApp(app, async (baseUrl) => {
+      const created = (await (
+        await send(baseUrl, 'PUT', '/reading-status', {
+          bookId: book.id.value,
+          status: 'in-progress',
+        })
+      ).json()) as StatusBody;
+
+      const byId = await send(
+        baseUrl,
+        'PATCH',
+        `/reading-status/${created.id}`,
+        { status: 'finished' },
+        OTHER_USER_ID,
+      );
+      assert.strictEqual(byId.status, 404);
+      const byBody = await send(
+        baseUrl,
+        'PATCH',
+        '/reading-status',
+        { id: created.id, currentPage: 10 },
+        OTHER_USER_ID,
+      );
+      assert.strictEqual(byBody.status, 404);
+
+      const entry = await readingStatusRepository.findById(ReadingStatusId.of(created.id));
+      assert.strictEqual(entry?.status, 'in-progress');
+      assert.strictEqual(entry?.progress.page, 0);
+    });
+  });
+
+  test('GET /me/library returns the entries with their book', async () => {
     await withApp(app, async (baseUrl) => {
       await send(baseUrl, 'PUT', '/reading-status', {
-        userId: USER_ID,
         bookId: book.id.value,
         status: 'finished',
       });
 
-      const response = await fetch(`${baseUrl}/user/${USER_ID}/library?status=finished`);
+      const response = await fetch(`${baseUrl}/me/library?status=finished`, {
+        headers: authHeader(USER_ID),
+      });
       assert.strictEqual(response.status, 200);
       const library = (await response.json()) as Array<{
         status: string;

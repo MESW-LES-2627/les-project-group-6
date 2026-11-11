@@ -4,38 +4,52 @@ import { describe, expect, it } from 'vitest';
 import router from '@/router';
 import LibraryView from '../LibraryView.vue';
 
+function mountView() {
+  return mount(LibraryView, { global: { plugins: [router] } });
+}
+
 describe('LibraryView', () => {
-  it('shows the library heading, filters and all six cards', () => {
-    const wrapper = mount(LibraryView, { global: { plugins: [router] } });
+  it('shows the plate, the status tabs and all six books', () => {
+    const wrapper = mountView();
 
-    expect(wrapper.get('h1').text()).toBe('A life between the covers.');
+    expect(wrapper.get('h1').text()).toBe('Library');
+    expect(wrapper.text()).toContain('32 books · 2 reading now · 18 finished');
     expect(wrapper.findAll('article')).toHaveLength(6);
-    expect(wrapper.get('.summary').text()).toBe('Showing 6 of 32 books • Autumn reading folder');
-    expect(wrapper.get('.panel-title').text()).toBe('Your shelves');
+    expect(wrapper.get('#books-title').text()).toBe('All books');
+    expect(wrapper.get('.summary').text()).toBe('6 of 32 shown');
   });
 
-  it('filters by reading status', async () => {
-    const wrapper = mount(LibraryView, { global: { plugins: [router] } });
-    const finished = wrapper.findAll('.tab').find((tab) => tab.text() === 'Finished');
+  it('filters by reading status and by folder', async () => {
+    const wrapper = mountView();
+    const tab = (label: string) =>
+      wrapper.findAll('.page-tab').find((t) => t.text().startsWith(label))!;
 
-    await finished!.trigger('click');
-
+    await tab('Finished').trigger('click');
     expect(wrapper.findAll('article')).toHaveLength(3);
-    expect(wrapper.get('.summary').text()).toBe('Showing 3 of 32 books • Autumn reading folder');
+    expect(wrapper.get('#books-title').text()).toBe('Finished');
+    expect(tab('Finished').attributes('aria-pressed')).toBe('true');
+
+    await tab('All books').trigger('click');
+    await wrapper
+      .findAll('.folder-list .row')
+      .find((r) => r.text().startsWith('Classics club'))!
+      .trigger('click');
+    expect(wrapper.get('#books-title').text()).toBe('Classics club');
+    expect(wrapper.findAll('article')).toHaveLength(3);
   });
 
-  it('searches by title and clears the filters', async () => {
-    const wrapper = mount(LibraryView, { global: { plugins: [router] } });
+  it('searches by title and shows everything again', async () => {
+    const wrapper = mountView();
 
     await wrapper.get('input[type="search"]').setValue('piranesi');
 
     expect(wrapper.findAll('article')).toHaveLength(1);
-    expect(wrapper.get('.title').text()).toBe('Piranesi');
+    expect(wrapper.get('article .title').text()).toBe('Piranesi');
 
     await wrapper.get('.view-all').trigger('click');
 
     expect(wrapper.findAll('article')).toHaveLength(6);
     expect((wrapper.get('input[type="search"]').element as HTMLInputElement).value).toBe('');
-    expect(wrapper.get('.summary').text()).toBe('Showing 6 of 32 books');
+    expect(wrapper.get('.summary').text()).toBe('6 of 32 shown');
   });
 });

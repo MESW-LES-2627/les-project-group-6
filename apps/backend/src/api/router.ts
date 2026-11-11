@@ -37,9 +37,15 @@ import { chatRoutes } from '../features/group-chat/chat-routes.js';
 import { ChatService } from '../features/group-chat/chat-service.js';
 import type { GroupMembership } from '../features/group-chat/group-membership-query.js';
 import { JoinAnnouncer } from '../features/group-chat/join-announcer.js';
+import { DenyAllAuthProvider, type AuthProvider } from '../features/auth/auth-provider.js';
+import { meRoutes } from '../features/user/me-routes.js';
+import { UserService } from '../features/user/user-service.js';
+import { authenticate, requireUser } from '../middleware/auth.js';
 import { healthRoutes } from './health-routes.js';
 
 export interface ApiDependencies {
+  /** Verifies session tokens; without it every protected route answers 401. */
+  authProvider?: AuthProvider;
   healthCheck?: DatabaseHealthCheck;
   bookRepository?: IBookRepository;
   readingStatusRepository?: IReadingStatusRepository;
@@ -63,10 +69,12 @@ export interface ApiDependencies {
 }
 
 // Wires each feature's service to its dependencies by hand (no DI container) and
-// mounts the routes whose dependencies were provided.
+// mounts the routes whose dependencies were provided. Only /health and the username
+// availability check are public; every other route needs a token and a users row.
 export function apiRouter(deps: ApiDependencies = {}): Router {
   const router = Router();
   const {
+    authProvider = new DenyAllAuthProvider(),
     healthCheck,
     bookRepository,
     readingStatusRepository,
@@ -88,6 +96,15 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
   } = deps;
 
   router.use(healthRoutes(healthCheck));
+
+  const authenticated = authenticate(authProvider);
+  const withUser = requireUser(userRepository);
+  if (userRepository) {
+    router.use(meRoutes(new UserService(userRepository), authenticated, withUser));
+  }
+
+  // Everything mounted below is protected (401 without a token, 403 PROFILE_REQUIRED without a profile).
+  router.use(authenticated, withUser);
 
   if (bookRepository) {
     router.use(bookRoutes(new BookService(bookRepository)));

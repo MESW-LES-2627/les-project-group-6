@@ -71,6 +71,11 @@ onMounted(async () => {
   padding: 0;
 }
 
+/* The profile name and section titles use Inter; book titles (h3) keep Lora */
+.profile :deep(:is(h1, h2)) {
+  font-family: var(--font-body);
+}
+
 .columns {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);

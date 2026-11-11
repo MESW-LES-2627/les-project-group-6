@@ -26,6 +26,13 @@ const inviteToGroup = vi.hoisted(() =>
 );
 const searchBooks = vi.hoisted(() => vi.fn<(title: string) => Promise<ApiBook[]>>());
 
+// The app router's guard only lets a signed-in reader through.
+vi.mock('@/stores/session', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/stores/session')>();
+  const { readySession } = await import('@/stores/__tests__/fake-session');
+  return { ...actual, session: readySession(actual.createSession) };
+});
+
 vi.mock('@/services/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/api')>()),
   createChallengeGroup,

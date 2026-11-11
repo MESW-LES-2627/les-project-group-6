@@ -1,8 +1,9 @@
-# Tags the version and creates the GitHub Release (vX.Y.Z, same name for both)
-# after a successful prod deploy. semantic-release reads the commits since the
-# last tag (config in the "release" key of the root package.json): feat bumps
-# minor, fix/perf/revert bump patch, "!" or BREAKING CHANGE bumps major, and
-# docs/chore/ci-only merges make no release.
+# Tags the version (vX.Y.Z) after a successful prod deploy. It makes no GitHub
+# Release: those are one per sprint, made by hand with iteration-release.yml.
+# semantic-release reads the commits since the last tag (config in the
+# "release" key of the root package.json): feat bumps minor, fix/perf/revert
+# bump patch, "!" or BREAKING CHANGE bumps major, and docs/chore/ci-only merges
+# make no new version.
 #
 # When a merge deploys both apps, this runs after each CD; it releases only
 # once every prod CD run of that commit has succeeded, so a failed deploy is
@@ -58,7 +59,7 @@ jobs:
           package-manager-cache: false
 
       # Checked out at a commit, not a branch: tell semantic-release it is main
-      - name: Tag version and create GitHub Release
+      - name: Tag version
         if: steps.gate.outputs.ready == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}

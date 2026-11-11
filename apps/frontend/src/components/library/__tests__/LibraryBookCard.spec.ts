@@ -1,64 +1,53 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { mockLibrary } from '@/mocks/library';
 import router from '@/router';
+import type { LibraryBook } from '@/types/library';
 import LibraryBookCard from '../LibraryBookCard.vue';
 
 const book = mockLibrary.books[0]!;
 
+function mountCard(props: { book: LibraryBook }) {
+  return mount(LibraryBookCard, { props, global: { plugins: [router] } });
+}
+
 describe('LibraryBookCard', () => {
-  it('shows the book, reading status and progress', () => {
-    const wrapper = mount(LibraryBookCard, {
-      props: { book },
-      global: { plugins: [router] },
-    });
+  it('shows the cover, title, author and reading progress', () => {
+    const wrapper = mountCard({ book });
 
     expect(wrapper.get('.title').text()).toBe('Emma');
     expect(wrapper.get('.author').text()).toBe('Jane Austen');
-    expect(wrapper.get('.status').text()).toBe('In progress');
-    expect(wrapper.get('.status').classes()).toContain('status--in-progress');
-    expect(wrapper.get('.pages').text()).toBe('474 pages');
-    expect(wrapper.get('.summary').text()).toBe('294 / 474 pages • next chapter awaits');
-    expect(wrapper.get('.chip').text()).toBe('borrowed');
-    expect(wrapper.get('.cover').attributes('alt')).toBe('Cover of Emma');
+    expect(wrapper.get('img').attributes('alt')).toBe('Cover of Emma');
+    expect(wrapper.get('.note').text()).toBe('p. 294 of 474 · 62%');
 
     const progress = wrapper.get('progress');
     expect(progress.attributes('max')).toBe('474');
     expect(progress.attributes('value')).toBe('294');
   });
 
-  it('links the cover and title to the book detail page', () => {
-    const wrapper = mount(LibraryBookCard, {
-      props: { book },
-      global: { plugins: [router] },
-    });
+  it('links the book to its detail page', () => {
+    const wrapper = mountCard({ book });
 
-    expect(wrapper.get('.cover-link').attributes('href')).toBe('/library/emma');
-    expect(wrapper.get('.title a').attributes('href')).toBe('/library/emma');
+    expect(wrapper.get('a').attributes('href')).toBe('/library/emma');
   });
 
-  it('opens the detail page when the card body is clicked', async () => {
-    const push = vi.spyOn(router, 'push');
-    const wrapper = mount(LibraryBookCard, {
-      props: { book },
-      global: { plugins: [router] },
-    });
+  it('shows a short note for books that are not in progress', () => {
+    const note = (b: LibraryBook) => mountCard({ book: b }).get('.note').text();
+    const byId = (id: string) => mockLibrary.books.find((b) => b.id === id)!;
 
-    await wrapper.get('.summary').trigger('click');
-
-    expect(push).toHaveBeenCalledWith({ name: 'book-detail', params: { bookId: 'emma' } });
-    push.mockRestore();
+    expect(note(byId('the-midnight-library'))).toBe('Not started');
+    expect(note(byId('circe'))).toBe('Finished');
+    expect(note(byId('a-room-of-ones-own'))).toBe('Read 2 times');
+    expect(note(byId('the-secret-history'))).toBe('Stopped at p. 156');
   });
 
-  it('emits the book from the overflow menu', async () => {
-    const wrapper = mount(LibraryBookCard, {
-      props: { book },
-      global: { plugins: [router] },
-    });
+  it('shows the title instead of a cover that fails to load', async () => {
+    const wrapper = mountCard({ book });
 
-    await wrapper.get('.menu-button').trigger('click');
+    await wrapper.get('img').trigger('error');
 
-    expect(wrapper.emitted('menu')).toEqual([[book]]);
+    expect(wrapper.find('img').exists()).toBe(false);
+    expect(wrapper.get('.placeholder').text()).toBe('Emma');
   });
 });
