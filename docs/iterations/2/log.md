@@ -171,4 +171,4 @@ A running record of what the team did and decided in iteration 2. The [release n
 - On Explore, the search results end with **Add this book**. It opens a form (title prefilled with the search, author, pages, ISBN-13, description; only the title is required, "Title is required" otherwise). Saving creates the book with `POST /book`, puts it on the shelf as "Not started" with `PUT /library/:bookId`, and opens its book page. The cover is the default one that shows the title.
 - `POST /book` now accepts `authors` (one name or a list) and saves them with `saveWithAuthors`, so the book is found by author too. A book whose ISBN-13 already exists is returned instead of duplicated.
 - **Decision: no cover upload yet.** It needs file storage; left for a follow-up.
-- **Tests.** Backend 309 passing (1 new); frontend 150 passing (5 new).
+- **Tests.** Backend 309 passing (1 new); frontend 150 passing (5 new). Commits `42259ec`, `06db85f`, draft PR [#145](https://github.com/MESW-LES-2627/les-project-group-6/pull/145).
