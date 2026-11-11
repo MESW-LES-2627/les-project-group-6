@@ -162,5 +162,6 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 - Built from the [spec](../../superpowers/specs/2026-11-11-open-library-fallback-design.md) and the [plan](../../superpowers/plans/2026-11-11-open-library-fallback.md), commits `bf444ea` to `fc41aa1`.
 - `BookCatalog` port with an `OpenLibraryCatalog` adapter (3 s timeout, `lru-cache` for 1 h). `BookService.search` imports its books when fewer than 5 match locally. New `findByIsbn` and `saveWithAuthors` on the book repository. New setting `OPEN_LIBRARY_URL`; new dependency `lru-cache`.
-- **Tests.** Backend 304 passing (14 new). A real search for "the hobbit" returned 3 books with ISBN-13, authors and cover-id URLs.
+- **Tests.** Backend 308 passing (18 new). A real search for "the hobbit" returned 3 books with ISBN-13, authors and cover-id URLs.
+- **Review fixes** (`33df6c6`, `40d2c9a`, `52dd9d9`): catalogue ISBNs are looked up in one query (`findByIsbns`) and only missing books are imported; a failed import is logged and skipped instead of failing the search; the search text is no longer logged. Duplicate authors under concurrent imports moved to [#143](https://github.com/MESW-LES-2627/les-project-group-6/issues/143).
 - Follow-ups: Open Library titles can contain HTML entities (`&amp;`) and `first_sentence` may be in another language; the Explore list cache.
