@@ -27,8 +27,8 @@ The frontend does not change: imported books have real UUIDs, so Explore links t
 | Unit | Responsibility |
 |---|---|
 | `book-catalog.ts` | Port. `CatalogBook { title, isbn13, authors[], description, pageCount, coverUrl }` and `BookCatalog.search(query, limit)`. |
-| `open-library-catalog.ts` | Adapter. Calls `{OPEN_LIBRARY_URL}/search.json?q=&limit=&fields=title,author_name,isbn,number_of_pages_median,cover_i,first_sentence` with native `fetch` and `AbortSignal.timeout(3000)`. Picks the first ISBN that passes `Isbn13.of`. Cover URL is `https://covers.openlibrary.org/b/id/{cover_i}-L.jpg` (cover-id URLs are not rate limited; ISBN/OLID ones are), `null` without `cover_i`. Wraps results in a `TtlCache`. |
-| `src/utils/ttl-cache.ts` | Small generic `TtlCache<K, V>`: `get`, `set`, a TTL and a max size (oldest entry evicted first). No dependency. |
+| `open-library-catalog.ts` | Adapter. Calls `{OPEN_LIBRARY_URL}/search.json?q=&limit=&fields=title,author_name,isbn,number_of_pages_median,cover_i,first_sentence` with native `fetch` and `AbortSignal.timeout(3000)`. Picks the first ISBN that passes `Isbn13.of`. Cover URL is `https://covers.openlibrary.org/b/id/{cover_i}-L.jpg` (cover-id URLs are not rate limited; ISBN/OLID ones are), `null` without `cover_i`. Takes a `QueryCache` (default: an `LRUCache`) and serves repeat queries from it. |
+| `query-cache.ts` | `QueryCache<V>` interface (`get(key)`, `set(key, value)`). The [`lru-cache`](https://www.npmjs.com/package/lru-cache) package (v11, new dependency) already has this shape, so `new LRUCache({ max: 500, ttl: 3_600_000 })` is passed as is. A Redis/Valkey class with the same two methods can replace it if we run more than one backend instance. |
 | `book-service.ts` | `new BookService(books, catalog?)`. Without a catalog, search stays local only. |
 | `book-repository.ts` | New `findByIsbn(isbn)` and `saveWithAuthors(book, authorNames)`: one transaction that inserts the book (`onConflictDoNothing` on ISBN-13, then reads back the winner, for two searches importing the same book at once), upserts each author by name and links them in `book_authors`. |
 | `src/api/router.ts`, `src/server.ts` | `router` takes an optional `bookCatalog`; `server.ts` passes `new OpenLibraryCatalog()`. |
@@ -37,10 +37,10 @@ The frontend does not change: imported books have real UUIDs, so Explore links t
 ## Caching
 
 - **Book data:** Postgres is the cache. Imported books are local rows, so library pages, book pages and repeat searches never call Open Library.
-- **Open Library queries:** the adapter keeps results in a `TtlCache` keyed by the trimmed, lowercased query (TTL 1 h, max 500 entries). Lost on restart, which is fine.
+- **Open Library queries:** the adapter keeps results in an `LRUCache` keyed by the trimmed, lowercased query (TTL 1 h, max 500 entries). Lost on restart, which is fine.
 - **Covers:** not cached by the backend. The browser loads them from `covers.openlibrary.org` and keeps them in its HTTP cache; `BookCoverImage` shows the default cover when one fails.
 - **No Redis:** Supabase does not offer it, the backend is one Render process, and [infra.md](../../architecture/infra.md) keeps caches out until a real need appears.
-- **Follow-up, not in this spec:** a 5-minute `TtlCache` for the Explore lists in `ExploreService`.
+- **Follow-up, not in this spec:** a 5-minute `LRUCache` for the Explore lists in `ExploreService`.
 
 Only the search text is sent to Open Library, nothing about the reader.
 
@@ -48,7 +48,6 @@ Only the search text is sent to Open Library, nothing about the reader.
 
 - **Unit, `book-service.test.ts`:** fake `BookCatalog` with the in-memory repository. Catalog not called with 5+ local hits; remote books imported and merged after local ones; an existing ISBN-13 reused, not duplicated; a catalog that returns `[]` still gives the local results; limit of 20 kept.
 - **Unit, `open-library-catalog.test.ts`:** stubbed `fetch` with a JSON fixture. Mapping of fields and cover URL; results without an ISBN-13 skipped; timeout, 500 and bad JSON give `[]`; a second identical query is served from the cache.
-- **Unit, `ttl-cache.test.ts`:** expiry and max size.
 - **Integration, `book-repository.test.ts`:** `findByIsbn`, `saveWithAuthors` creates authors once and links them, and a second save of the same ISBN-13 keeps one row.
 - No test calls the real Open Library.
 

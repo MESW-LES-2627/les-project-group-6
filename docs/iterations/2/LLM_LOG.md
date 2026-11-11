@@ -295,4 +295,4 @@ What do you suggest in this phase, add more books to the database or connect to 
 ```
 
 #### Result
-Design spec for an Open Library fallback behind a `BookCatalog` port, with import on search, an in-memory `TtlCache` for Open Library queries and no Redis.
+Design spec for an Open Library fallback behind a `BookCatalog` port, with import on search, an in-memory `LRUCache` (lru-cache package) for Open Library queries and no Redis.
