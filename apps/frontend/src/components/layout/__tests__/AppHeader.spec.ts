@@ -24,4 +24,17 @@ describe('AppHeader', () => {
     expect(wrapper.find('#account-menu').exists()).toBe(false);
     expect(wrapper.text()).toContain('EW');
   });
+  it('links Explore to the explore page', () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/:any(.*)*', component: { template: '<p />' } }],
+    });
+    const wrapper = mount(AppHeader, {
+      props: { initials: 'EW', unreadNotifications: 0 },
+      global: { plugins: [router] },
+    });
+
+    const explore = wrapper.findAll('.nav-link').find((l) => l.text() === 'Explore')!;
+    expect(explore.attributes('href')).toBe('/explore');
+  });
 });
