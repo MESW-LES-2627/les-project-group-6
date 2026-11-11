@@ -571,7 +571,7 @@ describe('BookService.search with a catalogue', () => {
     const books = new InMemoryBookRepository();
     const many = Array.from({ length: 25 }, (_, i) => {
       // Valid ISBN-13s 978000000000c with the right check digit for each i.
-      const base = `97800000000${String(i).padStart(2, '0')}`;
+      const base = `9780000000${String(i).padStart(2, '0')}`;
       const sum = [...base].reduce((acc, d, j) => acc + Number(d) * (j % 2 === 0 ? 1 : 3), 0);
       return remote(`Book ${i}`, base + String((10 - (sum % 10)) % 10));
     });
