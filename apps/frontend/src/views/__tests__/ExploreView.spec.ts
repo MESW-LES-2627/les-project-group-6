@@ -47,6 +47,7 @@ describe('ExploreView', () => {
         { book: book('b2', 'Emma'), readers: 1 },
       ],
       mostReadThisWeek: [{ book: book('b3', 'Dune'), minutes: 320 }],
+      suggestions: [],
     });
     api.searchBooks.mockReset().mockResolvedValue([book('b3', 'Dune')]);
   });
@@ -68,8 +69,26 @@ describe('ExploreView', () => {
     expect(wrapper.get('.tag-highlight').text()).toBe('#1 This week');
   });
 
+  it('suggests books on the Trending tab while nothing is trending', async () => {
+    api.getExplore.mockResolvedValue({
+      trending: [],
+      mostReadThisWeek: [],
+      suggestions: [book('b4', 'Middlemarch'), book('b5', 'Beloved')],
+    });
+    const { wrapper } = await mountView();
+
+    expect(wrapper.text()).toContain('Nothing is trending this week yet');
+    expect(wrapper.findAll('.cards h3').map((h) => h.text())).toEqual(['Middlemarch', 'Beloved']);
+    expect(wrapper.text()).toContain('A pick to start with');
+    expect(wrapper.find('.tag-highlight').exists()).toBe(false);
+
+    await tab(wrapper, 'Most read this week').trigger('click');
+    expect(wrapper.find('.cards').exists()).toBe(false);
+    expect(wrapper.text()).toContain('No reading logged this week yet.');
+  });
+
   it('shows empty states when nobody read or added a book', async () => {
-    api.getExplore.mockResolvedValue({ trending: [], mostReadThisWeek: [] });
+    api.getExplore.mockResolvedValue({ trending: [], mostReadThisWeek: [], suggestions: [] });
     const { wrapper } = await mountView();
 
     expect(wrapper.text()).toContain('No books added this week yet.');

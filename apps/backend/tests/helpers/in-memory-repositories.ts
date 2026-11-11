@@ -66,6 +66,14 @@ export class InMemoryBookRepository implements IBookRepository {
     return ids.flatMap((id) => this.books.get(id.value) ?? []);
   }
 
+  async random(limit: number): Promise<Book[]> {
+    return [...this.books.values()]
+      .map((book) => ({ book, key: Math.random() }))
+      .sort((a, b) => a.key - b.key)
+      .slice(0, Math.max(limit, 0))
+      .map(({ book }) => book);
+  }
+
   async save(book: Book): Promise<void> {
     this.books.set(book.id.value, book);
   }

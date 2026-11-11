@@ -61,7 +61,7 @@ There is no `DELETE /book/:id`: other readers' statuses, reviews and sessions de
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/explore` | The Explore lists (F-EXP-04): `mostReadThisWeek` (top 10 books by counted minutes of sessions that ended in the last 7 days, `{ book, minutes }`) and `trending` (top 10 books by readers who added them to their library in the last 7 days, `{ book, readers }`). Empty lists when there is no activity. |
+| GET | `/explore` | The Explore lists (F-EXP-04): `mostReadThisWeek` (top 10 books by counted minutes of sessions that ended in the last 7 days, `{ book, minutes }`) and `trending` (top 10 books by readers who added them to their library in the last 7 days, `{ book, readers }`). Empty lists when there is no activity. `suggestions` holds up to 10 random catalogue books (`BookDto`) while `trending` is empty, so the Trending tab has something to show; it is `[]` once a book trends. |
 
 ### Reading sessions (`features/reading-session/reading-session-routes.ts`, ADR-0005)
 

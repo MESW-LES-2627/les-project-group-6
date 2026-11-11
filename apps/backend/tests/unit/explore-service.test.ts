@@ -81,8 +81,32 @@ describe('ExploreService', () => {
     );
   });
 
-  test('gives empty lists when nobody read or added a book', async () => {
+  test('gives empty lists when nobody read or added a book and there are no books', async () => {
     const { service } = setup([], []);
-    assert.deepEqual(await service.overview(), { mostReadThisWeek: [], trending: [] });
+    assert.deepEqual(await service.overview(), {
+      mostReadThisWeek: [],
+      trending: [],
+      suggestions: [],
+    });
+  });
+
+  test('suggests up to 10 random books while nothing is trending', async () => {
+    const { service, books } = setup([], []);
+    for (let i = 0; i < 12; i++) await books.save(Book.create({ title: `Book ${i}` }));
+
+    const { trending, suggestions } = await service.overview();
+
+    assert.deepEqual(trending, []);
+    assert.equal(suggestions.length, 10);
+    assert.equal(new Set(suggestions.map((b) => b.id.value)).size, 10);
+  });
+
+  test('suggests nothing once a book is trending', async () => {
+    const dune = Book.create({ title: 'Dune' });
+    const { service, books } = setup([], [{ bookId: dune.id.value, readers: 1 }]);
+    await books.save(dune);
+    await books.save(Book.create({ title: 'Emma' }));
+
+    assert.deepEqual((await service.overview()).suggestions, []);
   });
 });

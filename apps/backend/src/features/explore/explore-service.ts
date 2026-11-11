@@ -16,6 +16,8 @@ export interface RankedBook {
 export interface ExploreOverview {
   mostReadThisWeek: RankedBook[];
   trending: RankedBook[];
+  /** Random books to show while nothing is trending; empty once something is. */
+  suggestions: Book[];
 }
 
 /**
@@ -52,9 +54,14 @@ export class ExploreService {
         })
         .sort((a, b) => b.score - a.score || a.book.title.value.localeCompare(b.book.title.value));
 
+    const trending = rank(added.map((r) => ({ bookId: r.bookId, score: r.readers })));
+    // With no activity the Trending tab would be empty, so it offers a few books to start with.
+    const suggestions = trending.length === 0 ? await this.books.random(EXPLORE_LIST_SIZE) : [];
+
     return {
       mostReadThisWeek: rank(read.map((r) => ({ bookId: r.bookId, score: r.minutes }))),
-      trending: rank(added.map((r) => ({ bookId: r.bookId, score: r.readers }))),
+      trending,
+      suggestions,
     };
   }
 }

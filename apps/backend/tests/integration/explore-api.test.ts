@@ -55,11 +55,17 @@ describe('Explore API', () => {
     });
   });
 
-  test('GET /explore returns empty lists without activity', async () => {
+  test('GET /explore suggests books when there is no activity', async () => {
     await withApp(app, async (baseUrl) => {
       const response = await fetch(`${baseUrl}/explore`, { headers: authHeader(USER_ID) });
       assert.equal(response.status, 200);
-      assert.deepEqual(await response.json(), { mostReadThisWeek: [], trending: [] });
+      const body = (await response.json()) as Record<string, { id?: string }[]>;
+      assert.deepEqual(body.mostReadThisWeek, []);
+      assert.deepEqual(body.trending, []);
+      assert.deepEqual(
+        body.suggestions!.map((b) => b.id),
+        [dune.id.value],
+      );
     });
   });
 
@@ -82,6 +88,7 @@ describe('Explore API', () => {
       const body = (await response.json()) as {
         mostReadThisWeek: { book: { id: string; title: string }; minutes: number }[];
         trending: { book: { id: string; title: string }; readers: number }[];
+        suggestions: unknown[];
       };
       assert.deepEqual(
         body.mostReadThisWeek.map((e) => [e.book.title, e.minutes]),
@@ -91,6 +98,7 @@ describe('Explore API', () => {
         body.trending.map((e) => [e.book.id, e.readers]),
         [[dune.id.value, 1]],
       );
+      assert.deepEqual(body.suggestions, []);
     });
   });
 });

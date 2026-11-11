@@ -123,3 +123,9 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 - The header's search field (and its phone toggle) is gone: it emitted a `search` event nothing listened to, and book search now lives on the [Explore page](../../../apps/frontend/src/views/ExploreView.vue). The Explore column now takes the full page width like Home (`width: 100%`; the app shell is a flex column, so it had shrunk to its content).
 - The Explore API test now backdates its `reading_status` row: the Docker Postgres clock ran a few ms ahead of Node, so a row stamped `now()` fell just after the window end.
+
+### 2026-11-11: Trending suggestions while nothing trends (#126)
+
+- **Decision: with no "added this week" activity, `GET /explore` returns `suggestions`**, up to 10 random books from the catalogue (`IBookRepository.random`, `ORDER BY random()`). The Trending tab shows them with a note, without the "#1" tag and with "A pick to start with" instead of a reader count. Real trending replaces them as soon as one book is added. *Rejected:* padding `trending` with random books, because it would show fake reader counts; and picking them in the frontend, because there is no endpoint that lists the catalogue.
+- "Most read this week" keeps its empty message.
+

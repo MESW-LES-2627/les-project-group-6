@@ -49,8 +49,23 @@ async function loadOverview() {
 
 onMounted(loadOverview);
 
+// With nothing trending this week, the Trending tab shows random books to start with.
+const showingSuggestions = computed(
+  () =>
+    activeTab.value === 'trending' &&
+    !!overview.value &&
+    overview.value.trending.length === 0 &&
+    overview.value.suggestions.length > 0,
+);
+
 const cards = computed<{ book: LibraryBook; metric: string }[]>(() => {
   if (!overview.value) return [];
+  if (showingSuggestions.value) {
+    return overview.value.suggestions.map((book) => ({
+      book: mapApiBookToLibraryBook(book),
+      metric: 'A pick to start with',
+    }));
+  }
   if (activeTab.value === 'trending') {
     return overview.value.trending.map((entry) => ({
       book: mapApiBookToLibraryBook(entry.book),
@@ -142,12 +157,15 @@ function search(q: string) {
         </button>
       </div>
       <p v-else-if="cards.length === 0" class="muted state">{{ tab.emptyText }}</p>
-      <ul v-else class="cards">
+      <p v-else-if="showingSuggestions" class="muted state suggestions-note">
+        Nothing is trending this week yet, so here are a few books to start with.
+      </p>
+      <ul v-if="!loading && !loadError && cards.length > 0" class="cards">
         <li v-for="(card, index) in cards" :key="card.book.id">
           <TrendingBookCard
             :book="card.book"
             :metric="card.metric"
-            :rank-label="index === 0 ? tab.rankLabel : undefined"
+            :rank-label="index === 0 && !showingSuggestions ? tab.rankLabel : undefined"
           />
         </li>
       </ul>
@@ -173,6 +191,10 @@ function search(q: string) {
 
 .state {
   margin-top: var(--space-6);
+}
+
+.suggestions-note + .cards {
+  margin-top: var(--space-4);
 }
 
 .state p {

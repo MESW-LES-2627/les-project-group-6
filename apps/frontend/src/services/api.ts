@@ -647,10 +647,11 @@ export async function searchBooks(title: string): Promise<ApiBook[]> {
   return getJson<ApiBook[]>(`/book?title=${encodeURIComponent(title)}`, 'Failed to search books');
 }
 
-/** The two weekly lists of the Explore page (F-EXP-04). */
+/** The two weekly lists of the Explore page (F-EXP-04), and random books while nothing is trending. */
 export interface ApiExplore {
   mostReadThisWeek: { book: ApiBook; minutes: number }[];
   trending: { book: ApiBook; readers: number }[];
+  suggestions: ApiBook[];
 }
 
 export async function getExplore(): Promise<ApiExplore> {

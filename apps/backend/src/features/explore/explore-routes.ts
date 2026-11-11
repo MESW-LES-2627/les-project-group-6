@@ -7,13 +7,14 @@ export function exploreRoutes(explore: ExploreService): Router {
   const router = Router();
 
   router.get('/explore', async (_req, res) => {
-    const { mostReadThisWeek, trending } = await explore.overview();
+    const { mostReadThisWeek, trending, suggestions } = await explore.overview();
     res.status(200).json({
       mostReadThisWeek: mostReadThisWeek.map((r) => ({
         book: toBookDto(r.book),
         minutes: r.score,
       })),
       trending: trending.map((r) => ({ book: toBookDto(r.book), readers: r.score })),
+      suggestions: suggestions.map(toBookDto),
     });
   });
 

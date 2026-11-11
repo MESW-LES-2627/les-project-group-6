@@ -232,3 +232,19 @@ Wrote the [implementation plan](../../superpowers/plans/2026-11-11-explore-page.
 - **Frontend:** the `/explore` page with search, results and trending cards, the header link, and the move of the page header to `layout/`.
 - **Tests:** 22 new tests. All checks pass (backend 271 tests, frontend 138 tests, typecheck and lint).
 
+### 2026-11-11: Explore trending suggestions
+
+- **Date:** 2026-11-11
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, frontend, testing, docs
+
+#### Prompt
+```text
+nice, now, when we have no activity, can you get some random books to add on trending?
+```
+
+#### Result
+Added `IBookRepository.random`, a `suggestions` list in `ExploreService` and `GET /explore` (only while nothing trends), and the Trending tab's fallback cards with a note. Also removed the unused header search in favour of the Explore page. New tests for the repository, the service, the route and the view.
+
