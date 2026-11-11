@@ -1,10 +1,13 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ApiBook } from '@/services/api';
+import type { ApiBook, ApiExplore } from '@/services/api';
 import ExploreView from '../ExploreView.vue';
 
-const api = vi.hoisted(() => ({ getExplore: vi.fn(), searchBooks: vi.fn() }));
+const api = vi.hoisted(() => ({
+  getExplore: vi.fn<() => Promise<ApiExplore>>(),
+  searchBooks: vi.fn<(title: string) => Promise<ApiBook[]>>(),
+}));
 vi.mock('@/services/api', async (original) => ({
   ...(await original<typeof import('@/services/api')>()),
   ...api,
