@@ -84,13 +84,24 @@ export const books = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   },
-  (table) => [unique('books_isbn13_key').on(table.isbn13)],
+  (table) => [
+    unique('books_isbn13_key').on(table.isbn13),
+    // F-EXP-01: fuzzy title search (pg_trgm), accent- and case-insensitive. Created in 0009.
+    index('books_title_trgm_idx').using('gin', sql`f_unaccent(lower(${table.title})) gin_trgm_ops`),
+  ],
 );
 
-export const authors = pgTable('authors', {
-  id: uuid().defaultRandom().primaryKey().notNull(),
-  name: text().notNull(),
-});
+export const authors = pgTable(
+  'authors',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    name: text().notNull(),
+  },
+  // F-EXP-01: fuzzy author search (pg_trgm). Created in 0009.
+  (table) => [
+    index('authors_name_trgm_idx').using('gin', sql`f_unaccent(lower(${table.name})) gin_trgm_ops`),
+  ],
+);
 
 export const genres = pgTable(
   'genres',
