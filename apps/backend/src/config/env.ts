@@ -17,4 +17,6 @@ export const env = {
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),
+  // Open Library, the fallback book catalogue (F-EXP-01). Only search text is sent.
+  openLibraryUrl: process.env.OPEN_LIBRARY_URL ?? 'https://openlibrary.org',
 };

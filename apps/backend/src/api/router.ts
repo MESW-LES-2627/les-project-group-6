@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import type { DatabaseHealthCheck } from '../database/health-check.js';
+import type { BookCatalog } from '../features/book/book-catalog.js';
 import type { IBookRepository } from '../features/book/book-repository.js';
 import { bookRoutes } from '../features/book/book-routes.js';
 import { exploreRoutes } from '../features/explore/explore-routes.js';
@@ -52,6 +53,8 @@ export interface ApiDependencies {
   authProvider?: AuthProvider;
   healthCheck?: DatabaseHealthCheck;
   bookRepository?: IBookRepository;
+  /** Outside catalogue asked when a search finds few local books; local only without it. */
+  bookCatalog?: BookCatalog;
   readingStatusRepository?: IReadingStatusRepository;
   libraryQuery?: LibraryQuery;
   readingSessionRepository?: IReadingSessionRepository;
@@ -83,6 +86,7 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
     authProvider = new DenyAllAuthProvider(),
     healthCheck,
     bookRepository,
+    bookCatalog,
     readingStatusRepository,
     libraryQuery,
     readingSessionRepository,
@@ -115,7 +119,7 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
   router.use(authenticated, withUser);
 
   if (bookRepository) {
-    router.use(bookRoutes(new BookService(bookRepository)));
+    router.use(bookRoutes(new BookService(bookRepository, bookCatalog)));
   }
 
   const readingStatuses =
