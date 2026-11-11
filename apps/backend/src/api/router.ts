@@ -2,11 +2,15 @@ import { Router } from 'express';
 import type { DatabaseHealthCheck } from '../database/health-check.js';
 import type { IBookRepository } from '../features/book/book-repository.js';
 import { bookRoutes } from '../features/book/book-routes.js';
+import { exploreRoutes } from '../features/explore/explore-routes.js';
+import { ExploreService } from '../features/explore/explore-service.js';
 import { BookService } from '../features/book/book-service.js';
 import type { LibraryQuery } from '../features/library/library-query.js';
 import { libraryRoutes } from '../features/library/library-routes.js';
 import type { IReadingStatusRepository } from '../features/reading-status/reading-status-repository.js';
+import type { ReadingActivityQuery } from '../features/reading-session/reading-activity-query.js';
 import type { IReadingSessionRepository } from '../features/reading-session/reading-session-repository.js';
+import type { ReadingProgressQuery } from '../features/reading-status/reading-progress-query.js';
 import { readingSessionRoutes } from '../features/reading-session/reading-session-routes.js';
 import { ReadingSessionService } from '../features/reading-session/reading-session-service.js';
 import { readingStatusRoutes } from '../features/reading-status/reading-status-routes.js';
@@ -51,6 +55,8 @@ export interface ApiDependencies {
   readingStatusRepository?: IReadingStatusRepository;
   libraryQuery?: LibraryQuery;
   readingSessionRepository?: IReadingSessionRepository;
+  readingActivityQuery?: ReadingActivityQuery;
+  readingProgressQuery?: ReadingProgressQuery;
   userRepository?: IUserRepository;
   challengeGroupRepository?: IChallengeGroupRepository;
   standingsQuery?: StandingsQuery;
@@ -80,6 +86,8 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
     readingStatusRepository,
     libraryQuery,
     readingSessionRepository,
+    readingActivityQuery,
+    readingProgressQuery,
     userRepository,
     challengeGroupRepository,
     standingsQuery,
@@ -206,6 +214,12 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
 
   if (libraryQuery) {
     router.use(libraryRoutes(libraryQuery));
+  }
+
+  if (bookRepository && readingActivityQuery && readingProgressQuery) {
+    router.use(
+      exploreRoutes(new ExploreService(readingActivityQuery, readingProgressQuery, bookRepository)),
+    );
   }
 
   return router;
