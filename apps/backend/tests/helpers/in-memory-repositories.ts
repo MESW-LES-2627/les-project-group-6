@@ -1,9 +1,6 @@
 import { BusinessRuleViolationError } from '../../src/utils/errors.js';
-import type { Book, BookId } from '../../src/features/book/book.js';
-import {
-  isbnDigits,
-  type IBookRepository,
-} from '../../src/features/book/book-repository.js';
+import { Isbn13, type Book, type BookId } from '../../src/features/book/book.js';
+import type { IBookRepository } from '../../src/features/book/book-repository.js';
 import type {
   ReadingStatus,
   ReadingStatusId,
@@ -70,12 +67,14 @@ export class InMemoryBookRepository implements IBookRepository {
     const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
     const text = fold(query.trim());
     if (!text || limit <= 0) return [];
-    const isbn = isbnDigits(query.trim());
+    const isbn = Isbn13.prefixFrom(query.trim());
+    // Like the SQL: under 3 characters only title prefixes match.
+    const prefixOnly = text.length < 3;
     const rank = (book: Book): number => {
       const title = fold(book.title.value);
       if (isbn && book.isbn13?.value.startsWith(isbn)) return 0;
       if (title.startsWith(text)) return 1;
-      return title.includes(text) ? 2 : -1;
+      return !prefixOnly && title.includes(text) ? 2 : -1;
     };
     return [...this.books.values()]
       .map((book) => ({ book, rank: rank(book) }))

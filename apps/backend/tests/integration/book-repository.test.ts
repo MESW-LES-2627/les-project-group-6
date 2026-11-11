@@ -171,6 +171,15 @@ describe('DrizzleBookRepository Integration', () => {
       assert.deepEqual(titles(await repo.search('9780441172719', 20)), ['Dune']);
       assert.deepEqual(titles(await repo.search('978-0-441-17271-9', 20)), ['Dune']);
       assert.deepEqual(titles(await repo.search('978-0-441-1', 20)), ['Dune']);
+      assert.deepEqual(titles(await repo.search('97804411727', 20)), ['Dune']);
+      assert.deepEqual(titles(await repo.search('978-0-451-5249', 20)), ['1984']);
+    });
+
+    test('treats a short number as a title, not an ISBN', async () => {
+      await repo.save(Book.create({ title: '1984', isbn13: '9780451524935' }));
+      await repo.save(Book.create({ title: 'Dune', isbn13: '9780441172719' }));
+
+      assert.deepEqual(titles(await repo.search('1984', 20)), ['1984']);
     });
 
     test('ranks an ISBN match first', async () => {
@@ -200,6 +209,15 @@ describe('DrizzleBookRepository Integration', () => {
       await repo.save(Book.create({ title: 'The Dunes of Mars' }));
 
       assert.deepEqual(titles(await repo.search('du', 20)), ['Dune']);
+    });
+
+    test('matches an author by prefix for a short query', async () => {
+      const blindness = Book.create({ title: 'Blindness' });
+      await repo.save(blindness);
+      await repo.save(Book.create({ title: 'Dune' }));
+      await addAuthor(blindness, 'José Saramago');
+
+      assert.deepEqual(titles(await repo.search('sa', 20)), ['Blindness']);
     });
 
     test('treats % and _ literally', async () => {

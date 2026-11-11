@@ -1,4 +1,4 @@
-import { eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
+import { eq, ilike, inArray, sql, type SQL } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { authors, bookAuthors, books } from '../../database/schema.js';
@@ -54,26 +54,31 @@ const TRIGRAM_MIN_LENGTH = 3;
 /** pg_trgm's default (0.6) only just lets "hary poter" find "Harry Potter". */
 const WORD_SIMILARITY_THRESHOLD = 0.5;
 
-/**
- * The ISBN digits in `query` (hyphens and spaces removed), when it looks like a
- * whole or partly typed ISBN. Six digits minimum, so a year such as "1984" stays a title.
- */
-export function isbnDigits(query: string): string | null {
-  const digits = query.replace(/[\s-]/g, '');
-  return /^\d{6,13}$/.test(digits) ? digits : null;
-}
-
 function escapeLike(text: string): string {
   return text.replace(/[\\%_]/g, '\\$&');
 }
 
+/**
+ * The smallest digit string above every string starting with `prefix`, or null when it is
+ * all 9s ('97804411' -> '97804412', '9799' -> '98'). A range on it can use the isbn13 btree,
+ * which a LIKE prefix cannot under a non-C collation.
+ */
+function nextPrefix(prefix: string): string | null {
+  const last = prefix.search(/[0-8]9*$/);
+  if (last < 0) return null;
+  return prefix.slice(0, last) + String(Number(prefix[last]) + 1);
+}
+
+/** Books whose ISBN starts with `prefix`. */
+function isbnStartsWith(prefix: string): SQL {
+  const upper = nextPrefix(prefix);
+  return upper
+    ? sql`(${books.isbn13} >= ${prefix} and ${books.isbn13} < ${upper})`
+    : sql`${books.isbn13} >= ${prefix}`;
+}
+
 /** Lowercase and accent-free, the same expression as the trigram indexes (migration 0009). */
 const folded = (value: SQL | AnyPgColumn): SQL => sql`f_unaccent(lower(${value}))`;
-
-/** True when one of the book's authors satisfies `condition`. */
-const anyAuthor = (condition: SQL): SQL =>
-  sql`exists (select 1 from ${bookAuthors} join ${authors} on ${authors.id} = ${bookAuthors.authorId}
-      where ${bookAuthors.bookId} = ${books.id} and ${condition})`;
 
 export class DrizzleBookRepository implements IBookRepository {
   constructor(private readonly db: NodePgDatabase) {}
@@ -100,14 +105,24 @@ export class DrizzleBookRepository implements IBookRepository {
     const prefix = sql`${folded(sql`${escapeLike(text)}::text`)} || '%'`;
     const title = folded(books.title);
     const authorName = folded(authors.name);
-    const isbn = isbnDigits(text);
-    const isbnMatch = isbn ? sql`${books.isbn13} like ${`${isbn}%`}` : null;
+    const isbn = Isbn13.prefixFrom(text);
+    const isbnMatch = isbn ? isbnStartsWith(isbn) : null;
     const fuzzy = text.length >= TRIGRAM_MIN_LENGTH;
 
-    const textMatch = fuzzy
-      ? or(sql`${needle} <% ${title}`, anyAuthor(sql`${needle} <% ${authorName}`))
-      : or(sql`${title} like ${prefix}`, anyAuthor(sql`${authorName} like ${prefix}`));
-    const where = isbnMatch ? or(isbnMatch, textMatch) : textMatch;
+    // Short queries match the start of a title, or the start of any word of an author's name
+    // (so "sa" finds "José Saramago").
+    const authorPrefix = sql`${authorName} like ${prefix} or ${authorName} like '% ' || ${prefix}`;
+    // One indexed lookup per branch (trigram GIN on titles and author names, btree on isbn13),
+    // unioned into ids; a single OR across them would force a sequential scan of books.
+    const branches: SQL[] = [
+      sql`select ${books.id} from ${books}
+          where ${fuzzy ? sql`${needle} <% ${title}` : sql`${title} like ${prefix}`}`,
+      sql`select ${bookAuthors.bookId} from ${bookAuthors}
+          join ${authors} on ${authors.id} = ${bookAuthors.authorId}
+          where ${fuzzy ? sql`${needle} <% ${authorName}` : authorPrefix}`,
+    ];
+    if (isbnMatch) branches.push(sql`select ${books.id} from ${books} where ${isbnMatch}`);
+    const where = sql`${books.id} in (${sql.join(branches, sql` union `)})`;
 
     // Best first: ISBN, then a title starting with the query, then the closest title or author.
     const order: SQL[] = [];
@@ -125,6 +140,7 @@ export class DrizzleBookRepository implements IBookRepository {
 
     return this.db.transaction(async (tx) => {
       // `<%` reads its threshold from this setting; `true` scopes it to this transaction.
+      // If this repository is ever handed an outer transaction, the setting persists for all of it.
       await tx.execute(
         sql`select set_config('pg_trgm.word_similarity_threshold', ${String(WORD_SIMILARITY_THRESHOLD)}, true)`,
       );
