@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 
 import BookPicker, { type PickedBook } from '@/components/groups/BookPicker.vue';
-import GroupsPageHeader from '@/components/groups/GroupsPageHeader.vue';
+import PageHeader from '@/components/layout/PageHeader.vue';
 import InfoNote from '@/components/groups/InfoNote.vue';
 import ToggleSwitch from '@/components/groups/ToggleSwitch.vue';
 import { mockFriends } from '@/mocks/groups';
@@ -132,7 +132,7 @@ async function submit() {
 
 <template>
   <main class="page-column create">
-    <GroupsPageHeader
+    <PageHeader
       eyebrow="Groups / Create a group"
       title="Start something worth reading for."
       subtitle="A friendly competition or a shared book. Bring your people and make it your own."
@@ -140,7 +140,7 @@ async function submit() {
       <template #action>
         <RouterLink class="button-outline" :to="{ name: 'groups' }">Cancel</RouterLink>
       </template>
-    </GroupsPageHeader>
+    </PageHeader>
 
     <form class="layout" novalidate @submit.prevent="submit">
       <div class="steps">
