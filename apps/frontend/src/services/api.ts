@@ -647,6 +647,16 @@ export async function searchBooks(title: string): Promise<ApiBook[]> {
   return getJson<ApiBook[]>(`/book?title=${encodeURIComponent(title)}`, 'Failed to search books');
 }
 
+/** The two weekly lists of the Explore page (F-EXP-04). */
+export interface ApiExplore {
+  mostReadThisWeek: { book: ApiBook; minutes: number }[];
+  trending: { book: ApiBook; readers: number }[];
+}
+
+export async function getExplore(): Promise<ApiExplore> {
+  return getJson<ApiExplore>('/explore', 'Failed to load Explore');
+}
+
 /** Adds a missing book with only its title (F-BOOK-02). */
 export async function addBook(title: string): Promise<ApiBook> {
   return sendJson<ApiBook>('POST', '/book', { title }, 'Failed to add the book');
