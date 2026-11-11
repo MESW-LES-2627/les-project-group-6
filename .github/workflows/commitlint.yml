@@ -31,7 +31,7 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          types='build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test'
+          types='build|chore|ci|db|docs|feat|fix|perf|refactor|revert|style|test'
           pattern="^(($types)(\([a-z0-9._/-]+\))?!?: [^ ].*|Revert \".+\")$"
           failed=0
           while IFS= read -r line; do

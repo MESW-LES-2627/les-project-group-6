@@ -46,6 +46,10 @@ There is no `DELETE /book/:id`: other readers' statuses, reviews and sessions de
 | PATCH | `/reading-status/:id` | Updates one of the reader's own reading status entries (status, current page); another reader's entry answers `404`. |
 | PUT | `/reading-status/:id` | Same as the PATCH above (alias). |
 | PATCH | `/reading-status` | Same update, with the entry `id` in the body instead of the path. |
+| DELETE | `/reading-status/:id` | Deletes one of the reader's own entries (`204`; `404` for another reader's). |
+| DELETE | `/reading-status?bookId=` | Deletes the reader's entry for that book. |
+| PUT | `/library/:bookId` | Adds or updates the book in the reader's library (status, page, `startedOn`, `finishedOn`). |
+| DELETE | `/library/:bookId` | Removes the book from the reader's library (also `DELETE /me/library/:bookId`). |
 
 ### Library (`features/library/library-routes.ts`)
 

@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
-import { BusinessRuleViolationError } from '../../utils/errors.js';
+import { isoDay, parseIsoDay } from '../../utils/calendar.js';
+import { BusinessRuleViolationError, InvalidValueError } from '../../utils/errors.js';
 import { Uuid } from '../../utils/uuid.js';
 import type { BookId, PageCount } from '../book/book.js';
 import type { UserId } from '../user/user.js';
@@ -29,6 +30,8 @@ export interface ReadingStatusState {
   bookId: BookId;
   state: ReadingState;
   progress: PageProgress;
+  startedOn?: string | null;
+  finishedOn?: string | null;
   updatedAt: Date;
 }
 
@@ -40,6 +43,8 @@ export class ReadingStatus {
   readonly bookId: BookId;
   private state: ReadingState;
   private _progress: PageProgress;
+  private _startedOn: string | null;
+  private _finishedOn: string | null;
   private _updatedAt: Date;
 
   private constructor(props: ReadingStatusState) {
@@ -48,6 +53,8 @@ export class ReadingStatus {
     this.bookId = props.bookId;
     this.state = props.state;
     this._progress = props.progress;
+    this._startedOn = props.startedOn ?? null;
+    this._finishedOn = props.finishedOn ?? null;
     this._updatedAt = props.updatedAt;
   }
 
@@ -59,6 +66,8 @@ export class ReadingStatus {
       bookId,
       state: ReadingState.notStarted(),
       progress: PageProgress.zero(),
+      startedOn: null,
+      finishedOn: null,
       updatedAt: new Date(),
     });
   }
@@ -76,6 +85,14 @@ export class ReadingStatus {
     return this._progress;
   }
 
+  get startedOn(): string | null {
+    return this._startedOn;
+  }
+
+  get finishedOn(): string | null {
+    return this._finishedOn;
+  }
+
   get updatedAt(): Date {
     return this._updatedAt;
   }
@@ -84,12 +101,20 @@ export class ReadingStatus {
     return this.state.tracksProgress;
   }
 
-  startReading(): void {
+  startReading(today: string = isoDay(new Date())): void {
     this.transitionTo(this.state.start(), null);
+    if (!this._startedOn) {
+      this._startedOn = today;
+    }
+    this._finishedOn = null;
   }
 
-  finish(totalPages: PageCount | null): void {
+  finish(totalPages: PageCount | null, today: string = isoDay(new Date())): void {
     this.transitionTo(this.state.finish(), totalPages);
+    this._finishedOn = today;
+    if (!this._startedOn) {
+      this._startedOn = today;
+    }
   }
 
   abandon(): void {
@@ -98,18 +123,44 @@ export class ReadingStatus {
 
   moveBackToShelf(): void {
     this.transitionTo(this.state.moveBackToShelf(), null);
+    this._finishedOn = null;
   }
 
   /** Moves to `target` through the matching intention; staying in the same status is a no-op. */
-  changeStatus(target: ReadingStatusType, totalPages: PageCount | null): void {
+  changeStatus(target: ReadingStatusType, totalPages: PageCount | null, today?: string): void {
     if (target === this.status) return;
-    CHANGE_TO[target](this, totalPages);
+    CHANGE_TO[target](this, totalPages, today);
   }
 
   updateProgress(progress: PageProgress): void {
     if (!this.state.tracksProgress) throw new ProgressNotAllowedError(this.status);
     this._progress = progress;
     this.touch();
+  }
+
+  /** Validates and sets optional startedOn and finishedOn dates. */
+  setDates(startedOn?: string | null, finishedOn?: string | null): void {
+    const nextStarted =
+      startedOn !== undefined ? this.normalizeDate(startedOn, 'startedOn') : this._startedOn;
+    const nextFinished =
+      finishedOn !== undefined ? this.normalizeDate(finishedOn, 'finishedOn') : this._finishedOn;
+
+    if (nextStarted && nextFinished && nextFinished < nextStarted) {
+      throw new InvalidValueError('finishedOn cannot be before startedOn');
+    }
+
+    if (startedOn !== undefined) this._startedOn = nextStarted;
+    if (finishedOn !== undefined) this._finishedOn = nextFinished;
+    this.touch();
+  }
+
+  private normalizeDate(raw: string | null, field: string): string | null {
+    if (raw === null || raw === '') return null;
+    const parsed = parseIsoDay(raw);
+    if (!parsed) {
+      throw new InvalidValueError(`${field} must be a valid date formatted YYYY-MM-DD`);
+    }
+    return raw;
   }
 
   private transitionTo(next: ReadingState, totalPages: PageCount | null): void {
@@ -125,10 +176,10 @@ export class ReadingStatus {
 
 const CHANGE_TO: Record<
   ReadingStatusType,
-  (status: ReadingStatus, totalPages: PageCount | null) => void
+  (status: ReadingStatus, totalPages: PageCount | null, today?: string) => void
 > = {
   'not-started': (status) => status.moveBackToShelf(),
-  'in-progress': (status) => status.startReading(),
-  finished: (status, totalPages) => status.finish(totalPages),
+  'in-progress': (status, _pages, today) => status.startReading(today),
+  finished: (status, totalPages, today) => status.finish(totalPages, today),
   'did-not-finish': (status) => status.abandon(),
 };

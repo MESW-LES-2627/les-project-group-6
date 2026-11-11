@@ -177,3 +177,19 @@ https://github.com/MESW-LES-2627/les-project-group-6/pull/114 and https://github
 #### Explanation of Changes
 Merged `main` into PR #114 and resolved the conflicts. The friend routes now take the acting reader from the token (`currentUserId`) instead of `requesterId`/`userId` in the body or path, and `GET /user/:userId/friend-requests` became `GET /me/friend-requests`. Rewrote the integration tests to authenticate with `FakeAuthProvider`, and moved the PR's docs from the old `docs/sprints/` folder into `docs/iterations/`.
 
+### 2026-11-11: Auth middleware on the reading status routes and merge with main
+
+- **Date:** 2026-11-11
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database, testing, docs
+
+#### Prompt
+```text
+https://github.com/MESW-LES-2627/les-project-group-6/pull/114 and https://github.com/MESW-LES-2627/les-project-group-6/pull/115 these 2 PRs needs to add the auth middleware. Add for me and resolve the conflicts with main
+push and merge both prs
+```
+
+#### Explanation of Changes
+Merged `main` into PR #115 and resolved the conflicts. Regenerated the reading status dates migration as 0007, made every reading status and library route take the reader from the token, added an ownership check to `removeById`, replaced `DELETE /user/:userId/library/:bookId` with `DELETE /me/library/:bookId` and dropped `GET /library?userId=`. Rewrote the integration tests to use `FakeAuthProvider`, added `db` to the commit types in `commitlint.yml`, and moved the PR's docs into `docs/iterations/`.

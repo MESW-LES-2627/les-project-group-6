@@ -2,6 +2,7 @@ import type { Clock } from '../../utils/clock.js';
 import { BusinessRuleViolationError, NotFoundError } from '../../utils/errors.js';
 import { BookId } from '../book/book.js';
 import type { IBookRepository } from '../book/book-repository.js';
+import type { ReadingStatusService } from '../reading-status/reading-status-service.js';
 import { UserId } from '../user/user.js';
 import { ReadingSession, ReadingSessionId } from './reading-session.js';
 import type { IReadingSessionRepository, ReadingStats } from './reading-session-repository.js';
@@ -33,6 +34,7 @@ export class ReadingSessionService {
     private readonly sessions: IReadingSessionRepository,
     private readonly books: IBookRepository,
     private readonly now: Clock = () => new Date(),
+    private readonly readingStatuses?: ReadingStatusService,
   ) {}
 
   /**
@@ -47,7 +49,7 @@ export class ReadingSessionService {
     if (!book) throw new NotFoundError('Book');
 
     // Check-then-insert must not interleave for one reader (double click, two tabs).
-    return this.sessions.withReaderLock(userId, async (sessions) => {
+    const session = await this.sessions.withReaderLock(userId, async (sessions) => {
       const active = await sessions.findActiveByUser(userId);
       if (active) {
         if (active.bookId.equals(bookId)) return active;
@@ -58,6 +60,9 @@ export class ReadingSessionService {
       await sessions.save(session);
       return session;
     });
+
+    await this.readingStatuses?.ensureInProgress(userId, bookId);
+    return session;
   }
 
   /** Stops the timer and records the minutes measured by the server. */

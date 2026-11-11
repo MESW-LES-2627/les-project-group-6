@@ -10,6 +10,8 @@ export interface IReadingStatusRepository {
   findById(id: ReadingStatusId): Promise<ReadingStatus | null>;
   findByUserAndBook(userId: UserId, bookId: BookId): Promise<ReadingStatus | null>;
   save(status: ReadingStatus): Promise<void>;
+  delete(userId: UserId, bookId: BookId): Promise<boolean>;
+  deleteById(id: ReadingStatusId): Promise<boolean>;
 }
 
 type ReadingStatusRow = typeof readingStatus.$inferSelect;
@@ -22,6 +24,8 @@ function toDomain(row: ReadingStatusRow): ReadingStatus {
     bookId: BookId.of(row.bookId),
     state: ReadingState.of(row.status),
     progress: PageProgress.of(row.currentPage),
+    startedOn: row.startedOn ?? null,
+    finishedOn: row.finishedOn ?? null,
     updatedAt: new Date(row.updatedAt),
   });
 }
@@ -33,6 +37,8 @@ function toRow(status: ReadingStatus): typeof readingStatus.$inferInsert {
     bookId: status.bookId.value,
     status: status.status,
     currentPage: status.progress.page,
+    startedOn: status.startedOn,
+    finishedOn: status.finishedOn,
     updatedAt: status.updatedAt.toISOString(),
   };
 }
@@ -68,7 +74,29 @@ export class DrizzleReadingStatusRepository implements IReadingStatusRepository 
       .values(row)
       .onConflictDoUpdate({
         target: [readingStatus.userId, readingStatus.bookId],
-        set: { status: row.status, currentPage: row.currentPage, updatedAt: row.updatedAt },
+        set: {
+          status: row.status,
+          currentPage: row.currentPage,
+          startedOn: row.startedOn,
+          finishedOn: row.finishedOn,
+          updatedAt: row.updatedAt,
+        },
       });
+  }
+
+  async delete(userId: UserId, bookId: BookId): Promise<boolean> {
+    const result = await this.db
+      .delete(readingStatus)
+      .where(and(eq(readingStatus.userId, userId.value), eq(readingStatus.bookId, bookId.value)))
+      .returning({ id: readingStatus.id });
+    return result.length > 0;
+  }
+
+  async deleteById(id: ReadingStatusId): Promise<boolean> {
+    const result = await this.db
+      .delete(readingStatus)
+      .where(eq(readingStatus.id, id.value))
+      .returning({ id: readingStatus.id });
+    return result.length > 0;
   }
 }

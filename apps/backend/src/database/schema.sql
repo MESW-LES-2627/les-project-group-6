@@ -98,6 +98,8 @@ CREATE TABLE reading_status (
     book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     status VARCHAR(20) NOT NULL,
     current_page INTEGER NOT NULL DEFAULT 0,
+    started_on DATE,
+    finished_on DATE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, book_id)
 );

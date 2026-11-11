@@ -110,15 +110,25 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
     router.use(bookRoutes(new BookService(bookRepository)));
   }
 
-  if (bookRepository && readingStatusRepository) {
-    router.use(
-      readingStatusRoutes(new ReadingStatusService(readingStatusRepository, bookRepository)),
-    );
+  const readingStatuses =
+    bookRepository && readingStatusRepository
+      ? new ReadingStatusService(readingStatusRepository, bookRepository)
+      : undefined;
+
+  if (readingStatuses) {
+    router.use(readingStatusRoutes(readingStatuses));
   }
 
   if (bookRepository && readingSessionRepository) {
     router.use(
-      readingSessionRoutes(new ReadingSessionService(readingSessionRepository, bookRepository)),
+      readingSessionRoutes(
+        new ReadingSessionService(
+          readingSessionRepository,
+          bookRepository,
+          undefined,
+          readingStatuses,
+        ),
+      ),
     );
   }
 
