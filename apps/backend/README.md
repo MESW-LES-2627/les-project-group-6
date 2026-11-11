@@ -68,6 +68,11 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | `GET`    | `/me/group-invites`                               | Pending invites with group name, kind and inviter (`200`)                                                                                                                                                 |
 | `POST`   | `/group-invites/:id/accept` · `/decline`          | The invitee answers; accepting adds them to the group (`200`)                                                                                                                                             |
 | `GET`    | `/me/friends`                                     | Accepted friends (`200`)                                                                                                                                                                                  |
+| `POST`   | `/friend-requests`                                | Sends a friend request from the signed-in reader to `targetUserId` (`201`; `200` if a request or friendship already exists; `400` for yourself or an unknown user) |
+| `GET`    | `/me/friend-requests`                             | The reader's incoming pending friend requests (`200`) |
+| `POST`   | `/friend-requests/:id/accept`                     | The addressee accepts a pending request (`200`; `404` if not found or not theirs, `409` if not pending) |
+| `POST`   | `/friend-requests/:id/decline`                    | The addressee declines a pending request (`204`; `404` if not found or not theirs) |
+| `DELETE` | `/friends/:userId`                                | Removes the friendship between the reader and that user (`204`; `404` if not friends) |
 | `POST`   | `/groups/:groupId/messages`                       | Sends a chat message (`clientId` UUID, `body`); members only. A retry with the same `clientId` returns the stored message (`201` new, `200` retry, `403` not a member)                                    |
 | `GET`    | `/groups/:groupId/messages?after=&before=&limit=` | Chat history in `seq` order: the latest page, newer than `after` (catch-up) or older than `before` (`200`, `403`)                                                                                         |
 | `DELETE` | `/groups/:groupId/messages/:messageId`            | Soft-deletes a message; its author or the group admin (`204`, `403`, `404`)                                                                                                                               |
@@ -124,7 +129,7 @@ apps/backend/
 │   │   ├── group/         # Shared kernel of every group: GroupId, GroupName, memberships, GroupRoster, MemberJoined event
 │   │   ├── group-invite/  # GroupInvite aggregate, repository, service, DTO, routes (any group)
 │   │   ├── book-club/     # BookClub aggregate (rounds), BookPoll aggregate (voting), progress query, services, DTO, routes
-│   │   ├── friend/        # Read-only friends list from accepted friendships
+│   │   ├── friend/        # Friend requests (request, accept, decline, remove) and the friends list
 │   │   ├── reading-session/ # ReadingSession aggregate (server-timed), repository + stats, service, DTO, routes
 │   │   ├── group-chat/    # ChatMessage entity, repository, membership query, ChatService, routes, Socket.IO notifier, JoinAnnouncer
 │   │   ├── auth/          # AuthProvider port + SupabaseAuthProvider (JWT verification with JWKS)
