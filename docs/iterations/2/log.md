@@ -129,3 +129,10 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Decision: with no "added this week" activity, `GET /explore` returns `suggestions`**, up to 10 random books from the catalogue (`IBookRepository.random`, `ORDER BY random()`). The Trending tab shows them with a note, without the "#1" tag and with "A pick to start with" instead of a reader count. Real trending replaces them as soon as one book is added. *Rejected:* padding `trending` with random books, because it would show fake reader counts; and picking them in the frontend, because there is no endpoint that lists the catalogue.
 - "Most read this week" keeps its empty message.
 
+
+### 2026-11-11: Book search design: fuzzy, search-as-you-type (F-EXP-01)
+
+- [Spec](../../superpowers/specs/2026-11-11-book-search-design.md) for typo-tolerant search on title, author and ISBN, with results that update while the reader types on Explore. Not built yet.
+- **Decision: Postgres `pg_trgm` + `unaccent`** (migration 0009, GIN trigram indexes, `word_similarity`). *Rejected:* Elasticsearch / OpenSearch (another service to host and keep in sync, built for scale and features we don't need), and full-text search (no typo tolerance).
+- **Decision: `GET /book?q=` replaces `GET /book?title=`** for both Explore and the groups `BookPicker`, so the app has one search behaviour.
+- **Decision: Explore searches 300 ms after the last keystroke** (2+ characters), using `router.replace` while typing and `router.push` on Enter.

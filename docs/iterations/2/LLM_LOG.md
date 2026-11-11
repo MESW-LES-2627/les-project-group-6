@@ -248,3 +248,19 @@ nice, now, when we have no activity, can you get some random books to add on tre
 #### Result
 Added `IBookRepository.random`, a `suggestions` list in `ExploreService` and `GET /explore` (only while nothing trends), and the Trending tab's fallback cards with a note. Also removed the unused header search in favour of the Explore page. New tests for the repository, the service, the route and the view.
 
+
+### 2026-11-11: Book search design (fuzzy, search-as-you-type)
+
+- **Date:** 2026-11-11
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** architecture, database, docs
+
+#### Prompt
+```text
+my /explore route must debouce and return the books while I am writing. Also, I would like to implement fuzzy seach or full text seach. How can I do this? maybe a postgres plugin? elasticsearch? how can I achieve this? the idea is to find books with name even if the name have tiny errors
+```
+
+#### Result
+Brainstormed the options (pg_trgm, full-text search, Elasticsearch) and wrote the [book search spec](../../superpowers/specs/2026-11-11-book-search-design.md): pg_trgm + unaccent over title, author and ISBN behind `GET /book?q=`, and a 300 ms search-as-you-type on Explore.
