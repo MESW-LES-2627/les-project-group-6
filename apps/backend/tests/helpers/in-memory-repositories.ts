@@ -57,11 +57,6 @@ export class InMemoryBookRepository implements IBookRepository {
     return this.books.get(id.value) ?? null;
   }
 
-  async findByTitle(title: string): Promise<Book[]> {
-    const query = title.toLowerCase();
-    return [...this.books.values()].filter((b) => b.title.value.toLowerCase().includes(query));
-  }
-
   // Not fuzzy and title-only (Book has no authors): the integration tests cover real matching.
   async search(query: string, limit: number): Promise<Book[]> {
     const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();

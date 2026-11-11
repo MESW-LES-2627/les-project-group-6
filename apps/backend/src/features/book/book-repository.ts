@@ -1,4 +1,4 @@
-import { eq, ilike, inArray, sql, type SQL } from 'drizzle-orm';
+import { eq, inArray, sql, type SQL } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { authors, bookAuthors, books } from '../../database/schema.js';
@@ -6,7 +6,6 @@ import { Book, BookId, BookTitle, Isbn13, PageCount } from './book.js';
 
 export interface IBookRepository {
   findById(id: BookId): Promise<Book | null>;
-  findByTitle(title: string): Promise<Book[]>;
   /**
    * F-EXP-01: books whose title or author looks like `query` (small typos,
    * missing accents) or whose ISBN starts with its digits, best match first.
@@ -87,14 +86,6 @@ export class DrizzleBookRepository implements IBookRepository {
     const rows = await this.db.select().from(books).where(eq(books.id, id.value)).limit(1);
     const row = rows[0];
     return row ? toDomain(row) : null;
-  }
-
-  async findByTitle(title: string): Promise<Book[]> {
-    const rows = await this.db
-      .select()
-      .from(books)
-      .where(ilike(books.title, `%${title}%`));
-    return rows.map(toDomain);
   }
 
   async search(query: string, limit: number): Promise<Book[]> {

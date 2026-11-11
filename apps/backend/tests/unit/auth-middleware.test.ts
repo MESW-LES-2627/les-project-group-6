@@ -39,7 +39,7 @@ describe('authentication middleware', () => {
 
   test('a protected route without an Authorization header answers 401 UNAUTHENTICATED', async () => {
     await withApp(app(), async (url) => {
-      const res = await fetch(`${url}/book?title=x`);
+      const res = await fetch(`${url}/book?q=x`);
       assert.equal(res.status, 401);
       const body = (await res.json()) as { error: string; code: string };
       assert.equal(body.code, 'UNAUTHENTICATED');
@@ -50,7 +50,7 @@ describe('authentication middleware', () => {
   test('a malformed or invalid token answers 401', async () => {
     await withApp(app(), async (url) => {
       for (const header of ['Basic abc', 'Bearer', 'Bearer not-a-token']) {
-        const res = await fetch(`${url}/book?title=x`, { headers: { Authorization: header } });
+        const res = await fetch(`${url}/book?q=x`, { headers: { Authorization: header } });
         assert.equal(res.status, 401, header);
         assert.equal(((await res.json()) as { code: string }).code, 'UNAUTHENTICATED');
       }
@@ -59,7 +59,7 @@ describe('authentication middleware', () => {
 
   test('a valid token without a users row answers 403 PROFILE_REQUIRED', async () => {
     await withApp(app(), async (url) => {
-      const res = await fetch(`${url}/book?title=x`, { headers: authHeader(NEWCOMER) });
+      const res = await fetch(`${url}/book?q=x`, { headers: authHeader(NEWCOMER) });
       assert.equal(res.status, 403);
       assert.equal(((await res.json()) as { code: string }).code, 'PROFILE_REQUIRED');
     });
@@ -67,7 +67,7 @@ describe('authentication middleware', () => {
 
   test('a valid token with a users row passes through to the route', async () => {
     await withApp(app(), async (url) => {
-      const res = await fetch(`${url}/book?title=x`, { headers: authHeader(READER) });
+      const res = await fetch(`${url}/book?q=x`, { headers: authHeader(READER) });
       assert.equal(res.status, 200);
       assert.deepEqual(await res.json(), []);
     });
@@ -93,7 +93,7 @@ describe('authentication middleware', () => {
       bookRepository: new InMemoryBookRepository(),
     });
     await withApp(denyAll, async (url) => {
-      const res = await fetch(`${url}/book?title=x`, { headers: authHeader(READER) });
+      const res = await fetch(`${url}/book?q=x`, { headers: authHeader(READER) });
       assert.equal(res.status, 401);
       assert.equal(((await res.json()) as { code: string }).code, 'UNAUTHENTICATED');
 

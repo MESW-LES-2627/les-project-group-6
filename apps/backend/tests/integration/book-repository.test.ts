@@ -56,32 +56,6 @@ describe('DrizzleBookRepository Integration', () => {
     assert.strictEqual(found.isCommunityAdded, true);
   });
 
-  test('finds books by title', async () => {
-    const book1 = Book.create({
-      title: 'The Hobbit',
-      pageCount: 310,
-    });
-    const book2 = Book.create({
-      title: 'The Fellowship of the Ring',
-      pageCount: 423,
-    });
-
-    await repo.save(book1);
-    await repo.save(book2);
-
-    const hobbitMatches = await repo.findByTitle('Hobbit');
-    assert.strictEqual(hobbitMatches.length, 1);
-    assert.strictEqual(hobbitMatches[0]?.title.value, 'The Hobbit');
-
-    const theMatches = await repo.findByTitle('The');
-    assert.strictEqual(theMatches.length, 2);
-  });
-
-  test('returns empty array when no books match title', async () => {
-    const matches = await repo.findByTitle('NonExistentTitleXYZ');
-    assert.deepStrictEqual(matches, []);
-  });
-
   test('returns null when book is not found by ID', async () => {
     const notFound = await repo.findById(BookId.of('00000000-0000-0000-0000-000000000000'));
     assert.strictEqual(notFound, null);

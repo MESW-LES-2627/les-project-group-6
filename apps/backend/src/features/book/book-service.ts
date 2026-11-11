@@ -3,6 +3,10 @@ import { NotFoundError } from '../../utils/errors.js';
 import { Book, BookId, type NewBookProps } from './book.js';
 import type { IBookRepository } from './book-repository.js';
 
+/** F-EXP-01: how many books one search returns. */
+export const SEARCH_LIMIT = 20;
+const MAX_QUERY_LENGTH = 100;
+
 // Application service: one method per use case on the book catalogue.
 export class BookService {
   constructor(private readonly books: IBookRepository) {}
@@ -19,8 +23,11 @@ export class BookService {
     return book;
   }
 
-  search(title: string): Promise<Book[]> {
-    return this.books.findByTitle(title.trim());
+  // F-EXP-01: blank text is not an error, just no results.
+  async search(raw: string): Promise<Book[]> {
+    const query = raw.trim().slice(0, MAX_QUERY_LENGTH);
+    if (!query) return [];
+    return this.books.search(query, SEARCH_LIMIT);
   }
 
   // A malformed id can never match a book, so it is reported as not found.
