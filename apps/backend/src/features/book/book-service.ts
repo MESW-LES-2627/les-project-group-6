@@ -72,9 +72,9 @@ export class BookService {
       });
       return await this.books.saveWithAuthors(book, found.authors);
     } catch (error) {
-      // One bad record from the catalogue must not break the search.
-      if (error instanceof InvalidValueError) return null;
-      throw error;
+      // One bad record, or a failed write, must not break the search.
+      console.warn(`Could not import catalog book ${found.isbn13}: ${String(error)}`);
+      return null;
     }
   }
 

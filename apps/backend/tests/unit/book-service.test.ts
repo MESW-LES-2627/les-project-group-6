@@ -1,4 +1,4 @@
-import { test, describe } from 'node:test';
+import { test, describe, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { Book, type Isbn13 } from '../../src/features/book/book.js';
 import { BookService } from '../../src/features/book/book-service.js';
@@ -178,5 +178,30 @@ describe('BookService.search with a catalogue', () => {
       found.map((b) => b.title.value),
       ['Other Title', 'Dune Messiah'],
     );
+  });
+
+  test('keeps the local results when importing a catalogue book fails', async () => {
+    class FailingBookRepository extends InMemoryBookRepository {
+      override async saveWithAuthors(): Promise<Book> {
+        throw new Error('connection lost');
+      }
+    }
+    const books = new FailingBookRepository();
+    await books.save(Book.create({ title: 'Dune' }));
+    const catalog = new FakeCatalog([remote('Dune Messiah', '9780441172696')]);
+
+    const warn = mock.method(console, 'warn', () => {});
+    try {
+      const found = await new BookService(books, catalog).search('dune');
+
+      assert.deepEqual(
+        found.map((b) => b.title.value),
+        ['Dune'],
+      );
+      assert.equal(warn.mock.callCount(), 1);
+      assert.ok(!String(warn.mock.calls[0]!.arguments[0]).includes('dune'));
+    } finally {
+      warn.mock.restore();
+    }
   });
 });
