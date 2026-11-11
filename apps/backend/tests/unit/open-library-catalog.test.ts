@@ -25,7 +25,11 @@ const quiet = { warn: () => {} };
 describe('OpenLibraryCatalog', () => {
   test('maps a search result to a catalogue book', async () => {
     const { fn, calls } = fakeFetch({ docs: [DUNE_DOC] });
-    const catalog = new OpenLibraryCatalog({ baseUrl: 'https://ol.test', fetchFn: fn, logger: quiet });
+    const catalog = new OpenLibraryCatalog({
+      baseUrl: 'https://ol.test',
+      fetchFn: fn,
+      logger: quiet,
+    });
 
     const found = await catalog.search('dune', 20);
 
@@ -53,7 +57,14 @@ describe('OpenLibraryCatalog', () => {
     const catalog = new OpenLibraryCatalog({ fetchFn: fn, logger: quiet });
 
     assert.deepEqual(await catalog.search('x', 20), [
-      { title: 'Bare', isbn13: '9780441172719', authors: [], description: null, pageCount: null, coverUrl: null },
+      {
+        title: 'Bare',
+        isbn13: '9780441172719',
+        authors: [],
+        description: null,
+        pageCount: null,
+        coverUrl: null,
+      },
     ]);
   });
 

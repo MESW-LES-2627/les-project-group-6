@@ -34,7 +34,8 @@ export class OpenLibraryCatalog implements BookCatalog {
   constructor(options: OpenLibraryCatalogOptions = {}) {
     this.baseUrl = (options.baseUrl ?? 'https://openlibrary.org').replace(/\/$/, '');
     this.timeoutMs = options.timeoutMs ?? 3000;
-    this.cache = options.cache ?? new LRUCache<string, CatalogBook[]>({ max: 500, ttl: ONE_HOUR_MS });
+    this.cache =
+      options.cache ?? new LRUCache<string, CatalogBook[]>({ max: 500, ttl: ONE_HOUR_MS });
     this.fetchFn = options.fetchFn ?? fetch;
     this.logger = options.logger ?? console;
   }
