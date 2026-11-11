@@ -5,6 +5,7 @@ import { DatabaseHealthCheck } from './database/health-check.js';
 import { createPool, createDb } from './database/pool.js';
 import { SupabaseAuthProvider } from './features/auth/supabase-auth-provider.js';
 import { DrizzleBookRepository } from './features/book/book-repository.js';
+import { OpenLibraryCatalog } from './features/book/open-library-catalog.js';
 import { DrizzleChallengeGroupRepository } from './features/challenge-group/challenge-group-repository.js';
 import { StandingsQuery } from './features/challenge-group/standings-query.js';
 import { DrizzleChatMessageRepository } from './features/group-chat/chat-message-repository.js';
@@ -45,6 +46,7 @@ const server = createApp({
   authProvider,
   healthCheck: new DatabaseHealthCheck(pool),
   bookRepository: new DrizzleBookRepository(db),
+  bookCatalog: new OpenLibraryCatalog({ baseUrl: env.openLibraryUrl }),
   readingStatusRepository: new DrizzleReadingStatusRepository(db),
   libraryQuery: new DrizzleLibraryQuery(db),
   readingSessionRepository: new DrizzleReadingSessionRepository(db),

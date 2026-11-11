@@ -12,7 +12,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Auth (F-AUTH-01) | Login is email and password only; username login removed from the form |
 | Friends (F-SOC-01) | Friend request API (send, list incoming, accept, decline, remove) behind the auth middleware (PR #114) |
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
-| Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with search-as-you-type (fuzzy title, author and ISBN via `pg_trgm`, `GET /book?q=`) and Trending / Most read this week lists, `GET /explore`, migrations 0008–0009. Explore page merged in PR #141; fuzzy search on branch `feat/fuzzy-book-search` |
+| Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with search-as-you-type (fuzzy title, author and ISBN via `pg_trgm`, `GET /book?q=`) and Trending / Most read this week lists, `GET /explore`, migrations 0008–0009. Explore page merged in PR #141, fuzzy search in PR #142. Open Library fallback (#120) in draft PR #144 |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
 
 ## Log
@@ -151,3 +151,17 @@ A running record of what the team did and decided in iteration 2. The [release n
   - `BookPicker` uses the same search unchanged.
 - **Tests.** Backend 290 passing (19 new); frontend 145 passing (7 new).
 - Follow-up: an index on `book_authors(author_id)` would speed up author matches on large catalogues.
+
+### 2026-11-11: Open Library fallback designed (#120, F-EXP-01)
+
+- New [spec](../../superpowers/specs/2026-11-11-open-library-fallback-design.md). When the local search finds fewer than 5 books, `GET /book?q=` asks Open Library through a `BookCatalog` port and imports the hits (keyed by ISBN-13) into `books`, so the database stays the source of truth and the frontend does not change.
+- **Decision: import on search.** *Rejected:* import only when a reader picks a result (temporary ids, a new endpoint, frontend changes) and adding more seed books only (does not deliver #120).
+- **Decision: no Redis.** Postgres caches book data; an in-memory `LRUCache` from the `lru-cache` package (1 h) caches Open Library queries; covers stay in the browser's HTTP cache. An Explore list cache is a follow-up.
+
+### 2026-11-11: Open Library fallback built (#120, F-EXP-01)
+
+- Built from the [spec](../../superpowers/specs/2026-11-11-open-library-fallback-design.md) and the [plan](../../superpowers/plans/2026-11-11-open-library-fallback.md), commits `bf444ea` to `fc41aa1`, draft PR [#144](https://github.com/MESW-LES-2627/les-project-group-6/pull/144).
+- `BookCatalog` port with an `OpenLibraryCatalog` adapter (3 s timeout, `lru-cache` for 1 h). `BookService.search` imports its books when fewer than 5 match locally. New `findByIsbn` and `saveWithAuthors` on the book repository. New setting `OPEN_LIBRARY_URL`; new dependency `lru-cache`.
+- **Tests.** Backend 308 passing (18 new). A real search for "the hobbit" returned 3 books with ISBN-13, authors and cover-id URLs.
+- **Review fixes** (`33df6c6`, `40d2c9a`, `52dd9d9`): catalogue ISBNs are looked up in one query (`findByIsbns`) and only missing books are imported; a failed import is logged and skipped instead of failing the search; the search text is no longer logged. Duplicate authors under concurrent imports moved to [#143](https://github.com/MESW-LES-2627/les-project-group-6/issues/143).
+- Follow-ups: Open Library titles can contain HTML entities (`&amp;`) and `first_sentence` may be in another language; the Explore list cache.
