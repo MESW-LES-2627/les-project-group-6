@@ -663,9 +663,28 @@ export async function getExplore(): Promise<ApiExplore> {
   return getJson<ApiExplore>('/explore', 'Failed to load Explore');
 }
 
-/** Adds a missing book with only its title (F-BOOK-02). */
-export async function addBook(title: string): Promise<ApiBook> {
-  return sendJson<ApiBook>('POST', '/book', { title }, 'Failed to add the book');
+/** What a reader types to add a book no source knows (F-BOOK-02). Only the title is required. */
+export interface NewBookPayload {
+  title: string;
+  authors?: string[];
+  isbn13?: string;
+  pageCount?: number;
+  description?: string;
+}
+
+/** Adds a missing book to the shared catalogue (F-BOOK-02). */
+export async function addBook(book: NewBookPayload): Promise<ApiBook> {
+  return sendJson<ApiBook>('POST', '/book', book, 'Failed to add the book');
+}
+
+/** Puts a book on the reader's shelf as "Not started". */
+export async function addToLibrary(bookId: string): Promise<void> {
+  await sendJson<unknown>(
+    'PUT',
+    `/library/${id(bookId)}`,
+    { status: 'not-started' },
+    'Failed to add the book to your library',
+  );
 }
 
 export function authorOf(bookId: string): string {

@@ -7,6 +7,8 @@ import ExploreView from '../ExploreView.vue';
 const api = vi.hoisted(() => ({
   getExplore: vi.fn<() => Promise<ApiExplore>>(),
   searchBooks: vi.fn<(query: string, signal?: AbortSignal) => Promise<ApiBook[]>>(),
+  addBook: vi.fn<(book: { title: string }) => Promise<ApiBook>>(),
+  addToLibrary: vi.fn<(bookId: string) => Promise<void>>(),
 }));
 vi.mock('@/services/api', async (original) => ({
   ...(await original<typeof import('@/services/api')>()),
@@ -226,5 +228,23 @@ describe('ExploreView', () => {
       expect(router.currentRoute.value.query.q).toBe('dune');
       expect(typed(wrapper)).toBe('dune ');
     });
+  });
+
+  it('adds a book no source knows and opens it from the library', async () => {
+    api.searchBooks.mockResolvedValue([]);
+    api.addBook.mockReset().mockResolvedValue(book('b9', "My grandmother's diary"));
+    api.addToLibrary.mockReset().mockResolvedValue();
+    const { wrapper, router } = await mountView("/explore?q=My grandmother's diary");
+
+    await wrapper
+      .findAll('.link-button')
+      .find((b) => b.text() === 'Add this book')!
+      .trigger('click');
+    await wrapper.get('.add-book form').trigger('submit');
+    await flushPromises();
+
+    expect(api.addBook).toHaveBeenCalledWith({ title: "My grandmother's diary" });
+    expect(api.addToLibrary).toHaveBeenCalledWith('b9');
+    expect(router.currentRoute.value.fullPath).toBe('/library/b9');
   });
 });

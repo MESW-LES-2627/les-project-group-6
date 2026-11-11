@@ -18,10 +18,13 @@ export class BookService {
     private readonly catalog?: BookCatalog,
   ) {}
 
-  async register(props: NewBookProps): Promise<Book> {
+  /**
+   * F-BOOK-02: registers a book with its authors. If a book with the same ISBN-13
+   * already exists, that one is returned and nothing is written.
+   */
+  async register(props: NewBookProps, authorNames: readonly string[] = []): Promise<Book> {
     const book = Book.create(props);
-    await this.books.save(book);
-    return book;
+    return this.books.saveWithAuthors(book, authorNames);
   }
 
   async get(rawId: unknown): Promise<Book> {

@@ -312,3 +312,20 @@ Implement docs/superpowers/plans/2026-11-11-open-library-fallback.md (subagent-d
 
 #### Result
 `BookCatalog` port, `OpenLibraryCatalog` adapter with an `lru-cache` query cache, import on search in `BookService`, `findByIsbn` and `saveWithAuthors`, wiring and 14 new tests.
+
+### 2026-11-11: Add a missing book by hand
+
+- **Date:** 2026-11-11
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, frontend, testing, docs
+
+#### Prompt
+```text
+now, I want to do this user story (#120). If I search by a book that i am not finding. I can create a book mannually in my library and use it. For now, dont add the cover photo upload, just the metadata and save to database
+```
+
+#### Result
+`POST /book` saves authors; new `AddBookForm` on Explore, opened from "Add this book" under the search results, which creates the book, adds it to the library as "Not started" and opens it; `addBook`/`addToLibrary` API helpers; 5 new tests.
+

@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import AddBookForm from '@/components/explore/AddBookForm.vue';
 import BookSearchResults from '@/components/explore/BookSearchResults.vue';
 import ExploreSearchBar from '@/components/explore/ExploreSearchBar.vue';
 import TrendingBookCard from '@/components/explore/TrendingBookCard.vue';
 import PageHeader from '@/components/layout/PageHeader.vue';
-import { getExplore, mapApiBookToLibraryBook, searchBooks, type ApiExplore } from '@/services/api';
+import {
+  addBook,
+  addToLibrary,
+  getExplore,
+  mapApiBookToLibraryBook,
+  searchBooks,
+  type ApiExplore,
+  type NewBookPayload,
+} from '@/services/api';
 import type { LibraryBook } from '@/types/library';
 
 type TabId = 'trending' | 'most-read';
@@ -145,6 +154,30 @@ function search(text: string) {
   void router.push(routeTo(text));
 }
 
+// F-BOOK-02: a book no source knows is created by the reader and shelved as "Not started".
+const adding = ref(false);
+const saving = ref(false);
+const addError = ref('');
+
+watch(query, () => {
+  adding.value = false;
+  addError.value = '';
+});
+
+async function saveBook(payload: NewBookPayload) {
+  saving.value = true;
+  addError.value = '';
+  try {
+    const book = await addBook(payload);
+    await addToLibrary(book.id);
+    await router.push({ name: 'book-detail', params: { bookId: book.id } });
+  } catch (e) {
+    addError.value = (e as Error).message || "Couldn't add the book.";
+  } finally {
+    saving.value = false;
+  }
+}
+
 onBeforeUnmount(() => {
   clearTimeout(typingTimer);
   latestSearch++;
@@ -169,6 +202,16 @@ onBeforeUnmount(() => {
       :loading="searching && results.length === 0"
       :error="searchError"
       @clear="search('')"
+      @add="adding = true"
+    />
+
+    <AddBookForm
+      v-if="query && adding"
+      :initial-title="query"
+      :saving="saving"
+      :error="addError"
+      @submit="saveBook"
+      @cancel="adding = false"
     />
 
     <section class="trending" aria-labelledby="trending-title">

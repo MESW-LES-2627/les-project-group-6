@@ -11,7 +11,7 @@ const props = defineProps<{
   loading: boolean;
   error: boolean;
 }>();
-const emit = defineEmits<{ clear: [] }>();
+const emit = defineEmits<{ clear: []; add: [] }>();
 
 const countLabel = computed(() =>
   props.books.length === 1 ? '1 result' : `${props.books.length} results`,
@@ -47,6 +47,11 @@ const countLabel = computed(() =>
         </RouterLink>
       </li>
     </ul>
+
+    <p v-if="!loading" class="muted add-hint">
+      Not the book you're looking for?
+      <button type="button" class="link-button" @click="emit('add')">Add this book</button>
+    </p>
   </section>
 </template>
 
@@ -89,6 +94,11 @@ const countLabel = computed(() =>
 .title {
   margin: 0;
   font-weight: 600;
+}
+
+.add-hint {
+  margin: var(--space-4) 0 0;
+  font-size: var(--font-size-sm);
 }
 
 .author {
