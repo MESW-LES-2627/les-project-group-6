@@ -43,9 +43,11 @@ async function apiFetch(path: string, init: RequestInit = {}): Promise<Response>
   headers.set('Accept', 'application/json');
   const token = isAuthConfigured() ? await authProvider.accessToken() : null;
   if (token) headers.set('Authorization', `Bearer ${token}`);
+  const timeout = AbortSignal.timeout(10_000);
   const response = await fetch(`${baseUrl}${path}`, {
-    signal: AbortSignal.timeout(10_000),
     ...init,
+    // A caller's signal (e.g. a newer search) and the timeout both cancel the request.
+    signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
     headers,
   });
   if (response.status === 401) onUnauthorized();
@@ -615,8 +617,8 @@ export function apiEndpoint(): { origin: string; path: string } {
 // Shared helpers for JSON requests
 // ---------------------------------------------------------------------------
 
-async function getJson<T>(path: string, fallback: string): Promise<T> {
-  const response = await ensureOk(await apiFetch(path), fallback);
+async function getJson<T>(path: string, fallback: string, init?: RequestInit): Promise<T> {
+  const response = await ensureOk(await apiFetch(path, init), fallback);
   return response.json() as Promise<T>;
 }
 
@@ -643,8 +645,11 @@ function pad(n: number): string {
 // Books catalog (used by the book picker)
 // ---------------------------------------------------------------------------
 
-export async function searchBooks(title: string): Promise<ApiBook[]> {
-  return getJson<ApiBook[]>(`/book?title=${encodeURIComponent(title)}`, 'Failed to search books');
+/** F-EXP-01: books by title, author or ISBN, tolerating small typos; best match first. */
+export async function searchBooks(query: string, signal?: AbortSignal): Promise<ApiBook[]> {
+  return getJson<ApiBook[]>(`/book?q=${encodeURIComponent(query)}`, 'Failed to search books', {
+    signal,
+  });
 }
 
 /** The two weekly lists of the Explore page (F-EXP-04), and random books while nothing is trending. */
