@@ -13,6 +13,12 @@ export interface IBookRepository {
   search(query: string, limit: number): Promise<Book[]>;
   /** The books that exist among these ids, in no particular order. */
   findByIds(ids: readonly BookId[]): Promise<Book[]>;
+  findByIsbn(isbn: Isbn13): Promise<Book | null>;
+  /**
+   * Saves a new book with its authors (an author with the same name is reused). If another
+   * book already has this ISBN-13, nothing is written and that book is returned instead.
+   */
+  saveWithAuthors(book: Book, authorNames: readonly string[]): Promise<Book>;
   /** Up to `limit` books picked at random from the catalogue. */
   random(limit: number): Promise<Book[]>;
   save(book: Book): Promise<void>;
@@ -157,6 +163,48 @@ export class DrizzleBookRepository implements IBookRepository {
         ),
       );
     return rows.map(toDomain);
+  }
+
+  async findByIsbn(isbn: Isbn13): Promise<Book | null> {
+    const rows = await this.db.select().from(books).where(eq(books.isbn13, isbn.value)).limit(1);
+    const row = rows[0];
+    return row ? toDomain(row) : null;
+  }
+
+  async saveWithAuthors(book: Book, authorNames: readonly string[]): Promise<Book> {
+    return this.db.transaction(async (tx) => {
+      // ON CONFLICT on the ISBN-13 makes two searches importing the same book at once safe.
+      const inserted = await tx
+        .insert(books)
+        .values(toRow(book))
+        .onConflictDoNothing({ target: books.isbn13 })
+        .returning();
+      if (inserted.length === 0) {
+        const existing = await tx
+          .select()
+          .from(books)
+          .where(eq(books.isbn13, book.isbn13!.value))
+          .limit(1);
+        return toDomain(existing[0]!);
+      }
+
+      for (const name of new Set(authorNames.map((n) => n.trim()).filter(Boolean))) {
+        // authors.name is not unique, so look it up first.
+        const found = await tx
+          .select({ id: authors.id })
+          .from(authors)
+          .where(eq(authors.name, name))
+          .limit(1);
+        const authorId =
+          found[0]?.id ??
+          (await tx.insert(authors).values({ name }).returning({ id: authors.id }))[0]!.id;
+        await tx
+          .insert(bookAuthors)
+          .values({ bookId: book.id.value, authorId })
+          .onConflictDoNothing();
+      }
+      return toDomain(inserted[0]!);
+    });
   }
 
   async random(limit: number): Promise<Book[]> {

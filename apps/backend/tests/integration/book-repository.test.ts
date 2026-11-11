@@ -2,7 +2,7 @@ import { test, describe, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createDb } from '../../src/database/pool.js';
 import { DrizzleBookRepository } from '../../src/features/book/book-repository.js';
-import { Book, BookId } from '../../src/features/book/book.js';
+import { Book, BookId, Isbn13 } from '../../src/features/book/book.js';
 import { createTestPool, truncateTables } from '../helpers/test-db.js';
 
 describe('DrizzleBookRepository Integration', () => {
@@ -100,6 +100,43 @@ describe('DrizzleBookRepository Integration', () => {
       'Emma',
     ]);
     assert.deepEqual(await repo.random(0), []);
+  });
+
+  test('findByIsbn returns the book with that ISBN-13, or null', async () => {
+    const dune = Book.create({ title: 'Dune', isbn13: '9780441172719' });
+    await repo.save(dune);
+
+    assert.equal((await repo.findByIsbn(Isbn13.of('9780441172719')))?.id.value, dune.id.value);
+    assert.equal(await repo.findByIsbn(Isbn13.of('9780451524935')), null);
+  });
+
+  test('saveWithAuthors links the authors, reusing one that already exists', async () => {
+    const first = Book.create({ title: 'Good Omens', isbn13: '9780060853983' });
+    const saved = await repo.saveWithAuthors(first, ['Terry Pratchett', 'Neil Gaiman']);
+    const second = Book.create({ title: 'Mort', isbn13: '9780062225719' });
+    await repo.saveWithAuthors(second, ['Terry Pratchett']);
+
+    assert.equal(saved.id.value, first.id.value);
+    const { rows: authorRows } = await pool.query('SELECT name FROM authors ORDER BY name');
+    assert.deepEqual(
+      authorRows.map((r) => r.name),
+      ['Neil Gaiman', 'Terry Pratchett'],
+    );
+    assert.deepEqual(titles(await repo.search('pratchett', 10)), ['Good Omens', 'Mort']);
+  });
+
+  test('saveWithAuthors returns the existing book when the ISBN-13 is taken', async () => {
+    const existing = Book.create({ title: 'Dune', isbn13: '9780441172719' });
+    await repo.save(existing);
+
+    const winner = await repo.saveWithAuthors(
+      Book.create({ title: 'Dune (copy)', isbn13: '9780441172719' }),
+      ['Frank Herbert'],
+    );
+
+    assert.equal(winner.id.value, existing.id.value);
+    const { rows } = await pool.query('SELECT count(*)::int AS n FROM books');
+    assert.equal(rows[0].n, 1);
   });
 
   describe('search', () => {

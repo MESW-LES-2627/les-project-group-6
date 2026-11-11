@@ -83,6 +83,18 @@ export class InMemoryBookRepository implements IBookRepository {
     return ids.flatMap((id) => this.books.get(id.value) ?? []);
   }
 
+  async findByIsbn(isbn: Isbn13): Promise<Book | null> {
+    return [...this.books.values()].find((b) => b.isbn13?.equals(isbn)) ?? null;
+  }
+
+  // Authors are ignored: Book has none, and search here is title-only.
+  async saveWithAuthors(book: Book): Promise<Book> {
+    const existing = book.isbn13 ? await this.findByIsbn(book.isbn13) : null;
+    if (existing) return existing;
+    await this.save(book);
+    return book;
+  }
+
   async random(limit: number): Promise<Book[]> {
     return [...this.books.values()]
       .map((book) => ({ book, key: Math.random() }))
