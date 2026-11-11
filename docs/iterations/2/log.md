@@ -10,6 +10,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 |---|---|
 | Releases | One GitHub Release per sprint (`iter-0` to `iter-4`), made by hand with `iteration-release.yml`; `vX.Y.Z` stay as tags only. `iter-0` and `iter-1` released |
 | Auth (F-AUTH-01) | Login is email and password only; username login removed from the form |
+| Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
 
 ## Log
@@ -78,3 +79,12 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 - New [event storming board](../../oop_assets/eventstorming.png), shown in [`design.md`](../../design.md) under iteration 1, which was a placeholder until now.
 - It maps the event flow in six subdomains (Authentication, Search engine, Group Sessions, Chat, Library, Profile) and marks the aggregates: User Account, Book, Book Challenge, Reading Session, Chat Message, Review and Reading Status.
+
+### 2026-11-11: Reading status dates and library routes behind the auth middleware (#28)
+
+- PR [#115](https://github.com/MESW-LES-2627/les-project-group-6/pull/115) for [F-LIB-01](../../requirements/requirements.md): `started_on`/`finished_on` on `reading_status`, set on status changes and checked (`finishedOn` not before `startedOn`), `ensureInProgress` when a reading session starts, and delete and library routes. The original work log is in the [iteration 1 LLM log](../1/LLM_LOG.md).
+- **Migration renumbered.** The branch's `0004_tidy_scorpion` clashed with `main`'s 0004 to 0006, so it was dropped and regenerated on top of them as [0007](../../../apps/backend/src/database/migrations/0007_reading_status_dates.sql) (same two `ALTER TABLE`s). It runs with the CD on merge.
+- **Auth.** After merging `main` every route takes the reader from the token: `userId` in the body, query or path is ignored, `DELETE /reading-status/:id` now reports another reader's entry as not found (like `PATCH`), `DELETE /user/:userId/library/:bookId` became `DELETE /me/library/:bookId`, and `GET /library?userId=` was removed because `GET /me/library` already does it. *Rejected:* keeping the `userId` routes, because any reader could change another reader's library.
+- **CI.** `scripts/check-commits.sh` was removed on `main`, so the PR's change allowing the `db` commit type moved into the inline check in [`commitlint.yml`](../../../.github/workflows/commitlint.yml) (the branch has a `db:` commit).
+- Documented in the [backend README](../../../apps/backend/README.md) and [`api_routes.md`](../../architecture/api_routes.md).
+
