@@ -193,3 +193,22 @@ push and merge both prs
 
 #### Explanation of Changes
 Merged `main` into PR #115 and resolved the conflicts. Regenerated the reading status dates migration as 0007, made every reading status and library route take the reader from the token, added an ownership check to `removeById`, replaced `DELETE /user/:userId/library/:bookId` with `DELETE /me/library/:bookId` and dropped `GET /library?userId=`. Rewrote the integration tests to use `FakeAuthProvider`, added `db` to the commit types in `commitlint.yml`, and moved the PR's docs into `docs/iterations/`.
+
+### 2026-11-11: Explore page spec
+
+- **Date:** 2026-11-11
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs, architecture, frontend, backend
+
+#### Prompt
+```text
+I will do this user story https://github.com/orgs/MESW-LES-2627/projects/23/views/10?pane=issue&itemId=297555567&issue=MESW-LES-2627%7Cles-project-group-6%7C126
+here some infos to create the spec:
+- keep the style patern of UI. reuse components if possible
+- We need to create the explore page. The explore page yill have a big search bar to search by books and below some books on trend.
+```
+
+#### Result
+Wrote the [Explore page design](../../superpowers/specs/2026-11-11-explore-page-design.md) after two questions: search is inline using the existing `GET /book`, and both lists from the story are built. The backend composes the published read contracts (`ReadingActivityQuery`, `ReadingProgressQuery`) and adds `reading_status.created_at` (migration 0008). The UI follows the old Explore mockup and reuses the global classes and existing components.

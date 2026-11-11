@@ -53,7 +53,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 ## Next steps
 
-- Split #125, #126 and #127 into Task sub-issues and assign owners.
+- Split #125, #126 and #127 into Task sub-issues and assign owners. #126 now has a [spec](../../superpowers/specs/2026-11-11-explore-page-design.md) to split from.
 - In project 23, add the views that the API cannot create: **Current sprint** (board, filter `iteration:@current`, columns by Status) and group **Prioritized backlog** by Iteration.
 - Check and close the open issues that look done in the code: #10 #25 (book page), #28 #30 (library and status), #43 #49 (session API and summary), #52 #55 #59 (group invites, done in #107).
 - Fill in [`release_notes.md`](release_notes.md) before running "Iteration release" for `iter-2`.
@@ -94,3 +94,11 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Auth.** After merging `main` every route takes the reader from the token: `userId` in the body, query or path is ignored, `DELETE /reading-status/:id` now reports another reader's entry as not found (like `PATCH`), `DELETE /user/:userId/library/:bookId` became `DELETE /me/library/:bookId`, and `GET /library?userId=` was removed because `GET /me/library` already does it. *Rejected:* keeping the `userId` routes, because any reader could change another reader's library.
 - **CI.** `scripts/check-commits.sh` was removed on `main`, so the PR's change allowing the `db` commit type moved into the inline check in [`commitlint.yml`](../../../.github/workflows/commitlint.yml) (the branch has a `db:` commit).
 - Documented in the [backend README](../../../apps/backend/README.md) and [`api_routes.md`](../../architecture/api_routes.md).
+
+### 2026-11-11: Explore page spec (#126)
+
+- New [Explore page design](../../superpowers/specs/2026-11-11-explore-page-design.md) for story [#126](https://github.com/MESW-LES-2627/les-project-group-6/issues/126) (F-EXP-04, F-EXP-01). It covers a big search bar, a "Trending" list (most readers who added the book in 7 days) and a "Most read this week" list (most counted minutes in 7 days). The layout follows the old Explore mockup (`08-explore.png`) and reuses the global classes, `BookCoverImage` and the page header.
+- **Decision: search is inline on Explore and reuses `GET /book?title=`.** When #120 lands, only the endpoint behind it changes. *Rejected:* a separate `/search` page, because that page belongs to #120.
+- **Decision: `GET /explore` is served by an `ExploreService` that asks the published read contracts** (`ReadingActivityQuery.topBooks`, `ReadingProgressQuery.mostAdded`) and loads books with `findByIds`. *Rejected:* a query that reads `reading_sessions` and `reading_status` directly, because it would bring back the coupling fixed in `d1f3e37`.
+- **Decision: "added to library" needs `reading_status.created_at`** (migration 0008, backfilled from `updated_at`), because `started_on` is the date reading started, not the date the book was added.
+- Out of scope: reader search, friends and genre trending, Open Library, and trending on Home.
