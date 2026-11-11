@@ -36,5 +36,7 @@ describe('AppHeader', () => {
 
     const explore = wrapper.findAll('.nav-link').find((l) => l.text() === 'Explore')!;
     expect(explore.attributes('href')).toBe('/explore');
+    // Search lives on the Explore page, not in the header
+    expect(wrapper.find('[role="search"]').exists()).toBe(false);
   });
 });

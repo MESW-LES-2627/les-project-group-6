@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
 const props = defineProps<{
@@ -7,7 +7,7 @@ const props = defineProps<{
   unreadNotifications: number;
 }>();
 
-const emit = defineEmits<{ search: [query: string]; 'sign-out': [] }>();
+const emit = defineEmits<{ 'sign-out': [] }>();
 
 const navItems = [
   { label: 'Home', to: '/home' },
@@ -17,16 +17,9 @@ const navItems = [
   { label: 'Profile', to: '/profile' },
 ];
 
-const query = ref('');
-const searchOpen = ref(false);
 const menuOpen = ref(false);
 const menuRoot = ref<HTMLElement | null>(null);
 const menuButton = ref<HTMLButtonElement | null>(null);
-const searchInput = ref<HTMLInputElement | null>(null);
-
-function submitSearch() {
-  emit('search', query.value.trim());
-}
 
 function signOut() {
   closeMenu();
@@ -61,14 +54,6 @@ const notificationsLabel = computed(() =>
     ? `Notifications, ${props.unreadNotifications} unread`
     : 'Notifications',
 );
-
-async function toggleSearch() {
-  searchOpen.value = !searchOpen.value;
-  if (searchOpen.value) {
-    await nextTick();
-    searchInput.value?.focus();
-  }
-}
 </script>
 
 <template>
@@ -94,58 +79,6 @@ async function toggleSearch() {
       </nav>
 
       <div class="tools">
-        <form
-          :class="['search', { open: searchOpen }]"
-          role="search"
-          @submit.prevent="submitSearch"
-        >
-          <label for="site-search" class="sr-only">Search books, people and groups</label>
-          <svg
-            class="search-icon"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            aria-hidden="true"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" />
-          </svg>
-          <input
-            id="site-search"
-            ref="searchInput"
-            v-model="query"
-            type="search"
-            placeholder="Search"
-          />
-        </form>
-
-        <button
-          type="button"
-          class="icon-button search-toggle"
-          :aria-expanded="searchOpen"
-          aria-controls="site-search"
-          aria-label="Search"
-          @click="toggleSearch"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            aria-hidden="true"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" />
-          </svg>
-        </button>
-
         <button type="button" class="icon-button notifications" :aria-label="notificationsLabel">
           <svg
             width="20"
@@ -268,39 +201,6 @@ async function toggleSearch() {
   margin-left: auto;
 }
 
-.search {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-icon {
-  position: absolute;
-  left: 11px;
-  color: var(--color-text-muted);
-}
-
-.search input {
-  width: 220px;
-  height: 38px;
-  padding: 0 var(--space-3) 0 34px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-control);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--font-size-sm);
-}
-
-.search input::placeholder {
-  color: var(--color-text-muted);
-}
-
-.search input:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
-}
-
 .icon-button {
   position: relative;
   display: inline-flex;
@@ -317,10 +217,6 @@ async function toggleSearch() {
 
 .icon-button:hover {
   background: var(--color-surface-hover);
-}
-
-.search-toggle {
-  display: none;
 }
 
 .badge {
@@ -406,7 +302,6 @@ async function toggleSearch() {
 
 @media (max-width: 899px) {
   .bar {
-    position: relative;
     flex-wrap: wrap;
     row-gap: 0;
   }
@@ -421,29 +316,6 @@ async function toggleSearch() {
 
   .nav-link {
     padding: var(--space-3) 0 10px;
-  }
-
-  .search {
-    display: none;
-  }
-
-  /* On phones the field opens as a full-width row under the header */
-  .search.open {
-    position: absolute;
-    top: calc(100% + var(--space-2));
-    right: var(--page-gutter);
-    left: var(--page-gutter);
-    z-index: 15;
-    display: flex;
-  }
-
-  .search.open input {
-    width: 100%;
-    box-shadow: var(--shadow-menu);
-  }
-
-  .search-toggle {
-    display: inline-flex;
   }
 }
 </style>

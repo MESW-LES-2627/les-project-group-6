@@ -119,3 +119,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Tests.** Backend 271 passing (11 new); frontend 138 passing (11 new). The page was checked in a headless browser at desktop and 375px widths with a mocked API, because there was no local Supabase setup.
 - Open: when #120 lands, Explore's search should use its endpoint. Authors show "Unknown Author" until books store an author.
 
+### 2026-11-11: Header search removed (#126)
+
+- The header's search field (and its phone toggle) is gone: it emitted a `search` event nothing listened to, and book search now lives on the [Explore page](../../../apps/frontend/src/views/ExploreView.vue). The Explore column now takes the full page width like Home (`width: 100%`; the app shell is a flex column, so it had shrunk to its content).
+- The Explore API test now backdates its `reading_status` row: the Docker Postgres clock ran a few ms ahead of Node, so a row stamped `now()` fell just after the window end.
