@@ -5,12 +5,28 @@ import PagePlate from '@/components/layout/PagePlate.vue';
 import LibraryBookCard from '@/components/library/LibraryBookCard.vue';
 import LibrarySidebar from '@/components/library/LibrarySidebar.vue';
 import { mockLibrary } from '@/mocks/library';
-import { getUserLibrary, mapApiLibraryItemToBook } from '@/services/api';
-import type { LibraryBook, LibrarySort, Shelf, ShelfId } from '@/types/library';
+import {
+  createLibraryFolder,
+  deleteLibraryFolder,
+  getLibraryFolders,
+  getUserLibrary,
+  mapApiLibraryItemToBook,
+  renameLibraryFolder,
+} from '@/services/api';
+import { isSignedIn } from '@/stores/session';
+import type { FolderSummary, LibraryBook, LibrarySort, Shelf, ShelfId } from '@/types/library';
 import { sortBooks } from '@/utils/library';
 
-const rawBooks = ref<LibraryBook[]>(mockLibrary.books);
-const isApiLoaded = ref(false);
+const rawBooks = ref<LibraryBook[]>(isSignedIn.value ? [] : mockLibrary.books);
+const libraryError = ref<string | null>(null);
+
+const folders = ref<FolderSummary[]>(isSignedIn.value ? [] : mockLibrary.folders);
+const folderError = ref<string | null>(null);
+
+const DUPLICATE_FOLDER = 'You already have a folder with this name';
+
+const sortFolders = (list: FolderSummary[]) =>
+  [...list].sort((a, b) => a.name.localeCompare(b.name));
 
 const activeShelf = ref<ShelfId>('all');
 const activeFolder = ref('');
@@ -20,29 +36,116 @@ const search = ref('');
 const sort = ref<LibrarySort>('recent');
 
 async function fetchLibraryData() {
+  if (!isSignedIn.value) return;
+
   try {
     const items = await getUserLibrary();
-    if (items && items.length > 0) {
-      rawBooks.value = items.map(mapApiLibraryItemToBook);
-      isApiLoaded.value = true;
-    }
+    rawBooks.value = items.map(mapApiLibraryItemToBook);
+    libraryError.value = null;
   } catch {
-    // Keep mock data on error or in testing
+    rawBooks.value = [];
+    libraryError.value = 'We could not load your library. Please refresh the page.';
+  }
+}
+
+async function fetchFolders() {
+  if (!isSignedIn.value) return;
+
+  try {
+    folders.value = sortFolders(await getLibraryFolders());
+    folderError.value = null;
+  } catch {
+    folders.value = [];
+    folderError.value = 'We could not load your folders. Please refresh the page.';
   }
 }
 
 onMounted(() => {
   void fetchLibraryData();
+  void fetchFolders();
 });
+
+const hasFolderName = (name: string, exceptId?: string) =>
+  folders.value.some(
+    (folder) => folder.id !== exceptId && folder.name.toLowerCase() === name.toLowerCase(),
+  );
+
+async function createFolder(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  folderError.value = null;
+
+  if (hasFolderName(trimmed)) {
+    folderError.value = DUPLICATE_FOLDER;
+    return;
+  }
+
+  try {
+    if (isSignedIn.value) {
+      const created = await createLibraryFolder(trimmed);
+      folders.value = sortFolders([...folders.value, created]);
+    } else {
+      folders.value = sortFolders([
+        ...folders.value,
+        { id: `local-${Date.now()}`, name: trimmed, count: 0 },
+      ]);
+    }
+  } catch (error) {
+    folderError.value = error instanceof Error ? error.message : 'Failed to create the folder';
+  }
+}
+
+async function renameFolder(id: string, name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  folderError.value = null;
+
+  if (hasFolderName(trimmed, id)) {
+    folderError.value = DUPLICATE_FOLDER;
+    return;
+  }
+
+  try {
+    if (isSignedIn.value) await renameLibraryFolder(id, trimmed);
+    folders.value = sortFolders(
+      folders.value.map((folder) => (folder.id === id ? { ...folder, name: trimmed } : folder)),
+    );
+  } catch (error) {
+    folderError.value = error instanceof Error ? error.message : 'Failed to rename the folder';
+  }
+}
+
+async function deleteFolder(id: string) {
+  folderError.value = null;
+  try {
+    if (isSignedIn.value) await deleteLibraryFolder(id);
+    folders.value = folders.value.filter((folder) => folder.id !== id);
+    rawBooks.value = rawBooks.value.map((book) => ({
+      ...book,
+      folderIds: book.folderIds.filter((folderId) => folderId !== id),
+    }));
+    if (activeFolder.value === id) activeFolder.value = '';
+  } catch (error) {
+    folderError.value = error instanceof Error ? error.message : 'Failed to delete the folder';
+  }
+}
 
 const genreOptions = computed(() => [...new Set(rawBooks.value.map((book) => book.genre))].sort());
 
 const folderName = computed(
-  () => mockLibrary.folders.find((folder) => folder.id === activeFolder.value)?.name,
+  () => folders.value.find((folder) => folder.id === activeFolder.value)?.name,
 );
 
+const displayFolders = computed<FolderSummary[]>(() => {
+  if (!isSignedIn.value) return folders.value;
+  return folders.value.map((folder) => ({
+    ...folder,
+    count: rawBooks.value.filter((book) => book.folderIds.includes(folder.id)).length,
+  }));
+});
+
 const shelves = computed<Shelf[]>(() => {
-  if (!isApiLoaded.value) return mockLibrary.shelves;
+  if (!isSignedIn.value) return mockLibrary.shelves;
   const count = (status: ShelfId) => rawBooks.value.filter((b) => b.status === status).length;
   return [
     { id: 'all', label: 'All books', count: rawBooks.value.length },
@@ -67,7 +170,7 @@ const books = computed(() => {
   return sortBooks(filtered, sort.value);
 });
 
-const totalCount = computed(() => (isApiLoaded.value ? rawBooks.value.length : mockLibrary.total));
+const totalCount = computed(() => (isSignedIn.value ? rawBooks.value.length : mockLibrary.total));
 
 const shelfCount = (id: ShelfId) => shelves.value.find((s) => s.id === id)?.count ?? 0;
 
@@ -201,12 +304,16 @@ function showEverything() {
 
       <div class="layout">
         <LibrarySidebar
-          :folders="mockLibrary.folders"
+          :folders="displayFolders"
           :tags="mockLibrary.tags"
           :active-folder="activeFolder || null"
           :active-tag="activeTag || null"
+          :error="folderError"
           @select-folder="selectFolder"
           @select-tag="selectTag"
+          @create-folder="createFolder"
+          @rename-folder="renameFolder"
+          @delete-folder="deleteFolder"
         />
 
         <section class="results" aria-labelledby="books-title">
@@ -214,6 +321,8 @@ function showEverything() {
             <h2 id="books-title" class="section-title">{{ heading }}</h2>
             <span class="section-meta summary">{{ books.length }} of {{ totalCount }} shown</span>
           </div>
+
+          <p v-if="libraryError" class="empty library-error">{{ libraryError }}</p>
 
           <div v-if="books.length > 0" class="grid">
             <LibraryBookCard v-for="book in books" :key="book.id" :book="book" />

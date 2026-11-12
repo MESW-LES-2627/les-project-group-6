@@ -1,4 +1,4 @@
-import { reactive, readonly } from 'vue';
+import { computed, reactive, readonly } from 'vue';
 import {
   ApiError,
   createMe,
@@ -201,6 +201,9 @@ export function createSession(
 export type Session = ReturnType<typeof createSession>;
 
 export const session = createSession();
+
+/** True once the reader is signed in with a profile. */
+export const isSignedIn = computed(() => session.state.status === 'ready');
 
 /** The signed-in reader's id. Only call on pages behind the router guard. */
 export function currentUserId(): string {

@@ -4,13 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { mockLibrary } from '@/mocks/library';
 import LibrarySidebar from '../LibrarySidebar.vue';
 
-function mountSidebar() {
+function mountSidebar(error: string | null = null) {
   return mount(LibrarySidebar, {
     props: {
       folders: mockLibrary.folders,
       tags: mockLibrary.tags,
       activeFolder: 'autumn',
       activeTag: null,
+      error,
     },
   });
 }
@@ -31,15 +32,47 @@ describe('LibrarySidebar', () => {
     expect(wrapper.get('.folder-list .row.active').text()).toContain('Autumn reading');
   });
 
-  it('emits the selected folder, tag and a new folder', async () => {
+  it('emits the selected folder and tag', async () => {
     const wrapper = mountSidebar();
 
     await wrapper.findAll('.folder-list .row')[1]!.trigger('click');
     await wrapper.findAll('.tag')[0]!.trigger('click');
-    await wrapper.get('.add-folder').trigger('click');
 
     expect(wrapper.emitted('selectFolder')).toEqual([['favorites']]);
     expect(wrapper.emitted('selectTag')).toEqual([['borrowed']]);
-    expect(wrapper.emitted('createFolder')).toHaveLength(1);
+  });
+
+  it('creates a folder from the inline form', async () => {
+    const wrapper = mountSidebar();
+
+    await wrapper.get('.add-folder').trigger('click');
+    await wrapper.get('.create-form .folder-input').setValue('  Winter reading  ');
+    await wrapper.get('.create-form').trigger('submit');
+
+    expect(wrapper.emitted('createFolder')).toEqual([['Winter reading']]);
+  });
+
+  it('renames a folder from its row', async () => {
+    const wrapper = mountSidebar();
+
+    await wrapper.get('[aria-label="Rename Autumn reading"]').trigger('click');
+    await wrapper.get('[aria-label="Rename Autumn reading"]').setValue('Autumn reads');
+    await wrapper.get('.folder-form').trigger('submit');
+
+    expect(wrapper.emitted('renameFolder')).toEqual([['autumn', 'Autumn reads']]);
+  });
+
+  it('deletes a folder from its row', async () => {
+    const wrapper = mountSidebar();
+
+    await wrapper.get('[aria-label="Delete All-time favorites"]').trigger('click');
+
+    expect(wrapper.emitted('deleteFolder')).toEqual([['favorites']]);
+  });
+
+  it('shows the duplicate-name error exactly', () => {
+    const wrapper = mountSidebar('You already have a folder with this name');
+
+    expect(wrapper.get('.folder-error').text()).toBe('You already have a folder with this name');
   });
 });

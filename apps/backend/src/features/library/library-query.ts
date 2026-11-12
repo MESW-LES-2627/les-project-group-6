@@ -1,6 +1,6 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { books, readingStatus } from '../../database/schema.js';
+import { books, listBooks, lists, readingStatus } from '../../database/schema.js';
 import type { ReadingStatusType } from '../reading-status/reading-state.js';
 import type { UserId } from '../user/user.js';
 
@@ -25,6 +25,8 @@ export interface LibraryItemView {
   startedOn: string | null;
   finishedOn: string | null;
   updatedAt: string;
+  /** The reader's folders that hold this book; a book can be in several. */
+  folderIds: string[];
 }
 
 export interface LibraryQuery {
@@ -52,6 +54,11 @@ export class DrizzleLibraryQuery implements LibraryQuery {
       .innerJoin(books, eq(readingStatus.bookId, books.id))
       .where(and(...conditions));
 
+    const folderIdsByBook = await this.folderIdsByBook(
+      userId,
+      rows.map((row) => row.book.id),
+    );
+
     return rows.map((row) => ({
       id: row.id,
       book: {
@@ -69,6 +76,30 @@ export class DrizzleLibraryQuery implements LibraryQuery {
       startedOn: row.startedOn ?? null,
       finishedOn: row.finishedOn ?? null,
       updatedAt: new Date(row.updatedAt).toISOString(),
+      folderIds: folderIdsByBook.get(row.book.id) ?? [],
     }));
+  }
+
+  /** Only the reader's own folders count; group lists are never exposed here. */
+  private async folderIdsByBook(
+    userId: UserId,
+    bookIds: readonly string[],
+  ): Promise<Map<string, string[]>> {
+    const byBook = new Map<string, string[]>();
+    if (bookIds.length === 0) return byBook;
+
+    const memberships = await this.db
+      .select({ folderId: listBooks.listId, bookId: listBooks.bookId })
+      .from(listBooks)
+      .innerJoin(lists, eq(listBooks.listId, lists.id))
+      .where(and(eq(lists.userId, userId.value), inArray(listBooks.bookId, [...bookIds])))
+      .orderBy(lists.name);
+
+    for (const membership of memberships) {
+      const ids = byBook.get(membership.bookId) ?? [];
+      ids.push(membership.folderId);
+      byBook.set(membership.bookId, ids);
+    }
+    return byBook;
   }
 }

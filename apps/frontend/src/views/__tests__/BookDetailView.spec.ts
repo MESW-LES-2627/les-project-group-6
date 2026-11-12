@@ -108,4 +108,22 @@ describe('BookDetailView', () => {
     expect(wrapper.get('h1').text()).toBe('Book not found');
     expect(wrapper.get('.missing-link').attributes('href')).toBe('/library');
   });
+
+  it('adds and removes the book from folders without changing its status', async () => {
+    const wrapper = await mountView();
+
+    expect(wrapper.get('.reading-panel').text()).toContain('Autumn reading • Classics club');
+
+    await wrapper.get('.folder-toggle').trigger('click');
+    const options = wrapper.findAll('.folder-option');
+    await options[1]!.get('input').setValue(true);
+
+    expect(wrapper.get('.folder-toggle').text()).toContain('All-time favorites');
+    expect(wrapper.get('.status-badge').text()).toBe('IN PROGRESS');
+
+    await options[0]!.get('input').setValue(false);
+
+    expect(wrapper.get('.folder-toggle').text()).not.toContain('Autumn reading');
+    expect(wrapper.get('.folder-toggle').text()).toContain('All-time favorites • Classics club');
+  });
 });

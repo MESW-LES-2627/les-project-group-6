@@ -52,4 +52,37 @@ describe('LibraryView', () => {
     expect((wrapper.get('input[type="search"]').element as HTMLInputElement).value).toBe('');
     expect(wrapper.get('.summary').text()).toBe('6 of 32 shown');
   });
+
+  it('creates a folder and rejects a duplicate name in any case', async () => {
+    const wrapper = mountView();
+
+    await wrapper.get('.add-folder').trigger('click');
+    await wrapper.get('.create-form .folder-input').setValue('Winter reading');
+    await wrapper.get('.create-form').trigger('submit');
+
+    expect(wrapper.get('.folder-list').text()).toContain('Winter reading');
+
+    await wrapper.get('.add-folder').trigger('click');
+    await wrapper.get('.create-form .folder-input').setValue('winter READING');
+    await wrapper.get('.create-form').trigger('submit');
+
+    expect(wrapper.get('.folder-error').text()).toBe('You already have a folder with this name');
+    expect(wrapper.findAll('.folder-list .folder-item')).toHaveLength(4);
+  });
+
+  it('renames and deletes a folder without removing books', async () => {
+    const wrapper = mountView();
+
+    await wrapper.get('[aria-label="Rename Autumn reading"]').trigger('click');
+    await wrapper.get('[aria-label="Rename Autumn reading"]').setValue('Autumn reads');
+    await wrapper.get('.folder-form').trigger('submit');
+
+    expect(wrapper.get('.folder-list').text()).toContain('Autumn reads');
+    expect(wrapper.get('.folder-list').text()).not.toContain('Autumn reading');
+
+    await wrapper.get('[aria-label="Delete Classics club"]').trigger('click');
+
+    expect(wrapper.get('.folder-list').text()).not.toContain('Classics club');
+    expect(wrapper.findAll('article')).toHaveLength(6);
+  });
 });

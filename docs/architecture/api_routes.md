@@ -55,7 +55,20 @@ There is no `DELETE /book/:id`: other readers' statuses, reviews and sessions de
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/me/library?status=` | Lists the reader's books with their reading status, optionally filtered by status. |
+| GET | `/me/library?status=` | Lists the reader's books with their reading status and `folderIds`, optionally filtered by status. |
+
+### Library folders (`features/library-folder/library-folder-routes.ts`, F-LIB-03)
+
+Every route is scoped to the signed-in reader: a folder that belongs to someone else answers `404`.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/me/library/folders` | Lists the reader's private folders with their book `count`, sorted by name. |
+| POST | `/me/library/folders` | Creates a folder (`name`, 1 to 100 characters) and returns it (`201`). Duplicate names ignoring case answer `409 FOLDER_NAME_TAKEN`. |
+| PATCH | `/me/library/folders/:folderId` | Renames one of the reader's folders (`200`; `409 FOLDER_NAME_TAKEN`). |
+| DELETE | `/me/library/folders/:folderId` | Deletes the folder (`204`); its books stay in the reader's library and in their other folders. |
+| PUT | `/me/library/folders/:folderId/books/:bookId` | Puts a book that is already in the reader's library into the folder (`204`). A book can be in several folders; adding it twice is a no-op. |
+| DELETE | `/me/library/folders/:folderId/books/:bookId` | Removes the book from that folder only (`204`); its reading status is untouched. |
 
 ### Explore (`features/explore/explore-routes.ts`)
 

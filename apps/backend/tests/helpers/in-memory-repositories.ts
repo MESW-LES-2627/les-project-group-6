@@ -49,6 +49,11 @@ import type {
   ProfileReviewView,
   ReviewQuery,
 } from '../../src/features/review/review-query.js';
+import type {
+  FolderView,
+  IFolderRepository,
+} from '../../src/features/library-folder/folder-repository.js';
+import type { Folder, FolderId, FolderName } from '../../src/features/library-folder/folder.js';
 import {
   UsernameTakenError,
   type User,
@@ -423,6 +428,60 @@ export class InMemoryGroupMembership implements GroupMembership {
 
   async roleOf(groupId: GroupId, userId: UserId): Promise<MemberRole | null> {
     return this.roles.get(`${groupId.value}:${userId.value}`) ?? null;
+  }
+}
+
+export class InMemoryFolderRepository implements IFolderRepository {
+  private readonly folders = new Map<string, Folder>();
+  private readonly members = new Map<string, Set<string>>();
+
+  async listForUser(userId: UserId): Promise<FolderView[]> {
+    return [...this.folders.values()]
+      .filter((folder) => folder.userId.equals(userId))
+      .sort((a, b) => a.name.value.localeCompare(b.name.value))
+      .map((folder) => ({
+        id: folder.id.value,
+        name: folder.name.value,
+        count: this.members.get(folder.id.value)?.size ?? 0,
+        createdAt: folder.createdAt.toISOString(),
+      }));
+  }
+
+  async findById(id: FolderId): Promise<Folder | null> {
+    return this.folders.get(id.value) ?? null;
+  }
+
+  async findByName(userId: UserId, name: FolderName): Promise<Folder | null> {
+    return (
+      [...this.folders.values()].find(
+        (folder) => folder.userId.equals(userId) && folder.name.matches(name),
+      ) ?? null
+    );
+  }
+
+  async save(folder: Folder): Promise<void> {
+    this.folders.set(folder.id.value, folder);
+  }
+
+  async delete(id: FolderId): Promise<boolean> {
+    this.members.delete(id.value);
+    return this.folders.delete(id.value);
+  }
+
+  async addBook(folderId: FolderId, bookId: BookId): Promise<boolean> {
+    const books = this.members.get(folderId.value) ?? new Set<string>();
+    if (books.has(bookId.value)) return false;
+    books.add(bookId.value);
+    this.members.set(folderId.value, books);
+    return true;
+  }
+
+  async removeBook(folderId: FolderId, bookId: BookId): Promise<boolean> {
+    return this.members.get(folderId.value)?.delete(bookId.value) ?? false;
+  }
+
+  async countBooks(folderId: FolderId): Promise<number> {
+    return this.members.get(folderId.value)?.size ?? 0;
   }
 }
 

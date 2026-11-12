@@ -12,6 +12,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Auth (F-AUTH-01) | Login is email and password only; username login removed from the form |
 | Friends (F-SOC-01) | Friend request API (send, list incoming, accept, decline, remove) behind the auth middleware (PR #114) |
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
+| Library folders (#125, F-LIB-03) | Folder create/rename/delete and book membership behind the auth middleware, reusing `lists`/`list_books` (migration 0011); frontend sidebar CRUD and a book-page picker. Branch `feat/125-organize-library` |
 | Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with search-as-you-type (fuzzy title, author and ISBN via `pg_trgm`, `GET /book?q=`) and Trending / Most read this week lists, `GET /explore`, migrations 0008–0009. Explore page merged in PR #141, fuzzy search in PR #142. Open Library fallback (#120) in PR #144; manual add of a missing book (#120, F-BOOK-02) from the search results |
 | E2E tests (#127) | 13 Playwright tests and the `e2e.yml` workflow written, not run yet (fixtures and secrets missing) |
 | Reviews (#122, F-LIB-02) | Rate 1–5 with an optional comment, edit and delete, only for In progress, Finished or DNF books. Book page shows my, friends' and public reviews and the public average; profile lists my reviews. Migration 0010. Draft PR #150 |
@@ -56,7 +57,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 ## Next steps
 
-- Split #125, #126 and #127 into Task sub-issues and assign owners. #126 now has a [spec](../../superpowers/specs/2026-11-11-explore-page-design.md) to split from.
+- Split #126 and #127 into Task sub-issues and assign owners. #126 now has a [spec](../../superpowers/specs/2026-11-11-explore-page-design.md) to split from. #125 is built on `feat/125-organize-library`; open its PR and merge.
 - In project 23, add the views that the API cannot create: **Current sprint** (board, filter `iteration:@current`, columns by Status) and group **Prioritized backlog** by Iteration.
 - Check and close the open issues that look done in the code: #10 #25 (book page), #28 #30 (library and status), #43 #49 (session API and summary), #52 #55 #59 (group invites, done in #107).
 - Create the e2e fixtures and GitHub secrets (see the [e2e README](../../apps/frontend/e2e/README.md)), then run the e2e suite twice and the workflow once (#127).
@@ -177,6 +178,14 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Decision: no cover upload yet.** It needs file storage; left for a follow-up.
 - **Tests.** Backend 309 passing (1 new); frontend 150 passing (5 new). Commits `42259ec`, `06db85f`, draft PR [#145](https://github.com/MESW-LES-2627/les-project-group-6/pull/145).
 
+### 2026-11-12: Library folders built (#125, F-LIB-03)
+
+- Branch `feat/125-organize-library`. The library folders are no longer mocked: readers can create, rename and delete private folders, put a book in several folders, and filter the library by folder. Deleting a folder never removes a book from the library or changes its reading status.
+- **Decision: reuse `lists` and `list_books` instead of new folder tables.** They already model one owner and many books per list; folders are the `user_id`-owned rows and group lists keep `group_id`. [Migration 0011](../../../apps/backend/src/database/migrations/0011_library_folders.sql) adds a partial unique index on `(user_id, lower(name))` where `user_id is not null`, so folder names are unique per reader ignoring case and group lists are untouched. *Rejected:* new `folders`/`folder_books` tables, because they would duplicate the relation the schema already has.
+- **Backend.** New [`features/library-folder/`](../../../apps/backend/src/features/library-folder/) feature with the `Folder` aggregate (`FolderName` trims and caps at 100 characters), `IFolderRepository` + `DrizzleFolderRepository`, `LibraryFolderService`, `FolderDto` and owner-scoped routes under `/me/library/folders`. The `LibraryMembership` port (implemented with `ReadingStatusRepository`) refuses to add a book that is not already in the reader's library. Duplicate names answer `409` with exactly `You already have a folder with this name` (`FOLDER_NAME_TAKEN`), including a race caught as a Postgres unique violation. `GET /me/library` now includes `folderIds` for each book. Routes are in [`api_routes.md`](../../architecture/api_routes.md) and the [backend README](../../../apps/backend/README.md).
+- **Frontend.** The [library sidebar](../../../apps/frontend/src/components/library/LibrarySidebar.vue) creates folders inline and renames/deletes each row; [`LibraryView.vue`](../../../apps/frontend/src/views/LibraryView.vue) loads folders from the API and keeps the mock folders when there is no session. The [book page](../../../apps/frontend/src/views/BookDetailView.vue) passes folder objects to [`BookReadingPanel.vue`](../../../apps/frontend/src/components/library/BookReadingPanel.vue), which toggles several folders at once and leaves the reading status alone.
+- **Tests.** 9 new backend unit tests and an integration suite for the folder API and `folderIds` (Postgres required); 7 new frontend tests across the sidebar, library view and book page. The local Postgres was not running, so the integration suite runs in CI.
+
 ### 2026-11-13: e2e tests designed (#127)
 
 - New [spec](../../superpowers/specs/2026-11-13-e2e-tests-design.md) for one main-path Playwright test per frontend route, run against the production build, the real backend and the shared database. A `setup` project signs in once as a dedicated test user and reuses the session.
@@ -190,6 +199,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 - 13 tests are written and listed by `playwright test --list`, but they have **not been run yet**: the fixtures (test users, book, group) do not exist and the GitHub secrets are not set. The workflow has not run either.
 - Deviation from the plan: `apps/frontend/.gitignore` has `!.env.e2e.example`, because the root `.gitignore` ignores `.env.*`.
 - Code review fixes (`90ec8f8`): the login submit and the `?redirect=` check would have failed every run; the profile reset now refuses to delete a user it did not create; the session test needs the fixture book in "reading" and fails clearly if another session is running. Draft PR [#149](https://github.com/MESW-LES-2627/les-project-group-6/pull/149).
+
 ### 2026-11-13: Rate and review a book (#122, F-LIB-02)
 
 - Designed and built from the [spec](../../superpowers/specs/2026-11-13-rate-review-book-design.md) and the [plan](../../superpowers/plans/2026-11-13-rate-review-book.md), branch `feat/rate-review-book`, draft PR [#150](https://github.com/MESW-LES-2627/les-project-group-6/pull/150).
