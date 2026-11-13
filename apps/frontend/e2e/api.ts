@@ -7,8 +7,7 @@ export async function accessToken(page: Page): Promise<string> {
       for (let i = 0; i < store.length; i++) {
         const key = store.key(i);
         if (key && /^sb-.+-auth-token$/.test(key)) {
-          return (JSON.parse(store.getItem(key) ?? '{}') as { access_token?: string })
-            .access_token;
+          return (JSON.parse(store.getItem(key) ?? '{}') as { access_token?: string }).access_token;
         }
       }
     }
