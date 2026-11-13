@@ -2,12 +2,12 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import router from '@/router';
-import { ApiError, type ApiProfileReview, type ApiReadingStats } from '@/services/api';
+import { ApiError, type ApiMe, type ApiProfileReview, type ApiReadingStats } from '@/services/api';
 import ProfileView from '../ProfileView.vue';
 
 const getReadingStats = vi.hoisted(() => vi.fn<() => Promise<ApiReadingStats>>());
 const api = vi.hoisted(() => ({
-  getMe: vi.fn(async () => ({ id: 'me-id' })),
+  getMe: vi.fn<() => Promise<ApiMe>>(async () => ({ id: 'me-id' }) as ApiMe),
   getUserReviews: vi.fn<(userId: string) => Promise<ApiProfileReview[]>>(async () => []),
 }));
 

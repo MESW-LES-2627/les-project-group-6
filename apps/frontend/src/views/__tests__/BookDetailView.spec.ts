@@ -2,13 +2,13 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import router from '@/router';
-import type { ApiBookReviews, ApiReview } from '@/services/api';
+import type { ApiBook, ApiBookReviews, ApiLibraryItem, ApiReview } from '@/services/api';
 import BookDetailView from '../BookDetailView.vue';
 
 const api = vi.hoisted(() => ({
   getBookReviews: vi.fn<(bookId: string) => Promise<ApiBookReviews>>(),
-  getUserLibrary: vi.fn(async () => []),
-  getBook: vi.fn(async () => {
+  getUserLibrary: vi.fn<() => Promise<ApiLibraryItem[]>>(async () => []),
+  getBook: vi.fn<(bookId: string) => Promise<ApiBook>>(async () => {
     throw new Error('offline');
   }),
 }));

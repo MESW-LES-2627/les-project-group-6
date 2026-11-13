@@ -728,7 +728,12 @@ export async function saveReview(
   bookId: string,
   review: { rating: number; comment: string },
 ): Promise<void> {
-  await sendJson<unknown>('PUT', `/book/${id(bookId)}/review`, review, 'Failed to save your review');
+  await sendJson<unknown>(
+    'PUT',
+    `/book/${id(bookId)}/review`,
+    review,
+    'Failed to save your review',
+  );
 }
 
 export async function deleteReview(bookId: string): Promise<void> {
