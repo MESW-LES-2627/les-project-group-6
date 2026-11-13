@@ -141,47 +141,11 @@ const emmaDetail: BookDetail = {
     isbn: '9780141439587',
     genres: ['Classics', 'Romance'],
   },
-  friends: [
-    {
-      id: 'maya',
-      initials: 'ML',
-      name: 'Maya Laurent',
-      rating: 5,
-      finishedLabel: 'Finished • 4 October',
-      quote: 'The wit is wonderful, but the kindness underneath it is what stayed with me.',
-    },
-    {
-      id: 'priya',
-      initials: 'PS',
-      name: 'Priya Shah',
-      rating: 5,
-      finishedLabel: 'Finished • 8 October',
-      quote: "Emma's slow change of heart feels so beautifully human.",
-    },
-  ],
-  friendCount: 3,
-  publicRating: 4.2,
-  publicRatingCount: 18426,
-  publicReviews: [
-    {
-      id: 'amelia',
-      initials: 'AR',
-      name: 'Amelia R.',
-      rating: 5,
-      helpfulCount: 128,
-      quote: 'A sharp, tender novel. Every reread reveals another perfectly observed detail.',
-    },
-  ],
   club: {
     name: 'Classics',
     monthLabel: 'October',
     memberCount: 6,
     deadlineLabel: '31 October',
-  },
-  thoughts: {
-    rating: 4,
-    comment: "Austen's observations feel as alive as ever. I'm loving the dialogue.",
-    audience: 'friends',
   },
 };
 
@@ -201,15 +165,6 @@ export function getBookDetail(book: LibraryBook): BookDetail {
         publisher: `${book.genre} edition`,
         isbn: 'Not recorded',
         genres: [book.genre],
-      },
-      friends: [],
-      publicRating: book.rating ?? 0,
-      publicRatingCount: 0,
-      publicReviews: [],
-      thoughts: {
-        rating: book.rating ?? 0,
-        comment: '',
-        audience: 'friends',
       },
     }
   );

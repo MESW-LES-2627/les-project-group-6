@@ -4,7 +4,7 @@ defineProps<{
   name: string;
   rating: number;
   meta: string;
-  quote: string;
+  quote: string | null;
 }>();
 
 const stars = [1, 2, 3, 4, 5];
@@ -25,7 +25,7 @@ const stars = [1, 2, 3, 4, 5];
         </span>
       </p>
     </div>
-    <p class="quote">“{{ quote }}”</p>
+    <p v-if="quote" class="quote">“{{ quote }}”</p>
   </article>
 </template>
 

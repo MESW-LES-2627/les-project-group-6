@@ -10,9 +10,12 @@ import ReviewItem from '@/components/library/ReviewItem.vue';
 import { getBookDetail, mockLibrary } from '@/mocks/library';
 import {
   getBook,
+  getBookReviews,
   getUserLibrary,
   mapApiBookToLibraryBook,
   mapApiLibraryItemToBook,
+  type ApiBookReviews,
+  type ApiReview,
 } from '@/services/api';
 import type { LibraryBook, ReadingStatus } from '@/types/library';
 
@@ -45,14 +48,28 @@ async function fetchBookData() {
   }
 }
 
+// F-LIB-02: my review, my friends' reviews and the public reviews of this book.
+const reviews = ref<ApiBookReviews | null>(null);
+
+async function loadReviews() {
+  try {
+    reviews.value = await getBookReviews(props.bookId);
+  } catch {
+    // Mock or unknown books have no reviews on the server; show the empty states.
+    reviews.value = null;
+  }
+}
+
 onMounted(() => {
   void fetchBookData();
+  void loadReviews();
 });
 
 watch(
   () => props.bookId,
   () => {
     void fetchBookData();
+    void loadReviews();
   },
 );
 
@@ -83,11 +100,29 @@ const tags = computed(() => {
     .map((tag) => tag.name);
 });
 
-const friendCount = computed(() => detail.value?.friendCount ?? detail.value?.friends.length ?? 0);
-const publicRating = computed(() => detail.value?.publicRating.toFixed(1) ?? '0.0');
-const publicRatingCount = computed(
-  () => detail.value?.publicRatingCount.toLocaleString('en-US') ?? '0',
-);
+const friendReviews = computed(() => reviews.value?.friends ?? []);
+const publicReviews = computed(() => reviews.value?.publicReviews ?? []);
+const publicRating = computed(() => reviews.value?.publicAverage?.toFixed(1) ?? '—');
+const publicRatingCount = computed(() => {
+  const count = reviews.value?.publicCount ?? 0;
+  if (count === 0) return 'No public ratings yet';
+  return `${count.toLocaleString('en-US')} public rating${count === 1 ? '' : 's'}`;
+});
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]!.toUpperCase())
+    .join('');
+
+const reviewDate = (review: ApiReview) =>
+  new Date(review.updatedAt).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 
 const mailtoHref = computed(() => {
   if (!book.value) return '';
@@ -151,26 +186,27 @@ const mailtoHref = computed(() => {
             <section class="friends-panel" aria-labelledby="friends-title">
               <div class="section-head">
                 <h2 id="friends-title" class="section-title">What your friends thought</h2>
-                <button v-if="friendCount > 0" type="button" class="friends-link">
-                  {{ friendCount }} friends <span aria-hidden="true">→</span>
-                </button>
+                <span v-if="friendReviews.length > 0" class="friends-link">
+                  {{ friendReviews.length }} friend{{ friendReviews.length === 1 ? '' : 's' }}
+                </span>
               </div>
 
-              <div v-if="detail.friends.length > 0" class="friends-list">
+              <div v-if="friendReviews.length > 0" class="friends-list">
                 <ReviewItem
-                  v-for="review in detail.friends"
+                  v-for="review in friendReviews"
                   :key="review.id"
-                  :initials="review.initials"
-                  :name="review.name"
+                  :initials="initials(review.author.displayName)"
+                  :name="review.author.displayName"
                   :rating="review.rating"
-                  :meta="review.finishedLabel"
-                  :quote="review.quote"
+                  :meta="reviewDate(review)"
+                  :quote="review.comment"
                 />
               </div>
               <p v-else class="empty-copy">No friend reviews yet.</p>
 
-              <p v-if="detail.friends.length > 0" class="friend-note">
-                Friend ratings come first. Friends-only reviews aren't part of the public average.
+              <p v-if="friendReviews.length > 0" class="friend-note">
+                Friends' reviews show whatever their profile setting. Only public profiles count in
+                the public average.
               </p>
             </section>
 
@@ -180,52 +216,32 @@ const mailtoHref = computed(() => {
               <div class="reviews-summary">
                 <div class="rating-summary">
                   <p class="big-rating">{{ publicRating }} / 5</p>
-                  <p class="rating-count">{{ publicRatingCount }} public ratings</p>
+                  <p class="rating-count">{{ publicRatingCount }}</p>
                 </div>
-
-                <label class="sort-control">
-                  <span class="sort-label">Sort reviews</span>
-                  <span class="sort-select">
-                    <select aria-label="Sort public reviews">
-                      <option>Most helpful</option>
-                      <option>Newest</option>
-                      <option>Highest rated</option>
-                    </select>
-                    <svg
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      aria-hidden="true"
-                    >
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  </span>
-                </label>
               </div>
 
-              <div v-if="detail.publicReviews.length > 0" class="public-list">
+              <div v-if="publicReviews.length > 0" class="public-list">
                 <ReviewItem
-                  v-for="review in detail.publicReviews"
+                  v-for="review in publicReviews"
                   :key="review.id"
-                  :initials="review.initials"
-                  :name="review.name"
+                  :initials="initials(review.author.displayName)"
+                  :name="review.author.displayName"
                   :rating="review.rating"
-                  :meta="`Public review • ${review.helpfulCount} found helpful`"
-                  :quote="review.quote"
+                  :meta="`Public review • ${reviewDate(review)}`"
+                  :quote="review.comment"
                 />
               </div>
               <p v-else class="empty-copy">No public reviews yet.</p>
-
-              <button type="button" class="read-more">Read more public reviews</button>
             </section>
           </div>
 
           <aside class="rail">
-            <BookThoughtsPanel :detail="detail" />
+            <BookThoughtsPanel
+              :book-id="bookId"
+              :status="book.status"
+              :review="reviews?.mine ?? null"
+              @changed="loadReviews"
+            />
             <ReadingClubPanel v-if="detail.club" :club="detail.club" :book-title="book.title" />
           </aside>
         </div>
@@ -366,19 +382,9 @@ const mailtoHref = computed(() => {
 
 .friends-link {
   flex: none;
-  padding: 0;
-  border: 0;
-  background: transparent;
   color: var(--color-copper);
-  font: inherit;
   font-size: 0.625rem;
   font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-}
-
-.friends-link:hover {
-  color: var(--color-primary);
-  text-decoration: underline;
 }
 
 .friends-list {
@@ -421,46 +427,6 @@ const mailtoHref = computed(() => {
   line-height: 1.3;
 }
 
-.sort-control {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  gap: 12px;
-  align-items: flex-end;
-}
-
-.sort-label {
-  color: var(--color-text-muted);
-  font-size: 0.625rem;
-  font-weight: var(--font-weight-medium);
-  line-height: 1.2;
-}
-
-.sort-select {
-  position: relative;
-  display: block;
-}
-
-.sort-select select {
-  padding: 0 16px 0 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-  appearance: none;
-}
-
-.sort-select svg {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  color: var(--color-text-muted);
-  pointer-events: none;
-  transform: translateY(-50%);
-}
-
 .public-list {
   display: flex;
   flex-direction: column;
@@ -472,22 +438,6 @@ const mailtoHref = computed(() => {
   margin: 18px 0 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-}
-
-.read-more {
-  margin: 26px 0 0 10px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-text-muted);
-  font: inherit;
-  font-size: 0.625rem;
-  cursor: pointer;
-}
-
-.read-more:hover {
-  color: var(--color-primary);
-  text-decoration: underline;
 }
 
 .rail {
@@ -560,10 +510,6 @@ const mailtoHref = computed(() => {
   .reviews-summary {
     flex-direction: column;
     gap: var(--space-3);
-    align-items: flex-start;
-  }
-
-  .sort-control {
     align-items: flex-start;
   }
 

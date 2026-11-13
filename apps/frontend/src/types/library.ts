@@ -62,31 +62,11 @@ export interface Library {
 
 export type LibrarySort = 'recent' | 'title' | 'author';
 
-export type ReviewAudience = 'friends' | 'public';
-
 export interface BookEdition {
   publishedYear: number;
   publisher: string;
   isbn: string;
   genres: string[];
-}
-
-export interface FriendReview {
-  id: string;
-  initials: string;
-  name: string;
-  rating: number;
-  finishedLabel: string;
-  quote: string;
-}
-
-export interface PublicReview {
-  id: string;
-  initials: string;
-  name: string;
-  rating: number;
-  helpfulCount: number;
-  quote: string;
 }
 
 export interface ReadingClubSummary {
@@ -101,15 +81,5 @@ export interface BookDetail {
   synopsis: string;
   readThroughLabel: string;
   edition: BookEdition;
-  friends: FriendReview[];
-  friendCount?: number;
-  publicRating: number;
-  publicRatingCount: number;
-  publicReviews: PublicReview[];
   club?: ReadingClubSummary;
-  thoughts: {
-    rating: number;
-    comment: string;
-    audience: ReviewAudience;
-  };
 }
