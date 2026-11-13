@@ -14,6 +14,10 @@ import type { IReadingSessionRepository } from '../features/reading-session/read
 import type { ReadingProgressQuery } from '../features/reading-status/reading-progress-query.js';
 import { readingSessionRoutes } from '../features/reading-session/reading-session-routes.js';
 import { ReadingSessionService } from '../features/reading-session/reading-session-service.js';
+import type { IReviewRepository } from '../features/review/review-repository.js';
+import type { ReviewQuery } from '../features/review/review-query.js';
+import { reviewRoutes } from '../features/review/review-routes.js';
+import { ReviewService } from '../features/review/review-service.js';
 import { readingStatusRoutes } from '../features/reading-status/reading-status-routes.js';
 import { ReadingStatusService } from '../features/reading-status/reading-status-service.js';
 import type { IChallengeGroupRepository } from '../features/challenge-group/challenge-group-repository.js';
@@ -60,6 +64,8 @@ export interface ApiDependencies {
   readingSessionRepository?: IReadingSessionRepository;
   readingActivityQuery?: ReadingActivityQuery;
   readingProgressQuery?: ReadingProgressQuery;
+  reviewRepository?: IReviewRepository;
+  reviewQuery?: ReviewQuery;
   userRepository?: IUserRepository;
   challengeGroupRepository?: IChallengeGroupRepository;
   standingsQuery?: StandingsQuery;
@@ -92,6 +98,8 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
     readingSessionRepository,
     readingActivityQuery,
     readingProgressQuery,
+    reviewRepository,
+    reviewQuery,
     userRepository,
     challengeGroupRepository,
     standingsQuery,
@@ -129,6 +137,28 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
 
   if (readingStatuses) {
     router.use(readingStatusRoutes(readingStatuses));
+  }
+
+  if (
+    bookRepository &&
+    readingStatusRepository &&
+    userRepository &&
+    friendRepository &&
+    reviewRepository &&
+    reviewQuery
+  ) {
+    router.use(
+      reviewRoutes(
+        new ReviewService(
+          reviewRepository,
+          readingStatusRepository,
+          bookRepository,
+          userRepository,
+          friendRepository,
+          reviewQuery,
+        ),
+      ),
+    );
   }
 
   if (bookRepository && readingSessionRepository) {
