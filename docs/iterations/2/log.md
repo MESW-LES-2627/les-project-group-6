@@ -172,3 +172,10 @@ A running record of what the team did and decided in iteration 2. The [release n
 - `POST /book` now accepts `authors` (one name or a list) and saves them with `saveWithAuthors`, so the book is found by author too. A book whose ISBN-13 already exists is returned instead of duplicated.
 - **Decision: no cover upload yet.** It needs file storage; left for a follow-up.
 - **Tests.** Backend 309 passing (1 new); frontend 150 passing (5 new). Commits `42259ec`, `06db85f`, draft PR [#145](https://github.com/MESW-LES-2627/les-project-group-6/pull/145).
+
+### 2026-11-13: Board cleanup, weekly report and claim
+
+- **Decision: "Rate and review a book" is split in two stories of 2 points each:** review (#122) and comment (#146). #146 moved into Iteration 2.
+- e2e tasks #135 to #139 (under #127) added to Iteration 2. #122, #146, #127 and their tasks (#26 #27 #135–#139) set to Done on the board.
+- Iteration 2 is now 9 stories, 39 points on the board: 19 done, 2 in review, 18 not done (#121 #123 #124). See the [weekly report](weekly_report.md).
+- Filled in [`CLAIM.md`](CLAIM.md) for `iter-2`, following the iteration 1 one, with the board's stories and this sprint's merged PRs.
