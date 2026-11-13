@@ -45,6 +45,8 @@ pnpm --filter @bookmarked/frontend build
 
 Lint uses Oxlint and ESLint with `eslint-plugin-vue`. Formatting uses the root Prettier configuration. Typechecking uses `vue-tsc`, including tests. `test` runs Vitest once with jsdom and `@vue/test-utils`; use `test:watch` for watch mode and `format` to apply Prettier. Frontend CI runs these checks on frontend and shared config changes.
 
+End-to-end tests: `pnpm test:e2e`, see [e2e/README.md](e2e/README.md).
+
 ## Source layout and design
 
 - `src/assets/styles/tokens.css`: brand colors, semantic aliases, typography, spacing, radii and layout/motion tokens. Use the `--font-size-*` scale for font sizes.

@@ -345,3 +345,20 @@ now, I want to do this user story (#120). If I search by a book that i am not fi
 
 #### Result
 Design spec `docs/superpowers/specs/2026-11-13-e2e-tests-design.md` for Playwright e2e tests (auth via a shared setup, production build and shared database, per-test data, CI on main and manual dispatch). Decisions were made with the user during brainstorming. No code yet.
+
+
+### 2026-11-13: e2e tests implementation (#127)
+
+- **Date:** 2026-11-13
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5 (controller) with Claude Sonnet subagents
+- **Tool:** Claude Code
+- **Domain:** testing, ci, docs
+
+#### Prompt
+```text
+implement the e2e plan with subagent-driven development
+```
+
+#### Result
+Playwright config, helpers and a spec for every route in `apps/frontend/e2e/` (13 tests, not run yet: fixtures and secrets missing), the `.github/workflows/e2e.yml` workflow, and the e2e docs.

@@ -21,6 +21,7 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 .
 ├── apps/
 │   ├── frontend/                  # Vue client; see apps/frontend/README.md
+│   │   └── e2e/                   # Playwright e2e tests; see apps/frontend/e2e/README.md
 │   └── backend/
 ├── docs/
 │   ├── ADRs/
@@ -31,6 +32,7 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 │   ├── superpowers/specs/
 │   └── sprints/
 ├── .github/
+│   └── workflows/e2e.yml          # e2e suite on main and manual dispatch
 ├── .agents/
 ├── .claude/skills/            # project skills for Claude Code (e.g. oop-ddd-review)
 ├── AGENTS.md
@@ -92,6 +94,7 @@ Workflows live in `.github/workflows/` and are named `<app>-ci.yml` for checks a
 
 - `backend-ci.yml`: runs on every pull request to `main` when `apps/backend/`, the shared root config or the workflow itself changes. It installs with the locked dependencies, then runs lint, format check, typecheck, tests (against a Postgres service) and build.
 - `frontend-ci.yml`: the same steps for `apps/frontend/`: lint, format check, typecheck, component/router tests and build.
+- `e2e.yml`: runs the Playwright suite of `apps/frontend/e2e/` against the built stack and the shared database, on pushes to `main` and manual dispatch only (not a pull request check).
 - `commitlint.yml`: runs on every pull request to `main` and fails when a commit (merge commits aside) does not follow Conventional Commits: `<type>(<scope>)!: <description>` with type `build`, `chore`, `ci`, `db`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style` or `test`. Fix a bad message with `git commit --amend` or `git rebase -i` and force-push.
 
 #### Deploy (Render)
