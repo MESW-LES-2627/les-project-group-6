@@ -124,8 +124,13 @@ CREATE TABLE reviews (
     book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     comment TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- F-LIB-02: one review per reader per book.
+    CONSTRAINT reviews_user_id_book_id_key UNIQUE (user_id, book_id)
 );
+
+CREATE INDEX reviews_book_id_created_at_idx ON reviews (book_id, created_at DESC);
 
 -- ============================================================================
 -- 4. Groups
