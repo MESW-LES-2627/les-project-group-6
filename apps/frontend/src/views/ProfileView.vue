@@ -11,9 +11,16 @@ import FolderList from '@/components/profile/FolderList.vue';
 import MonthRecap from '@/components/profile/MonthRecap.vue';
 import ReadingTime from '@/components/profile/ReadingTime.vue';
 import BookShelf from '@/components/profile/BookShelf.vue';
+import ReviewList from '@/components/profile/ReviewList.vue';
 import StreakCalendar from '@/components/profile/StreakCalendar.vue';
 import { mockNewUserProfile, mockProfile } from '@/mocks/profile';
-import { getReadingStats, type ApiReadingStats } from '@/services/api';
+import {
+  getMe,
+  getReadingStats,
+  getUserReviews,
+  type ApiProfileReview,
+  type ApiReadingStats,
+} from '@/services/api';
 
 // Mock data until the profile API exists. `/profile?state=new` shows the empty states.
 // Reading time already comes from the server-timed sessions.
@@ -30,7 +37,20 @@ const profile = computed(() => {
   };
 });
 
+// F-LIB-02: my rated books. `null` (hidden) when the API cannot be reached or refuses.
+const reviews = ref<ApiProfileReview[] | null>(null);
+
+async function loadReviews() {
+  try {
+    const me = await getMe();
+    reviews.value = await getUserReviews(me.id);
+  } catch {
+    reviews.value = null;
+  }
+}
+
 onMounted(async () => {
+  void loadReviews();
   try {
     readingStats.value = await getReadingStats();
   } catch {
@@ -60,6 +80,7 @@ onMounted(async () => {
       </div>
 
       <FolderList class="top-rule" :folders="profile.folders" />
+      <ReviewList v-if="reviews" class="top-rule" :reviews="reviews" />
       <MonthRecap class="top-rule" :recap="profile.recap" />
     </div>
   </main>
