@@ -67,12 +67,13 @@ The table has no rows in production, so the unique constraint needs no cleanup. 
     - `friends`: reviews by the viewer's accepted friends, newest first. A friend's review is listed here whatever their profile visibility.
     - `publicReviews`: the first 10 reviews by authors with a `public` profile, newest first, without the viewer's own review and without the friends already listed.
     - `publicAverage` (rounded to one decimal, or `null`) and `publicCount`: over every review by a public-profile author, the viewer's own included.
-  - `forUser(profileUserId, viewerId)` returns the reviews on a profile, newest first, with the book's title and cover. It returns them only when the viewer is the owner, the profile is public, or the viewer is an accepted friend. Otherwise it throws `ForbiddenError`.
+  - `forUser(profileUserId)` returns the reviews on a profile, newest first, with the book's title and cover. The service checks access first (see below).
 
 ### Service (`review-service.ts`)
 
 - `write({ userId, bookId, rating, comment })`: loads the reader's `reading_status` for the book. If there is none (not in the library), or its state does not allow reviews, it throws `ReviewNotAllowedError`. Otherwise it validates `Rating` and `ReviewComment` and saves. An unknown book gives `NotFoundError`.
 - `remove(userId, bookId)`: deletes the review. Deleting a review that does not exist is not an error (idempotent `204`).
+- `forProfile(profileUserId, viewerId)`: returns the profile's reviews only when the viewer is the owner, the profile is public, or the viewer is an accepted friend. Otherwise it throws `ForbiddenError`; an unknown user gives `NotFoundError`.
 - Changing a book's status back to Not started keeps the review. The story only gates writing.
 
 ### Routes (`review-routes.ts`)
@@ -86,13 +87,13 @@ These are mounted behind `authenticate` and `requireUser`. The reader always com
 | `GET /book/:bookId/reviews` | none | `200` with `{ mine, friends, publicReviews, publicAverage, publicCount }` |
 | `GET /users/:userId/reviews` | none | `200` with a list of `{ book, rating, comment, updatedAt }` |
 
-The review DTO is `{ id, bookId, rating, comment, createdAt, updatedAt, author: { id, username, displayName, photoUrl } }`. The book page does not need the reading status from this API: it already loads it.
+`PUT` returns `{ id, bookId, rating, comment, createdAt, updatedAt }`. The reviews in `GET /book/:bookId/reviews` also carry `author: { id, username, displayName, photoUrl }`. The book page does not need the reading status from this API: it already loads it.
 
 ## Frontend
 
 ### API (`services/api.ts`)
 
-Four functions: `saveReview(bookId, { rating, comment })`, `deleteReview(bookId)`, `getBookReviews(bookId)` and `getUserReviews(userId)`. They map DTOs to the types in `types/library.ts`.
+Four functions: `saveReview(bookId, { rating, comment })`, `deleteReview(bookId)`, `getBookReviews(bookId)` and `getUserReviews(userId)`. Components use the `Api*` response types directly.
 
 ### `BookThoughtsPanel.vue`
 
