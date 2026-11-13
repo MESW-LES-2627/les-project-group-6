@@ -32,7 +32,7 @@ Created once by hand in the production database and Supabase, documented in `app
 | --- | --- |
 | Test user (Supabase account + `users` row with `id` = Supabase user id) | every authenticated test |
 | A permanent group owned by the test user | groups, group detail |
-| A seeded book (e.g. "Emma", from `seed.ts`) | explore, book detail, library, active session |
+| A seeded book ("Emma", from `seed.ts`) on the test user's shelf | explore, book detail, library, active session |
 | A second Supabase account with **no** `users` row | complete-profile |
 
 Rules for tests:
@@ -89,7 +89,7 @@ Secrets:
 
 - `E2E_USER_EMAIL`, `E2E_USER_PASSWORD`: the test user.
 - `E2E_PROFILELESS_EMAIL`, `E2E_PROFILELESS_PASSWORD`: the account with no profile.
-- `E2E_GROUP_ID`, `E2E_BOOK_ID`: the permanent fixtures.
+- `E2E_GROUP_ID`, `E2E_BOOK_ID`: the permanent fixtures. Their names (`E2E_GROUP_NAME`, `E2E_BOOK_TITLE`) are plain env values in the workflow, not secrets.
 - `DATABASE_URL`: the shared database (backend, and the complete-profile reset).
 - `SUPABASE_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`: Supabase settings for the backend and the frontend build.
 
