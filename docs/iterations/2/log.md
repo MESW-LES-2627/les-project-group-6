@@ -13,6 +13,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Friends (F-SOC-01) | Friend request API (send, list incoming, accept, decline, remove) behind the auth middleware (PR #114) |
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
 | Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with search-as-you-type (fuzzy title, author and ISBN via `pg_trgm`, `GET /book?q=`) and Trending / Most read this week lists, `GET /explore`, migrations 0008–0009. Explore page merged in PR #141, fuzzy search in PR #142. Open Library fallback (#120) in PR #144; manual add of a missing book (#120, F-BOOK-02) from the search results |
+| E2E tests (#127) | 13 Playwright tests and the `e2e.yml` workflow written, not run yet (fixtures and secrets missing) |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
 
 ## Log
@@ -57,6 +58,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 - Split #125, #126 and #127 into Task sub-issues and assign owners. #126 now has a [spec](../../superpowers/specs/2026-11-11-explore-page-design.md) to split from.
 - In project 23, add the views that the API cannot create: **Current sprint** (board, filter `iteration:@current`, columns by Status) and group **Prioritized backlog** by Iteration.
 - Check and close the open issues that look done in the code: #10 #25 (book page), #28 #30 (library and status), #43 #49 (session API and summary), #52 #55 #59 (group invites, done in #107).
+- Create the e2e fixtures and GitHub secrets (see the [e2e README](../../apps/frontend/e2e/README.md)), then run the e2e suite twice and the workflow once (#127).
 - Fill in [`release_notes.md`](release_notes.md) before running "Iteration release" for `iter-2`.
 
 ### 2026-11-08: Component diagram updated to iteration 1
@@ -172,3 +174,17 @@ A running record of what the team did and decided in iteration 2. The [release n
 - `POST /book` now accepts `authors` (one name or a list) and saves them with `saveWithAuthors`, so the book is found by author too. A book whose ISBN-13 already exists is returned instead of duplicated.
 - **Decision: no cover upload yet.** It needs file storage; left for a follow-up.
 - **Tests.** Backend 309 passing (1 new); frontend 150 passing (5 new). Commits `42259ec`, `06db85f`, draft PR [#145](https://github.com/MESW-LES-2627/les-project-group-6/pull/145).
+
+### 2026-11-13: e2e tests designed (#127)
+
+- New [spec](../../superpowers/specs/2026-11-13-e2e-tests-design.md) for one main-path Playwright test per frontend route, run against the production build, the real backend and the shared database. A `setup` project signs in once as a dedicated test user and reuses the session.
+- **Decision: production database, dedicated test user.** The project is academic. Tests only create and remove rows their own user owns; no truncation or reseeding.
+- **Decision: permanent test fixtures, only reversible actions.** The backend has no delete route for groups, books or profiles, so tests use a fixed group and seeded book owned by the test user and only change shelf, status and session state. *Rejected:* creating new data in each test (piles up in the database), test-only delete routes.
+- **Decision: a GitHub Actions workflow (`e2e.yml`) builds and starts the stack, on `main` pushes and manual dispatch only, not a PR check.** *Rejected:* running on every PR (writes test rows to the shared database each time), local only (nothing enforced). The spec lists this and the shared database as deviations from #127's acceptance criteria.
+
+### 2026-11-13: e2e tests built (#127)
+
+- Built from the [spec](../../superpowers/specs/2026-11-13-e2e-tests-design.md) and the [plan](../../superpowers/plans/2026-11-13-e2e-tests.md): commits `1099dac` to `b1d8079` (Playwright setup, helpers, shared login, a spec for every route) and `b997c5c` (the [`e2e.yml`](../../../.github/workflows/e2e.yml) workflow). See the [e2e README](../../../apps/frontend/e2e/README.md).
+- 13 tests are written and listed by `playwright test --list`, but they have **not been run yet**: the fixtures (test users, book, group) do not exist and the GitHub secrets are not set. The workflow has not run either.
+- Deviation from the plan: `apps/frontend/.gitignore` has `!.env.e2e.example`, because the root `.gitignore` ignores `.env.*`.
+- Code review fixes (`90ec8f8`): the login submit and the `?redirect=` check would have failed every run; the profile reset now refuses to delete a user it did not create; the session test needs the fixture book in "reading" and fails clearly if another session is running. Draft PR [#149](https://github.com/MESW-LES-2627/les-project-group-6/pull/149).
