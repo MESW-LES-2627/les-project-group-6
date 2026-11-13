@@ -22,6 +22,8 @@ import { DrizzleLibraryQuery } from './features/library/library-query.js';
 import { DrizzleReadingActivityQuery } from './features/reading-session/reading-activity-query.js';
 import { DrizzleReadingSessionRepository } from './features/reading-session/reading-session-repository.js';
 import { DrizzleReadingProgressQuery } from './features/reading-status/reading-progress-query.js';
+import { DrizzleReviewQuery } from './features/review/review-query.js';
+import { DrizzleReviewRepository } from './features/review/review-repository.js';
 import { DrizzleReadingStatusRepository } from './features/reading-status/reading-status-repository.js';
 
 if (!env.supabaseUrl) {
@@ -52,6 +54,8 @@ const server = createApp({
   readingSessionRepository: new DrizzleReadingSessionRepository(db),
   readingActivityQuery: new DrizzleReadingActivityQuery(db),
   readingProgressQuery: new DrizzleReadingProgressQuery(db),
+  reviewRepository: new DrizzleReviewRepository(db),
+  reviewQuery: new DrizzleReviewQuery(db),
   userRepository: new DrizzleUserRepository(db),
   challengeGroupRepository: new DrizzleChallengeGroupRepository(db),
   standingsQuery: new StandingsQuery(db),

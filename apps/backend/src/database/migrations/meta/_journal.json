@@ -71,6 +71,13 @@
       "when": 1794436644229,
       "tag": "0009_book_search",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794557863397,
+      "tag": "0010_review_per_book",
+      "breakpoints": true
     }
   ]
 }

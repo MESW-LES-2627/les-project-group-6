@@ -177,6 +177,9 @@ export const reviews = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
   },
   (table) => [
     foreignKey({
@@ -190,6 +193,9 @@ export const reviews = pgTable(
       name: 'reviews_book_id_fkey',
     }).onDelete('cascade'),
     check('reviews_rating_check', sql`(rating >= 1) AND (rating <= 5)`),
+    // F-LIB-02: one review per reader per book; saving again replaces it.
+    unique('reviews_user_id_book_id_key').on(table.userId, table.bookId),
+    index('reviews_book_id_created_at_idx').on(table.bookId, table.createdAt.desc()),
   ],
 );
 

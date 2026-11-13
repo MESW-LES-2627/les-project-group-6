@@ -140,3 +140,17 @@ describe('ReadingStatus', () => {
     });
   });
 });
+
+describe('ReadingState.allowsReview (F-LIB-02)', () => {
+  const cases = [
+    ['not-started', false],
+    ['in-progress', true],
+    ['finished', true],
+    ['did-not-finish', true],
+  ] as const;
+  for (const [type, expected] of cases) {
+    test(`${type} ${expected ? 'allows' : 'does not allow'} a review`, () => {
+      assert.equal(ReadingState.of(type).allowsReview, expected);
+    });
+  }
+});

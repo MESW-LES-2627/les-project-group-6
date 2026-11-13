@@ -687,6 +687,72 @@ export async function addToLibrary(bookId: string): Promise<void> {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Ratings and reviews (F-LIB-02)
+// ---------------------------------------------------------------------------
+
+export interface ApiReviewAuthor {
+  id: string;
+  username: string;
+  displayName: string;
+  photoUrl: string | null;
+}
+
+export interface ApiReview {
+  id: string;
+  bookId: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  updatedAt: string;
+  author: ApiReviewAuthor;
+}
+
+export interface ApiBookReviews {
+  mine: ApiReview | null;
+  friends: ApiReview[];
+  publicReviews: ApiReview[];
+  publicAverage: number | null;
+  publicCount: number;
+}
+
+export interface ApiProfileReview {
+  book: { id: string; title: string; coverUrl: string | null };
+  rating: number;
+  comment: string | null;
+  updatedAt: string;
+}
+
+/** Creates or replaces my rating and comment for a book. */
+export async function saveReview(
+  bookId: string,
+  review: { rating: number; comment: string },
+): Promise<void> {
+  await sendJson<unknown>(
+    'PUT',
+    `/book/${id(bookId)}/review`,
+    review,
+    'Failed to save your review',
+  );
+}
+
+export async function deleteReview(bookId: string): Promise<void> {
+  await ensureOk(
+    await apiFetch(`/book/${id(bookId)}/review`, { method: 'DELETE' }),
+    'Failed to delete your review',
+  );
+}
+
+/** My review, my friends' reviews, the newest public reviews and the public average. */
+export async function getBookReviews(bookId: string): Promise<ApiBookReviews> {
+  return getJson<ApiBookReviews>(`/book/${id(bookId)}/reviews`, 'Failed to load reviews');
+}
+
+/** The reviews on a profile; rejects with status 403 for a private profile of a stranger. */
+export async function getUserReviews(userId: string): Promise<ApiProfileReview[]> {
+  return getJson<ApiProfileReview[]>(`/users/${id(userId)}/reviews`, 'Failed to load reviews');
+}
+
 export function authorOf(bookId: string): string {
   return KNOWN_AUTHORS[bookId] ?? '';
 }
