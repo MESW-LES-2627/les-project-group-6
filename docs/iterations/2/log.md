@@ -172,3 +172,10 @@ A running record of what the team did and decided in iteration 2. The [release n
 - `POST /book` now accepts `authors` (one name or a list) and saves them with `saveWithAuthors`, so the book is found by author too. A book whose ISBN-13 already exists is returned instead of duplicated.
 - **Decision: no cover upload yet.** It needs file storage; left for a follow-up.
 - **Tests.** Backend 309 passing (1 new); frontend 150 passing (5 new). Commits `42259ec`, `06db85f`, draft PR [#145](https://github.com/MESW-LES-2627/les-project-group-6/pull/145).
+
+### 2026-11-13: e2e tests designed (#127)
+
+- New [spec](../../superpowers/specs/2026-11-13-e2e-tests-design.md) for one main-path Playwright test per frontend route, run against the production build, the real backend and the shared database. A `setup` project signs in once as a dedicated test user and reuses the session.
+- **Decision: production database, dedicated test user.** The project is academic. Tests only create and remove rows their own user owns; no truncation or reseeding.
+- **Decision: permanent test fixtures, only reversible actions.** The backend has no delete route for groups, books or profiles, so tests use a fixed group and seeded book owned by the test user and only change shelf, status and session state. *Rejected:* creating new data in each test (piles up in the database), test-only delete routes.
+- **Decision: a GitHub Actions workflow (`e2e.yml`) builds and starts the stack, on `main` pushes and manual dispatch only, not a PR check.** *Rejected:* running on every PR (writes test rows to the shared database each time), local only (nothing enforced). The spec lists this and the shared database as deviations from #127's acceptance criteria.
