@@ -8,6 +8,10 @@ import { ExploreService } from '../features/explore/explore-service.js';
 import { BookService } from '../features/book/book-service.js';
 import type { LibraryQuery } from '../features/library/library-query.js';
 import { libraryRoutes } from '../features/library/library-routes.js';
+import type { IFolderRepository } from '../features/library-folder/folder-repository.js';
+import { LibraryFolderService } from '../features/library-folder/library-folder-service.js';
+import { libraryFolderRoutes } from '../features/library-folder/library-folder-routes.js';
+import { ReadingStatusLibraryMembership } from '../features/library-folder/library-membership.js';
 import type { IReadingStatusRepository } from '../features/reading-status/reading-status-repository.js';
 import type { ReadingActivityQuery } from '../features/reading-session/reading-activity-query.js';
 import type { IReadingSessionRepository } from '../features/reading-session/reading-session-repository.js';
@@ -61,6 +65,7 @@ export interface ApiDependencies {
   bookCatalog?: BookCatalog;
   readingStatusRepository?: IReadingStatusRepository;
   libraryQuery?: LibraryQuery;
+  folderRepository?: IFolderRepository;
   readingSessionRepository?: IReadingSessionRepository;
   readingActivityQuery?: ReadingActivityQuery;
   readingProgressQuery?: ReadingProgressQuery;
@@ -95,6 +100,7 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
     bookCatalog,
     readingStatusRepository,
     libraryQuery,
+    folderRepository,
     readingSessionRepository,
     readingActivityQuery,
     readingProgressQuery,
@@ -248,6 +254,17 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
 
   if (libraryQuery) {
     router.use(libraryRoutes(libraryQuery));
+  }
+
+  if (folderRepository && readingStatusRepository) {
+    router.use(
+      libraryFolderRoutes(
+        new LibraryFolderService(
+          folderRepository,
+          new ReadingStatusLibraryMembership(readingStatusRepository),
+        ),
+      ),
+    );
   }
 
   if (bookRepository && readingActivityQuery && readingProgressQuery) {

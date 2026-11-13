@@ -330,6 +330,44 @@ now, I want to do this user story (#120). If I search by a book that i am not fi
 `POST /book` saves authors; new `AddBookForm` on Explore, opened from "Add this book" under the search results, which creates the book, adds it to the library as "Not started" and opens it; `addBook`/`addToLibrary` API helpers; 5 new tests.
 
 
+### 2026-11-12: Library folders (F-LIB-03, #125)
+
+- **Date:** 2026-11-12
+- **Author:** Nimot Imran
+- **Model:** Big Pickle
+- **Tool:** OpenCode
+- **Domain:** database, backend, frontend, testing, docs
+
+#### Prompt
+```text
+Implement F-LIB-03 "Library folders" on branch feat/125-organize-library: create private folders with unique names per reader (ignoring case), add a book to several folders without changing its reading status, filter by folder, rename and delete folders (deleting keeps the books). A duplicate name must show exactly "You already have a folder with this name". Follow the existing DDD feature layout and the frontend design/components; determine whether an API is needed and implement it end to end if so. Do not commit or push.
+```
+
+#### Explanation of Changes
+- Reused `lists`/`list_books` for folders and added migration 0011 with a partial unique index on `(user_id, lower(name))`.
+- Added the `features/library-folder/` backend feature (aggregate, repository, membership port, service, DTO, routes) and wired it into `api/router.ts` and `server.ts`; `GET /me/library` now returns `folderIds`.
+- Added frontend API helpers, folder CRUD in `LibrarySidebar`, folder state/filtering in `LibraryView`, and a multi-folder picker in `BookReadingPanel`/`BookDetailView`, keeping the mock fallback when there is no session.
+- Added backend unit and integration tests plus frontend tests, and updated the backend README, API routes and iteration log.
+
+### 2026-11-12: Fix folders lost on refresh and zero book counts
+
+- **Date:** 2026-11-12
+- **Author:** Nimot Imran
+- **Model:** Big Pickle
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+the data is not persists, when I refresh the folders I created are lostt, also the number of books in the folder is always 0, fix the number to represent the book in the folder
+```
+
+#### Explanation of Changes
+- Gated the library and folder API calls on `session.state.status === 'ready'` instead of "did a request succeed", and made the API library authoritative even when empty, so mock books with slug ids no longer block folder membership saves.
+- Always call folder CRUD when signed in; a signed-in reader starts with an empty shelf and folder list, and a failed load clears the mocks and shows an error instead of silently keeping prototype data. The book page follows the same rule for its folder picker.
+- Derived each folder count from the loaded shelf (`book.folderIds`), with the API/mock count only as a signed-out fallback.
+- Added `LibraryView.api.spec.ts` (4 tests) for the empty library, derived counts, API folder creation surviving a remount and multi-folder filtering; frontend suite 161 passing.
+
 ### 2026-11-13: e2e test design (#127)
 
 - **Date:** 2026-11-13
@@ -362,6 +400,7 @@ implement the e2e plan with subagent-driven development
 
 #### Result
 Playwright config, helpers and a spec for every route in `apps/frontend/e2e/` (13 tests, not run yet: fixtures and secrets missing), the `.github/workflows/e2e.yml` workflow, and the e2e docs.
+
 ### 2026-11-13: Rate and review a book (#122)
 
 - **Date:** 2026-11-13
@@ -379,4 +418,3 @@ creat he implementation plan and implement but in a separate branch
 
 #### Result
 Design spec and implementation plan in `docs/superpowers/`, decided with the user (one review per book, visibility follows the profile, no audience selector, real friend and public lists, first page only). Built the `features/review/` backend module, migration 0010, four routes, the review panel, book page lists and profile Reviews section, with unit, integration and component tests.
-

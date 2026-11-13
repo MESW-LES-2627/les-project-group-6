@@ -2,19 +2,20 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
-import { updateReadingStatus } from '@/services/api';
-import type { BookDetail, LibraryBook, ReadingStatus } from '@/types/library';
+import { addBookToFolder, removeBookFromFolder, updateReadingStatus } from '@/services/api';
+import type { BookDetail, FolderSummary, LibraryBook, ReadingStatus } from '@/types/library';
 import { progressPercent, readingStatusLabels } from '@/utils/library';
 
 const props = defineProps<{
   book: LibraryBook;
   detail: BookDetail;
-  folders: string[];
+  folders: FolderSummary[];
   tags: string[];
 }>();
 
 const emit = defineEmits<{
   updated: [data: { status: ReadingStatus; currentPage: number }];
+  foldersUpdated: [folderIds: string[]];
 }>();
 
 const isEditing = ref(false);
@@ -25,11 +26,20 @@ const selectedPage = ref<number>(props.book.currentPage || 10);
 const isSaving = ref(false);
 const message = ref<string | null>(null);
 
+const isEditingFolders = ref(false);
+const selectedFolderIds = ref<string[]>([...props.book.folderIds]);
+const isSavingFolders = ref(false);
+const folderMessage = ref<string | null>(null);
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isApiId = (value: string) => UUID_PATTERN.test(value);
+
 watch(
   () => props.book,
   (newBook) => {
     selectedStatus.value = newBook.status === 'not-started' ? 'in-progress' : newBook.status;
     selectedPage.value = newBook.currentPage || 10;
+    selectedFolderIds.value = [...newBook.folderIds];
   },
   { deep: true },
 );
@@ -74,8 +84,43 @@ async function saveStatus() {
 
 const statusLabel = computed(() => readingStatusLabels[props.book.status]);
 const percent = computed(() => progressPercent(props.book));
-const folderLabel = computed(() => props.folders.join(' • ') || 'No folder yet');
+const folderLabel = computed(
+  () =>
+    props.folders
+      .filter((folder) => selectedFolderIds.value.includes(folder.id))
+      .map((folder) => folder.name)
+      .join(' • ') || 'No folder yet',
+);
 const tagLabel = computed(() => props.tags.join(' • ') || 'No tags');
+
+async function toggleFolder(folderId: string) {
+  if (isSavingFolders.value) return;
+
+  const previous = [...selectedFolderIds.value];
+  const wasInFolder = previous.includes(folderId);
+  selectedFolderIds.value = wasInFolder
+    ? previous.filter((id) => id !== folderId)
+    : [...previous, folderId];
+  folderMessage.value = null;
+  isSavingFolders.value = true;
+
+  try {
+    // Mock ids are client-only.
+    if (isApiId(folderId) && isApiId(props.book.id)) {
+      if (wasInFolder) {
+        await removeBookFromFolder(folderId, props.book.id);
+      } else {
+        await addBookToFolder(folderId, props.book.id);
+      }
+    }
+    emit('foldersUpdated', [...selectedFolderIds.value]);
+  } catch (error) {
+    selectedFolderIds.value = previous;
+    folderMessage.value = error instanceof Error ? error.message : 'Failed to update folders';
+  } finally {
+    isSavingFolders.value = false;
+  }
+}
 </script>
 
 <template>
@@ -151,7 +196,29 @@ const tagLabel = computed(() => props.tags.join(' • ') || 'No tags');
     <div class="meta-grid">
       <div class="meta-block">
         <p class="meta-label">Folders <span>• choose multiple</span></p>
-        <div class="meta-value">{{ folderLabel }}</div>
+        <button
+          type="button"
+          class="meta-value folder-toggle"
+          :aria-expanded="isEditingFolders"
+          @click="isEditingFolders = !isEditingFolders"
+        >
+          {{ folderLabel }}
+        </button>
+        <div v-if="isEditingFolders" class="folder-options">
+          <label v-for="folder in folders" :key="folder.id" class="folder-option">
+            <input
+              type="checkbox"
+              :checked="selectedFolderIds.includes(folder.id)"
+              :disabled="isSavingFolders"
+              @change="toggleFolder(folder.id)"
+            />
+            <span>{{ folder.name }}</span>
+          </label>
+          <p v-if="folders.length === 0" class="folder-empty">
+            No folders yet. Create one in your library.
+          </p>
+          <p v-if="folderMessage" class="folder-message" role="alert">{{ folderMessage }}</p>
+        </div>
       </div>
       <div class="meta-block">
         <p class="meta-label">Tags</p>
@@ -392,6 +459,58 @@ const tagLabel = computed(() => props.tags.join(' • ') || 'No tags');
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.folder-toggle {
+  width: 100%;
+  border: 1px solid transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.folder-toggle:hover {
+  border-color: var(--color-border);
+}
+
+.folder-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+
+.folder-option {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.folder-option input {
+  accent-color: var(--color-primary);
+}
+
+.folder-empty,
+.folder-message {
+  margin: 0;
+  font-size: var(--font-size-xs);
+}
+
+.folder-empty {
+  color: var(--color-text-muted);
+}
+
+.folder-message {
+  color: var(--color-copper);
+  font-weight: var(--font-weight-medium);
 }
 
 @media (max-width: 639px) {

@@ -11,17 +11,20 @@ import { getBookDetail, mockLibrary } from '@/mocks/library';
 import {
   getBook,
   getBookReviews,
+  getLibraryFolders,
   getUserLibrary,
   mapApiBookToLibraryBook,
   mapApiLibraryItemToBook,
   type ApiBookReviews,
   type ApiReview,
 } from '@/services/api';
-import type { LibraryBook, ReadingStatus } from '@/types/library';
+import { isSignedIn } from '@/stores/session';
+import type { FolderSummary, LibraryBook, ReadingStatus } from '@/types/library';
 
 const props = defineProps<{ bookId: string }>();
 
 const apiBook = ref<LibraryBook | null>(null);
+const folders = ref<FolderSummary[]>(isSignedIn.value ? [] : mockLibrary.folders);
 
 const book = computed(() => {
   if (apiBook.value) return apiBook.value;
@@ -60,9 +63,20 @@ async function loadReviews() {
   }
 }
 
+async function fetchFolders() {
+  if (!isSignedIn.value) return;
+
+  try {
+    folders.value = await getLibraryFolders();
+  } catch {
+    folders.value = [];
+  }
+}
+
 onMounted(() => {
   void fetchBookData();
   void loadReviews();
+  void fetchFolders();
 });
 
 watch(
@@ -86,12 +100,13 @@ function onStatusUpdated(updated: { status: ReadingStatus; currentPage: number }
   }
 }
 
-const folders = computed(() => {
-  if (!book.value) return [];
-  return mockLibrary.folders
-    .filter((folder) => book.value?.folderIds.includes(folder.id))
-    .map((folder) => folder.name);
-});
+function onFoldersUpdated(folderIds: string[]) {
+  if (apiBook.value) {
+    apiBook.value = { ...apiBook.value, folderIds: [...folderIds] };
+  } else if (book.value) {
+    book.value.folderIds = [...folderIds];
+  }
+}
 
 const tags = computed(() => {
   if (!book.value) return [];
@@ -176,6 +191,7 @@ const mailtoHref = computed(() => {
               :folders="folders"
               :tags="tags"
               @updated="onStatusUpdated"
+              @folders-updated="onFoldersUpdated"
             />
 
             <section class="about-section" aria-labelledby="about-title">

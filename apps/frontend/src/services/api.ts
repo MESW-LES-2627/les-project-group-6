@@ -9,7 +9,7 @@ import type {
   PastResult,
   WinMetric,
 } from '@/types/groups';
-import type { LibraryBook, ReadingStatus } from '@/types/library';
+import type { FolderSummary, LibraryBook, ReadingStatus } from '@/types/library';
 import { authProvider, isAuthConfigured } from '@/services/auth';
 import { formatLongDate, formatPeriod, initialsOf } from '@/utils/groups';
 
@@ -134,6 +134,8 @@ export interface ApiLibraryItem {
   status: ReadingStatus;
   currentPage: number;
   updatedAt: string;
+  /** The reader's folders that hold this book (F-LIB-03). */
+  folderIds?: string[];
 }
 
 const KNOWN_AUTHORS: Record<string, string> = {
@@ -193,7 +195,7 @@ export function mapApiLibraryItemToBook(item: ApiLibraryItem): LibraryBook {
     currentPage,
     genre,
     summary,
-    folderIds: [],
+    folderIds: item.folderIds ?? [],
     tagIds: [],
     chip,
     updatedAt: item.updatedAt,
@@ -243,6 +245,62 @@ export async function getUserLibrary(statusFilter?: ReadingStatus): Promise<ApiL
   }
 
   return response.json() as Promise<ApiLibraryItem[]>;
+}
+
+// ---------------------------------------------------------------------------
+// Library folders (F-LIB-03)
+// ---------------------------------------------------------------------------
+
+/** The reader's private folders; a book can be in several of them. */
+export async function getLibraryFolders(): Promise<FolderSummary[]> {
+  return getJson<FolderSummary[]>('/me/library/folders', 'Failed to load your folders');
+}
+
+export async function createLibraryFolder(name: string): Promise<FolderSummary> {
+  return sendJson<FolderSummary>(
+    'POST',
+    '/me/library/folders',
+    { name },
+    'Failed to create the folder',
+  );
+}
+
+export async function renameLibraryFolder(folderId: string, name: string): Promise<FolderSummary> {
+  return sendJson<FolderSummary>(
+    'PATCH',
+    `/me/library/folders/${encodeURIComponent(folderId)}`,
+    { name },
+    'Failed to rename the folder',
+  );
+}
+
+export async function deleteLibraryFolder(folderId: string): Promise<void> {
+  await ensureOk(
+    await apiFetch(`/me/library/folders/${encodeURIComponent(folderId)}`, { method: 'DELETE' }),
+    'Failed to delete the folder',
+  );
+}
+
+/** Adds the book to one folder; its reading status is untouched. */
+export async function addBookToFolder(folderId: string, bookId: string): Promise<void> {
+  await ensureOk(
+    await apiFetch(
+      `/me/library/folders/${encodeURIComponent(folderId)}/books/${encodeURIComponent(bookId)}`,
+      { method: 'PUT' },
+    ),
+    'Failed to add the book to the folder',
+  );
+}
+
+/** Removes the book from one folder only; it stays in the reader's library. */
+export async function removeBookFromFolder(folderId: string, bookId: string): Promise<void> {
+  await ensureOk(
+    await apiFetch(
+      `/me/library/folders/${encodeURIComponent(folderId)}/books/${encodeURIComponent(bookId)}`,
+      { method: 'DELETE' },
+    ),
+    'Failed to remove the book from the folder',
+  );
 }
 
 export async function getBook(bookId: string): Promise<ApiBook> {
@@ -623,7 +681,7 @@ async function getJson<T>(path: string, fallback: string, init?: RequestInit): P
 }
 
 async function sendJson<T>(
-  method: 'POST' | 'PUT',
+  method: 'POST' | 'PUT' | 'PATCH',
   path: string,
   body: unknown,
   fallback: string,

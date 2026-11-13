@@ -226,6 +226,11 @@ export const lists = pgTable(
       'chk_list_owner',
       sql`((user_id IS NOT NULL) AND (group_id IS NULL)) OR ((user_id IS NULL) AND (group_id IS NOT NULL))`,
     ),
+    // F-LIB-03: a reader's folder names are unique ignoring case. Group lists
+    // (user_id null) keep their own names.
+    uniqueIndex('lists_user_name_unique')
+      .on(table.userId, sql`lower(${table.name})`)
+      .where(sql`${table.userId} is not null`),
   ],
 );
 
