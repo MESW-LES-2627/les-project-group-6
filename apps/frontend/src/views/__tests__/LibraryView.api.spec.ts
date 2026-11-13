@@ -151,6 +151,16 @@ describe('LibraryView with a signed-in reader', () => {
       { id: TAG_GONE, name: 'borrowed', count: 1 },
       { id: TAG_AUDIO, name: 'audiobook', count: 2 },
     ]);
+  it('opens the add book modal and shows a manually added book on the shelf', async () => {
+    api.addBook.mockResolvedValue({
+      id: BOOK_C,
+      title: 'The Hobbit',
+      description: null,
+      isbn13: null,
+      pageCount: 310,
+      coverUrl: null,
+    });
+    api.addToLibrary.mockResolvedValue(undefined);
 
     const wrapper = mountView();
     await flushPromises();
@@ -301,6 +311,19 @@ describe('LibraryView with a signed-in reader', () => {
 
     expect(wrapper.get('.folder-error').text()).toBe('Delete failed');
     expect(wrapper.get('.folder-list').text()).toContain('Autumn');
+    await wrapper.get('.plate-button').trigger('click');
+    expect(wrapper.get('[role="dialog"]').text()).toContain('Add a book');
+
+    await wrapper.get('.manual .link-button').trigger('click');
+    await wrapper.get('#add-book-title-input').setValue('The Hobbit');
+    await wrapper.get('.add-book form').trigger('submit');
+    await flushPromises();
+
+    expect(api.addBook).toHaveBeenCalledWith({ title: 'The Hobbit' });
+    expect(api.addToLibrary).toHaveBeenCalledWith(BOOK_C);
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+    expect(wrapper.findAll('article')).toHaveLength(1);
+    expect(wrapper.get('article .title').text()).toBe('The Hobbit');
   });
 
   it('opens the add book modal and shows a manually added book on the shelf', async () => {

@@ -1012,6 +1012,64 @@ export async function removeFriend(userId: string): Promise<void> {
   );
 }
 
+export async function getFriendRequests(): Promise<ApiFriendRequest[]> {
+  return getJson<ApiFriendRequest[]>('/me/friend-requests', 'Failed to load friend requests');
+}
+
+export async function answerFriendRequest(
+  requestId: string,
+  answer: 'accept' | 'decline',
+): Promise<void> {
+  await ensureOk(
+    await apiFetch(`/friend-requests/${id(requestId)}/${answer}`, { method: 'POST' }),
+    `Failed to ${answer} the friend request`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Home circle sections (F-SOC-03, F-SOC-04)
+// ---------------------------------------------------------------------------
+
+/** The few book fields the Home cards show. */
+export interface ApiCircleBook {
+  id: string;
+  title: string;
+  coverUrl: string | null;
+  pageCount: number | null;
+}
+
+/** The book a friend is reading, and whether a session is running right now. */
+export interface ApiFriendReading {
+  userId: string;
+  displayName: string;
+  username: string;
+  book: ApiCircleBook;
+  currentPage: number;
+  readingNow: boolean;
+}
+
+/** A recent comment in one of the reader's groups (the group chat). */
+export interface ApiCircleComment {
+  id: string;
+  groupId: string;
+  groupName: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+/** One in-progress book per friend, friends reading right now first. */
+export async function getFriendsReading(): Promise<ApiFriendReading[]> {
+  return getJson<ApiFriendReading[]>('/me/friends/reading', 'Failed to load friends reading');
+}
+
+/** Newest comments across the groups the reader belongs to. */
+export async function getCircleComments(limit?: number): Promise<ApiCircleComment[]> {
+  const search = limit === undefined ? '' : `?limit=${encodeURIComponent(limit)}`;
+  return getJson<ApiCircleComment[]>(`/me/circle/comments${search}`, 'Failed to load your circle');
+}
+
 export async function inviteToGroup(groupId: string, inviteeId: string): Promise<ApiGroupInvite> {
   return sendJson('POST', `/groups/${id(groupId)}/invites`, { inviteeId }, 'Failed to invite');
 }
