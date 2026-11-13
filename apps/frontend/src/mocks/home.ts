@@ -1,7 +1,4 @@
-import circeCover from '@/assets/covers/circe.png';
 import emmaCover from '@/assets/covers/emma.png';
-import piranesiCover from '@/assets/covers/piranesi.png';
-import theMidnightLibraryCover from '@/assets/covers/the-midnight-library.png';
 import type { HomeData } from '@/types/home';
 
 // Mock data for the home prototype, matching the design reference (screen 05).
@@ -81,14 +78,4 @@ export const mockHome: HomeData = {
     title: 'The Sunday Shelf',
     detail: 'Book club · invited by Maya',
   },
-  trending: [
-    {
-      id: 'the-midnight-library',
-      title: 'The Midnight Library',
-      cover: theMidnightLibraryCover,
-      note: '4 friends reading',
-    },
-    { id: 'circe', title: 'Circe', cover: circeCover, note: 'Loved by your circle' },
-    { id: 'piranesi', title: 'Piranesi', cover: piranesiCover, note: 'Loved by your circle' },
-  ],
 };

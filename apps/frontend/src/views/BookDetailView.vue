@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
+import BookDetailSkeleton from '@/components/library/BookDetailSkeleton.vue';
 import BookEditionPanel from '@/components/library/BookEditionPanel.vue';
 import BookReadingPanel from '@/components/library/BookReadingPanel.vue';
 import BookThoughtsPanel from '@/components/library/BookThoughtsPanel.vue';
@@ -25,6 +26,9 @@ const props = defineProps<{ bookId: string }>();
 
 const apiBook = ref<LibraryBook | null>(null);
 const folders = ref<FolderSummary[]>(isSignedIn.value ? [] : mockLibrary.folders);
+/** True until the request that decides whether the book exists has finished. */
+const loading = ref(true);
+let loadToken = 0;
 
 const book = computed(() => {
   if (apiBook.value) return apiBook.value;
@@ -34,8 +38,12 @@ const book = computed(() => {
 const detail = computed(() => (book.value ? getBookDetail(book.value) : null));
 
 async function fetchBookData() {
+  const token = ++loadToken;
+  loading.value = true;
   try {
     const libraryItems = await getUserLibrary();
+    if (token !== loadToken) return;
+
     const item = libraryItems.find((i) => i.book.id === props.bookId);
     if (item) {
       apiBook.value = mapApiLibraryItemToBook(item);
@@ -43,11 +51,14 @@ async function fetchBookData() {
     }
 
     const fetched = await getBook(props.bookId);
+    if (token !== loadToken) return;
     if (fetched) {
       apiBook.value = mapApiBookToLibraryBook(fetched);
     }
   } catch {
     // Keep mock fallback
+  } finally {
+    if (token === loadToken) loading.value = false;
   }
 }
 
@@ -82,6 +93,9 @@ onMounted(() => {
 watch(
   () => props.bookId,
   () => {
+    // The view is reused for /library/:bookId, so never show the previous book.
+    apiBook.value = null;
+    reviews.value = null;
     void fetchBookData();
     void loadReviews();
   },
@@ -262,6 +276,8 @@ const mailtoHref = computed(() => {
           </aside>
         </div>
       </template>
+
+      <BookDetailSkeleton v-else-if="loading" />
 
       <section v-else class="missing" aria-labelledby="missing-title">
         <p class="eyebrow">Library <span aria-hidden="true">/</span> Book details</p>

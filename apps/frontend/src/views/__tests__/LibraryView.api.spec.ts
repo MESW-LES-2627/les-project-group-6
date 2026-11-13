@@ -10,6 +10,9 @@ const api = vi.hoisted(() => ({
   createLibraryFolder: vi.fn<(...args: unknown[]) => unknown>(),
   renameLibraryFolder: vi.fn<(...args: unknown[]) => unknown>(),
   deleteLibraryFolder: vi.fn<(...args: unknown[]) => unknown>(),
+  searchBooks: vi.fn<(...args: unknown[]) => unknown>(),
+  addBook: vi.fn<(...args: unknown[]) => unknown>(),
+  addToLibrary: vi.fn<(...args: unknown[]) => unknown>(),
 }));
 
 vi.mock('@/services/api', async (importOriginal) => ({
@@ -28,6 +31,7 @@ const FOLDER_B = '22222222-2222-4222-8222-222222222222';
 const FOLDER_C = '33333333-3333-4333-8333-333333333333';
 const BOOK_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const BOOK_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const BOOK_C = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
 const folder = (id: string, name: string) => ({
   id,
@@ -129,5 +133,34 @@ describe('LibraryView with a signed-in reader', () => {
     await row('Club').trigger('click');
     expect(wrapper.findAll('article')).toHaveLength(1);
     expect(wrapper.get('#books-title').text()).toBe('Club');
+  });
+
+  it('opens the add book modal and shows a manually added book on the shelf', async () => {
+    api.addBook.mockResolvedValue({
+      id: BOOK_C,
+      title: 'The Hobbit',
+      description: null,
+      isbn13: null,
+      pageCount: 310,
+      coverUrl: null,
+    });
+    api.addToLibrary.mockResolvedValue(undefined);
+
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper.get('.plate-button').trigger('click');
+    expect(wrapper.get('[role="dialog"]').text()).toContain('Add a book');
+
+    await wrapper.get('.manual .link-button').trigger('click');
+    await wrapper.get('#add-book-title-input').setValue('The Hobbit');
+    await wrapper.get('.add-book form').trigger('submit');
+    await flushPromises();
+
+    expect(api.addBook).toHaveBeenCalledWith({ title: 'The Hobbit' });
+    expect(api.addToLibrary).toHaveBeenCalledWith(BOOK_C);
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+    expect(wrapper.findAll('article')).toHaveLength(1);
+    expect(wrapper.get('article .title').text()).toBe('The Hobbit');
   });
 });

@@ -38,6 +38,9 @@ import type { ClubProgressQuery } from '../features/book-club/club-progress-quer
 import type { IFriendRepository } from '../features/friend/friend-repository.js';
 import { friendRoutes } from '../features/friend/friend-routes.js';
 import { FriendService } from '../features/friend/friend-service.js';
+import type { CircleQuery } from '../features/circle/circle-query.js';
+import { circleRoutes } from '../features/circle/circle-routes.js';
+import { CircleService } from '../features/circle/circle-service.js';
 import type { IGroupInviteRepository } from '../features/group-invite/group-invite-repository.js';
 import { groupInviteRoutes } from '../features/group-invite/group-invite-routes.js';
 import { GroupInviteService } from '../features/group-invite/group-invite-service.js';
@@ -76,6 +79,7 @@ export interface ApiDependencies {
   standingsQuery?: StandingsQuery;
   groupRosterRepository?: IGroupRosterRepository;
   friendRepository?: IFriendRepository;
+  circleQuery?: CircleQuery;
   groupInviteRepository?: IGroupInviteRepository;
   bookClubRepository?: IBookClubRepository;
   bookPollRepository?: IBookPollRepository;
@@ -111,6 +115,7 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
     standingsQuery,
     groupRosterRepository,
     friendRepository,
+    circleQuery,
     groupInviteRepository,
     bookClubRepository,
     bookPollRepository,
@@ -236,6 +241,10 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
 
   if (friendRepository && userRepository) {
     router.use(friendRoutes(new FriendService(friendRepository, userRepository)));
+  }
+
+  if (circleQuery && friendRepository) {
+    router.use(circleRoutes(new CircleService(circleQuery, friendRepository)));
   }
 
   if (userRepository && groupRosterRepository && friendRepository && groupInviteRepository) {

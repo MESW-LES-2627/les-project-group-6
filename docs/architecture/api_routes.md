@@ -97,6 +97,27 @@ Every route is scoped to the signed-in reader: a folder that belongs to someone 
 | POST | `/friend-requests/:id/decline` | The addressee declines a pending request (`204`). |
 | DELETE | `/friends/:userId` | Removes the friendship between the reader and that user (`204`). |
 
+### Home circle (`features/circle/circle-routes.ts`)
+
+The two sections of the Home page that join several features (F-SOC-03/F-SOC-04). They are read-only and answer an empty list when there are no friends or no activity.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/me/friends/reading` | One in-progress book per friend, with the reader's name and `readingNow` when a session is running (that book wins over a more recently updated one). Friends reading right now come first. Empty when no friend has a book in progress. |
+| GET | `/me/circle/comments?limit=` | The newest text comments (the group chat) across the groups the reader belongs to, deleted and system messages left out. `limit` is 1–20, default 5. |
+
+Shapes:
+
+```ts
+// GET /me/friends/reading
+{ userId, displayName, username,
+  book: { id, title, coverUrl, pageCount },
+  currentPage, readingNow }
+
+// GET /me/circle/comments
+{ id, groupId, groupName, authorId, authorName, body, createdAt }
+```
+
 ### Challenge groups (`features/challenge-group/challenge-group-routes.ts`)
 
 | Method | Path | Description |

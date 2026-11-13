@@ -101,6 +101,37 @@ describe('BookDetailView', () => {
     expect(textarea.value).toBe('Great world building');
   });
 
+  it('shows a skeleton while the book loads instead of Book not found', async () => {
+    let resolveLibrary!: (items: ApiLibraryItem[]) => void;
+    api.getUserLibrary.mockImplementationOnce(
+      () => new Promise<ApiLibraryItem[]>((resolve) => (resolveLibrary = resolve)),
+    );
+    api.getBook.mockResolvedValueOnce({
+      id: 'dune',
+      title: 'Dune',
+      description: null,
+      isbn13: null,
+      pageCount: 688,
+      coverUrl: null,
+    });
+    api.getBookReviews.mockResolvedValueOnce(noReviews);
+
+    const wrapper = mount(BookDetailView, {
+      props: { bookId: 'dune' },
+      global: { plugins: [router] },
+    });
+
+    expect(wrapper.find('.book-detail-skeleton').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Loading book details…');
+    expect(wrapper.text()).not.toContain('Book not found');
+
+    resolveLibrary([]);
+    await flushPromises();
+
+    expect(wrapper.find('.book-detail-skeleton').exists()).toBe(false);
+    expect(wrapper.get('h1').text()).toBe('Dune');
+  });
+
   it('shows a friendly message for an unknown book id', async () => {
     api.getBookReviews.mockRejectedValueOnce(new Error('offline'));
     const wrapper = await mountView('missing-book');

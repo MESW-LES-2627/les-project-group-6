@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 
 import PagePlate from '@/components/layout/PagePlate.vue';
+import AddBookModal from '@/components/library/AddBookModal.vue';
 import LibraryBookCard from '@/components/library/LibraryBookCard.vue';
 import LibrarySidebar from '@/components/library/LibrarySidebar.vue';
 import { mockLibrary } from '@/mocks/library';
@@ -19,6 +20,7 @@ import { sortBooks } from '@/utils/library';
 
 const rawBooks = ref<LibraryBook[]>(isSignedIn.value ? [] : mockLibrary.books);
 const libraryError = ref<string | null>(null);
+const addBookOpen = ref(false);
 
 const folders = ref<FolderSummary[]>(isSignedIn.value ? [] : mockLibrary.folders);
 const folderError = ref<string | null>(null);
@@ -200,6 +202,15 @@ function showEverything() {
   search.value = '';
   sort.value = 'recent';
 }
+
+const libraryIds = computed(() => rawBooks.value.map((book) => book.id));
+
+/** F-LIB-01: the new book lands on the shelf as "Not started" and is shown at once. */
+function handleBookAdded(book: LibraryBook) {
+  rawBooks.value = [book, ...rawBooks.value.filter((shelved) => shelved.id !== book.id)];
+  addBookOpen.value = false;
+  showEverything();
+}
 </script>
 
 <template>
@@ -207,7 +218,7 @@ function showEverything() {
     <PagePlate title="Library" title-id="library-title">
       <p>{{ plateLine }}</p>
       <template #actions>
-        <button type="button" class="plate-button">
+        <button type="button" class="plate-button" @click="addBookOpen = true">
           <svg
             width="16"
             height="16"
@@ -356,6 +367,14 @@ function showEverything() {
         </section>
       </div>
     </div>
+
+    <AddBookModal
+      v-if="addBookOpen"
+      :library-ids="libraryIds"
+      :signed-in="isSignedIn"
+      @close="addBookOpen = false"
+      @added="handleBookAdded"
+    />
   </main>
 </template>
 

@@ -15,6 +15,7 @@ import { DrizzleUserRepository } from './features/user/user-repository.js';
 import { DrizzleBookClubRepository } from './features/book-club/book-club-repository.js';
 import { DrizzleBookPollRepository } from './features/book-club/book-poll-repository.js';
 import { ClubProgressQuery } from './features/book-club/club-progress-query.js';
+import { DrizzleCircleQuery } from './features/circle/circle-query.js';
 import { DrizzleFriendRepository } from './features/friend/friend-repository.js';
 import { DrizzleGroupInviteRepository } from './features/group-invite/group-invite-repository.js';
 import { DrizzleGroupRosterRepository } from './features/group/group-roster-repository.js';
@@ -63,6 +64,7 @@ const server = createApp({
   standingsQuery: new StandingsQuery(db),
   groupRosterRepository: new DrizzleGroupRosterRepository(db),
   friendRepository: new DrizzleFriendRepository(db),
+  circleQuery: new DrizzleCircleQuery(db),
   groupInviteRepository: new DrizzleGroupInviteRepository(db),
   bookClubRepository: new DrizzleBookClubRepository(db),
   bookPollRepository: new DrizzleBookPollRepository(db),

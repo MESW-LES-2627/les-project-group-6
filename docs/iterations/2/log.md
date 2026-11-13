@@ -11,11 +11,12 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Releases | One GitHub Release per sprint (`iter-0` to `iter-4`), made by hand with `iteration-release.yml`; `vX.Y.Z` stay as tags only. `iter-0` and `iter-1` released |
 | Auth (F-AUTH-01) | Login is email and password only; username login removed from the form |
 | Friends (F-SOC-01) | Friend request API (send, list incoming, accept, decline, remove) behind the auth middleware (PR #114) |
-| Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
+| Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115). The Library's **Add book** opens a search/manual modal and shelves the book as "Not started" |
 | Library folders (#125, F-LIB-03) | Folder create/rename/delete and book membership behind the auth middleware, reusing `lists`/`list_books` (migration 0011); frontend sidebar CRUD and a book-page picker. Branch `feat/125-organize-library` |
 | Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with search-as-you-type (fuzzy title, author and ISBN via `pg_trgm`, `GET /book?q=`) and Trending / Most read this week lists, `GET /explore`, migrations 0008–0009. Explore page merged in PR #141, fuzzy search in PR #142. Open Library fallback (#120) in PR #144; manual add of a missing book (#120, F-BOOK-02) from the search results |
 | E2E tests (#127) | 13 Playwright tests and the `e2e.yml` workflow written, not run yet (fixtures and secrets missing) |
 | Reviews (#122, F-LIB-02) | Rate 1–5 with an optional comment, edit and delete, only for In progress, Finished or DNF books. Book page shows my, friends' and public reviews and the public average; profile lists my reviews. Migration 0010. Draft PR #150 |
+| Home (#148, F-HOME-01) | Real reading, groups (challenges with rank, book clubs), pending friend/group invites, friends reading now and group comments on `/home`; section skeletons while each load runs; streak and goals stay from the prototype until their APIs exist |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
 
 ## Log
@@ -57,7 +58,8 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 ## Next steps
 
-- Split #126 and #127 into Task sub-issues and assign owners. #126 now has a [spec](../../superpowers/specs/2026-11-11-explore-page-design.md) to split from. #125 is built on `feat/125-organize-library`; open its PR and merge.
+- Home: make F-SOC-04 friend presence opt-in (a settings choice) and replace the mock streak and goals once their APIs exist.
+- Split #125, #126 and #127 into Task sub-issues and assign owners. #126 now has a [spec](../../superpowers/specs/2026-11-11-explore-page-design.md) to split from.
 - In project 23, add the views that the API cannot create: **Current sprint** (board, filter `iteration:@current`, columns by Status) and group **Prioritized backlog** by Iteration.
 - Check and close the open issues that look done in the code: #10 #25 (book page), #28 #30 (library and status), #43 #49 (session API and summary), #52 #55 #59 (group invites, done in #107).
 - Create the e2e fixtures and GitHub secrets (see the [e2e README](../../apps/frontend/e2e/README.md)), then run the e2e suite twice and the workflow once (#127).
@@ -210,4 +212,58 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Decision: the public list shows the 10 newest reviews only.** Sorting and "Read more" wait for a later story.
 - Note: the board split this story into review (#122) and comment (#146) the same day; this work also covers the comment.
 - **Tests.** Backend 349 passing (40 new); frontend tests for the panel, book page and profile updated and added. `make check` passes.
+
+### 2026-11-13: Home page with real reading, groups and invites (#148, F-HOME-01)
+
+- [HomeView.vue](../../../apps/frontend/src/views/HomeView.vue) now loads the reader's library and active session, active challenge groups with the reader's rank, book clubs and pending friend/group invites. The parts without an API (streak, year goals, activity, friends reading now, trending) keep the prototype's mock data.
+- **Decision: one independent load per section.** Reading, groups and invites have their own loading and error state, so a failing section shows a short error without blanking the page. Challenge details load with `Promise.allSettled`, so a group without standings still shows its name and days left.
+- **Decision: one-click start or resume.** The hero uses the book of the running session when there is one, otherwise the most recently updated book in progress. The button reads "Resume session" for that book and "Start session" otherwise; other in-progress books are listed under "Also in progress".
+- Empty states: a new reader is invited to add a first book or explore books; empty groups and invites show a short message instead of an error. Accepting a group invite calls `POST /group-invites/:id/accept`, removes it from the list and reloads the groups.
+- New frontend API helpers `getActiveReadingSession`, `getFriendRequests` and `answerFriendRequest`; the shared `isSignedIn` computed lives in the [session store](../../../apps/frontend/src/stores/session.ts). The friend-request DTO has no display name yet, so real requests show "A reader" until the backend returns one.
+- **Tests.** New [HomeView.api.spec.ts](../../../apps/frontend/src/views/__tests__/HomeView.api.spec.ts) covers resume, start, also-in-progress, rank and days left, both invites, the empty states and one failing section; the signed-out prototype tests still pass. Frontend 157 passing, typecheck and lint clean.
+
+### 2026-11-13: Home circle sections from real data (#148, F-SOC-03, F-SOC-04)
+
+- **Backend.** New read-side [`features/circle/`](../../../apps/backend/src/features/circle/circle-query.ts) with three routes: `GET /me/friends/reading`, `GET /me/circle/comments?limit=` and `GET /me/friends/trending` (see [API routes](../../architecture/api_routes.md)). [`CircleService`](../../../apps/backend/src/features/circle/circle-service.ts) asks the Friend feature for the reader's friends, so friendship rules stay out of the query; [`DrizzleCircleQuery`](../../../apps/backend/src/features/circle/circle-query.ts) does the joins.
+- **Decision: "Reading now" is one book per friend and only needs an in-progress status**, not a new setting. A running session marks that book `readingNow` and wins over a book updated more recently; friends reading right now are sorted first. The opt-in from F-SOC-04 is not modelled yet, so see the follow-up below. *Rejected:* returning every in-progress book per friend, because the Home card is one line per friend.
+- **Decision: "From your circle" is the existing group chat, read across groups.** Comments are non-deleted `text` messages from every group the reader belongs to (challenges and book clubs share `member`), newest first, default 5 and at most 20. System messages ("X joined the group") are left out. *Rejected:* a separate comments table or comments on activity events, because the chat already stores the discussion and has no event feed to attach to.
+- **Decision: "Trending among friends" is the Explore ranking scoped to friends.** Books ranked by distinct friends who added them in the last 7 days (`reading_status.created_at`), top 6, ties by title. Empty list when nothing was added.
+- **Frontend.** [`HomeView.vue`](../../../apps/frontend/src/views/HomeView.vue) loads the three sections independently, each with its own loading, error and empty state; signed-out visitors keep the mock. The circle comments link to their group, and the reading-now list shows a dot when a session is running. New helpers `getFriendsReading`, `getCircleComments` and `getFriendsTrending` in [`api.ts`](../../../apps/frontend/src/services/api.ts); new `HomeFriendReading` and comment-link types in [`types/home.ts`](../../../apps/frontend/src/types/home.ts).
+- **Tests.** Backend unit `circle-service.test.ts` and integration `circle-api.test.ts` (routes guarded, reading-now ordering and active-book preference, comment filtering/limit and non-member exclusion, 7-day trending, empty lists). Frontend Home tests cover the three sections, their empty states and a failing section. The integration test needs PostgreSQL and was not run in this environment.
+- **Follow-ups.** F-SOC-04 presence should become opt-in (a setting) before friends can be shown as reading right now; the README status and the Home mock for streak and goals remain.
+
+### 2026-11-13: "Trending among friends" removed from Home (#148)
+
+- Removed the **Trending among friends** section and its backend support added earlier the same day. The Home page now ends with the groups/circle columns; the bottom padding moved to `.home`.
+- Backend: dropped `GET /me/friends/trending`, `CircleQuery.trending`, the service method and the 7-day ranking code. The remaining circle routes are `GET /me/friends/reading` and `GET /me/circle/comments` (see [API routes](../../architecture/api_routes.md)).
+- Frontend: removed `getFriendsTrending` and `ApiFriendTrending`, the `TrendingBook`/`HomeData.trending` types, the Home mock entries and the section's loading, error and empty states. The three now-unused cover imports left `mocks/home.ts`.
+- **Decision: remove the endpoint too, not only the card.** Keeping a route nothing calls would be dead code with its own tests and docs. The Explore page keeps its own trending list, which is a different feature (all readers, `GET /explore`).
+- Tests: removed the trending cases from `circle-service.test.ts`, `circle-api.test.ts` and `HomeView.api.spec.ts`; the reading-now and comments tests remain.
+
+### 2026-11-13: Add a book from the Library (F-LIB-01, F-BOOK-02)
+
+- The **Add book** button in the [library plate](../../../apps/frontend/src/views/LibraryView.vue) now opens a modal ([`AddBookModal.vue`](../../../apps/frontend/src/components/library/AddBookModal.vue)) instead of doing nothing. It works like Explore: search the catalog by title, author or ISBN (300 ms after the last keystroke) and add a result, or open the manual form to create a book no source knows.
+- **Reuse, no new API.** The modal calls the existing `searchBooks` (`GET /book?q=`), `addBook` (`POST /book`) and `addToLibrary` (`PUT /library/:bookId`). The manual form is the Explore [`AddBookForm`](../../../apps/frontend/src/components/explore/AddBookForm.vue). A new book is shelved as **Not started** (F-LIB-01) and the library switches to **All books** so it is visible.
+- **No duplicate adds.** Books already on the shelf show **In library** instead of **Add**; sending `not-started` for an in-progress or finished book would move it back on the shelf.
+- New shared modal shell [`components/common/AppModal.vue`](../../../apps/frontend/src/components/common/AppModal.vue): labelled dialog, backdrop and Escape to close, focus trap and restored focus, page scroll locked. The signed-out prototype still adds a manual book locally, without the API.
+- **Tests.** 7 tests for `AddBookModal`, 3 for `AppModal`, and 1 for the library view (open the modal, add by hand, see the book). Frontend 191 passing; typecheck, lint and format clean. Frontend README updated.
+
+### 2026-11-13: Book page skeleton while loading
+
+- Opening a book from the library briefly showed **Book not found** before its details: the view rendered the missing state until `GET /me/library` or `GET /book/:id` answered. The [book page](../../../apps/frontend/src/views/BookDetailView.vue) now has a `loading` flag and renders a new [`BookDetailSkeleton.vue`](../../../apps/frontend/src/components/library/BookDetailSkeleton.vue) that mirrors the hero and three-column layout (cover, panels and rail) while the request runs. The missing state only shows after the API confirms that the book does not exist.
+- **Race guard.** A request token stops a slower response for the previous `:bookId` from replacing the current book when the route changes, and the cached `apiBook` and reviews are cleared on navigation.
+- **Tests.** A new `BookDetailView` test holds the library request open, checks the skeleton is shown and "Book not found" is not, then resolves it and checks the title. Frontend 192 passing; typecheck, lint and format clean.
+
+### 2026-11-13: Home section skeletons while loading
+
+- Each Home section now shows a shimmer placeholder instead of a plain "Loading…" line while its request runs, so the page keeps its shape until the data arrives. The [home view](../../../apps/frontend/src/views/HomeView.vue) has skeletons for the bedside book, groups, circle comments, friends reading now and pending invites, all built from the design tokens with a reduced-motion fallback.
+- **Decision: one skeleton per section, not a full-page loader.** The sections load independently (reading, groups, invites, friends, circle), so a full-page loader would hide the sections that are already ready. Each skeleton keeps its section's height and heading, and the real empty/error state only shows once that request finishes.
+- **Accessibility.** Every skeleton block is `role="status"` with `aria-busy="true"` and an `.sr-only` label ("Loading your reading…", etc.); the decorative bars are `aria-hidden`.
+- **Tests.** A new `HomeView.api.spec.ts` test holds all five requests open, checks the skeletons and their screen-reader labels are shown and the empty states are not, then resolves them and checks the empty states replace the skeletons. Frontend 193 passing; typecheck, lint, format and build clean.
+
+### 2026-11-13: Library folder form layout
+
+- The **New folder** and **Rename** forms in the [library sidebar](../../../apps/frontend/src/components/library/LibrarySidebar.vue) put the name field and both actions on one line in the 220px column, which left the controls cramped. The field now spans the row and **Create**/**Cancel** (or **Save**/**Cancel**) sit side by side below it.
+- **Polish.** Opening the create form focuses the name field, the submit button stays disabled until the name has visible characters, and **Escape** cancels either form. The buttons now match the input height and the sidebar's font size.
+- **Tests.** A new `LibrarySidebar` test covers the disabled submit and the Escape cancel. Frontend 194 passing; typecheck, lint and format clean.
 

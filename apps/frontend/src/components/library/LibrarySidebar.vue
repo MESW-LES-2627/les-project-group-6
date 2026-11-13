@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
 import type { FolderSummary, TagSummary } from '@/types/library';
 
@@ -22,13 +22,16 @@ const emit = defineEmits<{
 
 const isCreating = ref(false);
 const newName = ref('');
+const createInput = ref<HTMLInputElement | null>(null);
 const editingId = ref<string | null>(null);
 const editName = ref('');
 
-function startCreate() {
+async function startCreate() {
   isCreating.value = true;
   editingId.value = null;
   newName.value = '';
+  await nextTick();
+  createInput.value?.focus();
 }
 
 function cancelCreate() {
@@ -77,8 +80,9 @@ function submitRename() {
               type="text"
               maxlength="100"
               :aria-label="`Rename ${folder.name}`"
+              @keydown.esc="cancelRename"
             />
-            <button type="submit" class="folder-action">Save</button>
+            <button type="submit" class="folder-action" :disabled="!editName.trim()">Save</button>
             <button type="button" class="folder-action" @click="cancelRename">Cancel</button>
           </form>
           <template v-else>
@@ -143,14 +147,16 @@ function submitRename() {
       </ul>
       <form v-if="isCreating" class="folder-form create-form" @submit.prevent="submitCreate">
         <input
+          ref="createInput"
           v-model="newName"
           class="folder-input"
           type="text"
           maxlength="100"
           placeholder="Folder name"
           aria-label="Folder name"
+          @keydown.esc="cancelCreate"
         />
-        <button type="submit" class="folder-action">Create</button>
+        <button type="submit" class="folder-action" :disabled="!newName.trim()">Create</button>
         <button type="button" class="folder-action" @click="cancelCreate">Cancel</button>
       </form>
       <button v-else type="button" class="add-folder" @click="startCreate">
@@ -294,10 +300,12 @@ function submitRename() {
 }
 
 .folder-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
+  display: grid;
+  flex: 1;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
   margin-top: var(--space-2);
 }
 
@@ -305,9 +313,14 @@ function submitRename() {
   margin-top: var(--space-3);
 }
 
+.folder-form .folder-input {
+  grid-column: 1 / -1;
+}
+
 .folder-input {
-  flex: 1;
+  width: 100%;
   min-width: 0;
+  min-height: 34px;
   padding: 5px 8px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
@@ -318,14 +331,21 @@ function submitRename() {
 }
 
 .folder-action {
-  padding: 5px 8px;
+  min-height: 34px;
+  padding: 0 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
   cursor: pointer;
+}
+
+.folder-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .folder-action[type='submit'] {

@@ -11,13 +11,15 @@ pnpm dev:backend
 pnpm --filter @bookmarked/frontend dev
 ```
 
-Open the Vite URL (normally http://localhost:5173), then visit `/home` for the home prototype (mock data, from design screen 05). The profile prototype is at `/profile` (mock data); `/profile?state=new` shows every section's empty state.
+Open the Vite URL (normally http://localhost:5173), then visit `/home` for the home page (design screen 05). Reading, groups, invites, friends reading now and circle comments load from the API; each section shows a skeleton while its request is in flight, and the streak and goals stay from `src/mocks/home.ts`. The profile prototype is at `/profile` (mock data); `/profile?state=new` shows every section's empty state.
 
 The groups prototype (mock data only) is at `/groups`: the list, `/groups/new` to create a group, and `/groups/october-sprint` (challenge) and `/groups/classics` (book club).
 
 The library view is at `/library`. It connects to the backend API (`GET /api/user/:userId/library`) for the demo reader (`a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11`), dynamically updating shelf filter counts, with seamless fallback to mock data in `src/mocks/library.ts` when offline or during tests.
 
-Opening a book goes to `/library/:bookId`. It loads book details and reading status from the backend by UUID, and includes an interactive status editor in the reading panel to update the reading status (e.g. to `in-progress`) and current page (e.g. to `10`) via `PUT /api/reading-status`. “Start session” opens `/session/:bookId`. Both pages fall back gracefully for unknown IDs or offline testing.
+The plate's **Add book** button opens a modal that works like Explore: search the catalog by title, author or ISBN (search-as-you-type, 300 ms) and add a result, or open the manual form to create a book no source knows (F-BOOK-02). A book already on the shelf shows **In library** and cannot be added twice. New books land on the shelf as **Not started** (F-LIB-01) and the library switches back to **All books** so the reader sees them. The modal reuses `AddBookForm` from Explore and does not need a new API.
+
+Opening a book goes to `/library/:bookId`. It loads book details and reading status from the backend by UUID, and includes an interactive status editor in the reading panel to update the reading status (e.g. to `in-progress`) and current page (e.g. to `10`) via `PUT /api/reading-status`. While the request is in flight the page shows a `BookDetailSkeleton` matching the hero and three-column layout, so "Book not found" only appears once the API confirms the book does not exist. “Start session” opens `/session/:bookId`. Both pages fall back gracefully for unknown IDs or offline testing.
 
 The default API base is `/api`. Vite proxies `/api/health` to `http://localhost:3000/health`, avoiding browser CORS errors. If your backend uses a different local port, change the proxy target in `vite.config.ts`. Copy `.env.example` to `.env.local` only if overriding the API base. Requests time out after ten seconds.
 
@@ -29,7 +31,7 @@ Build with `pnpm --filter @bookmarked/frontend build` and deploy `dist/`. Config
 
 Alternatively, set `VITE_API_BASE_URL` to the public backend URL **at build time** (e.g. on Render's Environment settings). The Express backend configures permissive CORS headers to support cross-origin requests. Do not put secrets in `VITE_*` variables, which are public in the bundle.
 
-After deployment, open `/library` and check for a successful library API request in browser network tools (the home page uses mock data only). Production verification requires a deployed frontend/backend and host routing.
+After deployment, open `/library` and `/home` and check for successful API requests in browser network tools. Production verification requires a deployed frontend/backend and host routing.
 
 ## Checks
 
@@ -51,9 +53,10 @@ End-to-end tests: `pnpm test:e2e`, see [e2e/README.md](e2e/README.md).
 
 - `src/assets/styles/tokens.css`: brand colors, semantic aliases, typography, spacing, radii and layout/motion tokens. Use the `--font-size-*` scale for font sizes.
 - `src/assets/styles/main.css`: global styles and shared classes (`.page-column`, `.button`, `.text-link`, `.book-link`, `.progress-bar`, `.section-title`, `.section-heading`, `.page-tabs`, `.field-input`, `.link-button`, `.sr-only`).
-- `src/views/`: the authentication screen, the complete-profile step (`CompleteProfileView`), the home page prototype (`HomeView`, mock data in `src/mocks/home.ts`), the not-found placeholder, the profile, library, book-detail and active-session prototypes, and the groups pages (`GroupsView`, `CreateGroupView`, `GroupDetailView`, which shows `ChallengeGroupView` or `BookClubGroupView`); view tests live in `__tests__/`.
+- `src/views/`: the authentication screen, the complete-profile step (`CompleteProfileView`), the home page (`HomeView`, real reading/groups/invites/circle data with section skeletons, plus the streak and goals from `src/mocks/home.ts`), the not-found placeholder, the profile, library, book-detail and active-session prototypes, and the groups pages (`GroupsView`, `CreateGroupView`, `GroupDetailView`, which shows `ChallengeGroupView` or `BookClubGroupView`); view tests live in `__tests__/`.
 - `src/components/layout/`: `AppHeader` and `AppFooter`, hidden on routes with `meta.hideAppChrome` (Login), and `PagePlate`, the burgundy band that opens the library and groups pages (the same plate as the profile's bookplate).
-- `src/components/library/`: book card, `BookCoverImage` (a 2:3 cover that shows the title when the image is missing), folders and tags sidebar, and book-detail panels.
+- `src/components/common/`: shared UI primitives, such as `AppModal`, the accessible modal shell (backdrop, focus trap, Escape to close, page scroll lock).
+- `src/components/library/`: book card, `BookCoverImage` (a 2:3 cover that shows the title when the image is missing), folders and tags sidebar, book-detail panels, `BookDetailSkeleton` (the loading placeholder for the book page) and `AddBookModal` (catalog search plus the manual `AddBookForm`).
 - `src/components/groups/`: the groups building blocks (`GroupCard`, `GroupLeaderboard`, `GroupChat`, `GroupsPageHeader`, `InfoNote`, `ToggleSwitch`, `MemberAvatar`).
 - `src/components/profile/`: profile sections with their empty states.
 - `src/components/session/`: reading timer with pause, resume and stop events.

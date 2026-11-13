@@ -31,7 +31,7 @@ describe('HomeView content', () => {
     wrapper.unmount();
   });
 
-  it('removes a friend request once accepted and the section once all are answered', async () => {
+  it('removes a friend request once accepted and shows an empty message when all are answered', async () => {
     const wrapper = mountView();
     const button = (label: string) => wrapper.findAll('button').find((b) => b.text() === label)!;
 
@@ -39,7 +39,8 @@ describe('HomeView content', () => {
     expect(wrapper.get('[role="status"]').text()).toBe('You and Sofia Chen are now friends.');
 
     await button('Decline').trigger('click');
-    expect(wrapper.text()).not.toContain('Waiting for you');
+    expect(wrapper.text()).toContain('Waiting for you');
+    expect(wrapper.text()).toContain('No pending invites.');
     wrapper.unmount();
   });
 });

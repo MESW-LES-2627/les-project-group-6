@@ -87,6 +87,8 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | `POST`   | `/friend-requests/:id/accept`                     | The addressee accepts a pending request (`200`; `404` if not found or not theirs, `409` if not pending) |
 | `POST`   | `/friend-requests/:id/decline`                    | The addressee declines a pending request (`204`; `404` if not found or not theirs) |
 | `DELETE` | `/friends/:userId`                                | Removes the friendship between the reader and that user (`204`; `404` if not friends) |
+| `GET`    | `/me/friends/reading`                             | One book in progress per friend, `readingNow` true when a session is running; friends reading right now first (`200`) |
+| `GET`    | `/me/circle/comments?limit=`                      | Newest text comments from the groups the reader belongs to, deleted and system messages left out (`200`; `limit` 1–20, default 5) |
 | `POST`   | `/groups/:groupId/messages`                       | Sends a chat message (`clientId` UUID, `body`); members only. A retry with the same `clientId` returns the stored message (`201` new, `200` retry, `403` not a member)                                    |
 | `GET`    | `/groups/:groupId/messages?after=&before=&limit=` | Chat history in `seq` order: the latest page, newer than `after` (catch-up) or older than `before` (`200`, `403`)                                                                                         |
 | `DELETE` | `/groups/:groupId/messages/:messageId`            | Soft-deletes a message; its author or the group admin (`204`, `403`, `404`)                                                                                                                               |
@@ -144,6 +146,7 @@ apps/backend/
 │   │   ├── group-invite/  # GroupInvite aggregate, repository, service, DTO, routes (any group)
 │   │   ├── book-club/     # BookClub aggregate (rounds), BookPoll aggregate (voting), progress query, services, DTO, routes
 │   │   ├── friend/        # Friend requests (request, accept, decline, remove) and the friends list
+│   │   ├── circle/        # Read-side query for the Home circle: friends reading and group comments
 │   │   ├── reading-session/ # ReadingSession aggregate (server-timed), repository + stats, service, DTO, routes
 │   │   ├── group-chat/    # ChatMessage entity, repository, membership query, ChatService, routes, Socket.IO notifier, JoinAnnouncer
 │   │   ├── auth/          # AuthProvider port + SupabaseAuthProvider (JWT verification with JWKS)

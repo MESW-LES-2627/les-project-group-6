@@ -52,6 +52,20 @@ describe('LibrarySidebar', () => {
     expect(wrapper.emitted('createFolder')).toEqual([['Winter reading']]);
   });
 
+  it('keeps Create disabled until the name is filled and cancels on Escape', async () => {
+    const wrapper = mountSidebar();
+
+    await wrapper.get('.add-folder').trigger('click');
+    const submit = wrapper.get('.create-form button[type="submit"]');
+    expect(submit.attributes('disabled')).toBeDefined();
+
+    await wrapper.get('.create-form .folder-input').setValue('Winter');
+    expect(submit.attributes('disabled')).toBeUndefined();
+
+    await wrapper.get('.create-form .folder-input').trigger('keydown', { key: 'Escape' });
+    expect(wrapper.find('.create-form').exists()).toBe(false);
+  });
+
   it('renames a folder from its row', async () => {
     const wrapper = mountSidebar();
 

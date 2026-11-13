@@ -354,6 +354,11 @@ Implement F-LIB-03 "Library folders" on branch feat/125-organize-library: create
 - **Date:** 2026-11-12
 - **Author:** Nimot Imran
 - **Model:** Big Pickle
+### 2026-11-13: Home page with real data (#148, F-HOME-01)
+
+- **Date:** 2026-11-13
+- **Author:** Nimot Imran
+- **Model:** DeepSeek V4.1 Flash Free
 - **Tool:** OpenCode
 - **Domain:** frontend, testing, docs
 
@@ -418,3 +423,103 @@ creat he implementation plan and implement but in a separate branch
 
 #### Result
 Design spec and implementation plan in `docs/superpowers/`, decided with the user (one review per book, visibility follows the profile, no audience selector, real friend and public lists, first page only). Built the `features/review/` backend module, migration 0010, four routes, the review panel, book page lists and profile Reviews section, with unit, integration and component tests.
+ Implement the home page with real data, leave the part that the API is not ready. Do not push or commit
+
+Feature: Home page
+[...scenarios for start/resume a session, active challenges, pending invites, empty library, tidy empty sections, one failing section, and a private Home...]
+```
+
+#### Explanation of Changes
+Rewrote `HomeView.vue` so reading, groups and invites load from the API in independent sections with their own loading, error and empty states; signed-out visitors keep the prototype mock. The hero resumes the running session or starts one with a single link, challenge rank comes from the group standings, and accepting or declining invites calls the API. Added `getActiveReadingSession`, `getFriendRequests` and `answerFriendRequest` to `services/api.ts`, the `isSignedIn` computed to the session store and view types to `types/home.ts`. Added `HomeView.api.spec.ts` (7 tests) and updated the signed-out test's empty-invites expectation.
+
+### 2026-11-13: Home circle sections (#148, F-SOC-03, F-SOC-04)
+
+- **Date:** 2026-11-13
+- **Author:** Nimot Imran
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** backend, frontend, testing, docs
+
+#### Prompt
+```text
+Now let implement the "Reading now" section, showing the book my friends are reading, then implement the "From your circle" section with comments from my group. also I want to see the trending books in the "Trending among friends" section. follow the project setup and UI mock up
+```
+
+#### Explanation of Changes
+Added the read-side `features/circle/` backend feature with `GET /me/friends/reading`, `GET /me/circle/comments` and `GET /me/friends/trending`, wired through `ApiDependencies` and `server.ts`. The service asks the Friend feature for the friends list and the Drizzle query joins `reading_status`, `reading_sessions`, `books`, `groups`, `member` and `group_messages`. Home now loads the three sections independently with loading, error and empty states, and maps the results into the existing UI mock layout; the signed-out page keeps the prototype data. Added backend unit and integration tests and frontend Home tests, plus the API route docs, backend README and iteration log.
+
+### 2026-11-13: Add a book from the Library (F-LIB-01, F-BOOK-02)
+
+- **Date:** 2026-11-13
+- **Author:** Nimot Imran
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+I want to implement the add book functionality, when user click the Add Book button, a pop up modal should appear, allowing the user to search books or add manually just like the expore page and the book should be added to the library, follow the project structure, guidelines and UI. don't push or commit yet.
+```
+
+#### Explanation of Changes
+- Added `AddBookModal.vue` under `components/library/`: catalog search by title, author or ISBN with the same 300 ms search-as-you-type and 2-character minimum as Explore, an **Add** button per result, **In library** for books already on the shelf, and the Explore `AddBookForm` for a book no source knows. New books are added with `addToLibrary` as "Not started", reusing the existing `searchBooks`, `addBook` and `addToLibrary` API helpers.
+- Added a reusable `components/common/AppModal.vue` (labelled `role="dialog"`, backdrop/Escape/close button, focus trap, restored focus and body scroll lock) and wired the Library plate's **Add book** button to it. On success `LibraryView` inserts the book, closes the modal and resets the filters so the book is visible.
+- Kept the signed-out prototype usable: a manually added book is inserted locally without calling the API.
+- Added 11 frontend tests across `AppModal.spec.ts`, `AddBookModal.spec.ts` and `LibraryView.api.spec.ts`; updated the frontend README and the iteration 2 log. No backend or migration changes, so no new routes.
+
+### 2026-11-13: Book detail skeleton loader
+
+- **Date:** 2026-11-13
+- **Author:** Nimot Imran
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+when I click on a particular book in a library, there is a flash display of "Book not found " before the book details shows up, fix this by adding a skeleton loader
+```
+
+#### Explanation of Changes
+- Added a `loading` flag to `BookDetailView.vue`, set before `getUserLibrary`/`getBook` and cleared in `finally`. The page now renders `BookDetailSkeleton.vue` while loading and only shows the "Book not found" state after the request completes without a book.
+- The skeleton mirrors the real hero and the cover/main/rail grid, uses the design tokens, a reduced-motion fallback and the existing responsive breakpoints.
+- Added a request token so a late response for a previous `:bookId` cannot overwrite the current book, and cleared the cached book and reviews when the route parameter changes.
+- Added a `BookDetailView` test with a deferred library request that asserts the skeleton appears instead of "Book not found"; frontend suite 192 passing. Updated the frontend README and iteration 2 log.
+
+### 2026-11-13: Home section skeletons while loading
+
+- **Date:** 2026-11-13
+- **Author:** Nimot Imran
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+Add loading state on the home page also
+```
+
+#### Explanation of Changes
+- Replaced the plain "Loading…" lines in `HomeView.vue` with section skeletons: a bedside cover/title/progress placeholder, two group rows, three circle-comment rows, three reading-now rows and two invite rows.
+- The skeletons use the same shimmer, tokens, responsive breakpoints and `prefers-reduced-motion` fallback as `BookDetailSkeleton`, keep each section's layout height, and expose `role="status"`, `aria-busy="true"` and an `.sr-only` loading label.
+- The empty and error states now render only after the request finishes, matching the book page behaviour. Added a `HomeView.api.spec.ts` test with five deferred requests that checks the skeletons (and labels) are shown, the empty states are not, and the empty states replace the skeletons once resolved; frontend suite 193 passing. Updated the frontend README and iteration 2 log.
+
+### 2026-11-13: Library folder form layout
+
+- **Date:** 2026-11-13
+- **Author:** Nimot Imran
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+adjust the Folders section on the library page
+```
+(with a screenshot of the Folders heading and the name field, Create and Cancel buttons squeezed onto one row)
+
+#### Explanation of Changes
+- Changed the `.folder-form` in `LibrarySidebar.vue` from a wrapping flex row to a two-column grid: the name field spans both columns and **Create**/**Cancel** (or **Save**/**Cancel**) sit on the row below, so the form fits the 220px sidebar instead of pushing the buttons off the row.
+- Gave the input a sensible height and matched the action buttons to it, using `--font-size-sm` for both. Submit buttons are disabled while the name is blank, pressing Escape cancels the form, and the create field receives focus when it opens.
+- Added a `LibrarySidebar` test for the disabled submit and Escape cancel; frontend suite 194 passing. Updated the iteration 2 log.
+
