@@ -686,6 +686,8 @@ describe('ReviewService', () => {
 
   const shelve = async (status: 'not-started' | 'in-progress' | 'finished' | 'did-not-finish') => {
     const entry = ReadingStatus.create(UserId.of(READER), dune.id);
+    // DNF is only reachable from In progress.
+    if (status === 'did-not-finish') entry.startReading();
     entry.changeStatus(status, dune.pageCount);
     await statuses.save(entry);
   };
@@ -985,6 +987,8 @@ describe('Review API (F-LIB-02)', () => {
 
   const shelve = async (userId: string, status: 'not-started' | 'finished' | 'in-progress' | 'did-not-finish') => {
     const entry = ReadingStatus.create(UserId.of(userId), dune.id);
+    // DNF is only reachable from In progress.
+    if (status === 'did-not-finish') entry.startReading();
     entry.changeStatus(status, dune.pageCount);
     await readingStatusRepository.save(entry);
   };
