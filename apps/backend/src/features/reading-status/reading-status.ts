@@ -101,6 +101,10 @@ export class ReadingStatus {
     return this.state.tracksProgress;
   }
 
+  get allowsReview(): boolean {
+    return this.state.allowsReview;
+  }
+
   startReading(today: string = isoDay(new Date())): void {
     this.transitionTo(this.state.start(), null);
     if (!this._startedOn) {

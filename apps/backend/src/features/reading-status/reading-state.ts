@@ -57,6 +57,8 @@ export abstract class ReadingState {
   abstract readonly type: ReadingStatusType;
   /** Whether the reader can record the page they reached while in this state. */
   abstract readonly tracksProgress: boolean;
+  /** Whether the reader can rate and review the book in this state (F-LIB-02). */
+  abstract readonly allowsReview: boolean;
 
   start(): ReadingState {
     throw new InvalidReadingTransitionError(this.type, 'in-progress');
@@ -95,6 +97,7 @@ export abstract class ReadingState {
 class NotStarted extends ReadingState {
   readonly type = 'not-started';
   readonly tracksProgress = false;
+  readonly allowsReview = false;
 
   override start(): ReadingState {
     return new InProgress();
@@ -113,6 +116,7 @@ class NotStarted extends ReadingState {
 class InProgress extends ReadingState {
   readonly type = 'in-progress';
   readonly tracksProgress = true;
+  readonly allowsReview = true;
 
   override finish(): ReadingState {
     return new Finished();
@@ -135,6 +139,7 @@ class InProgress extends ReadingState {
 class Finished extends ReadingState {
   readonly type = 'finished';
   readonly tracksProgress = false;
+  readonly allowsReview = true;
 
   override start(): ReadingState {
     return new InProgress();
@@ -152,6 +157,7 @@ class Finished extends ReadingState {
 class DidNotFinish extends ReadingState {
   readonly type = 'did-not-finish';
   readonly tracksProgress = true;
+  readonly allowsReview = true;
 
   override start(): ReadingState {
     return new InProgress();
