@@ -362,3 +362,21 @@ implement the e2e plan with subagent-driven development
 
 #### Result
 Playwright config, helpers and a spec for every route in `apps/frontend/e2e/` (13 tests, not run yet: fixtures and secrets missing), the `.github/workflows/e2e.yml` workflow, and the e2e docs.
+### 2026-11-13: Rate and review a book (#122)
+
+- **Date:** 2026-11-13
+- **Author:** Robert Gleison
+- **Model:** Claude Haiku 5.5 (design), Claude Opus 5.5 (plan and code)
+- **Tool:** Claude Code
+- **Domain:** backend, database, frontend, testing, docs
+
+#### Prompt
+```text
+/superpowers:brainstorming I want to implement this https://github.com/orgs/MESW-LES-2627/projects/23/views/10?pane=issue&itemId=297555530&issue=MESW-LES-2627%7Cles-project-group-6%7C122 user stry. can you help me?
+whrite the spec for me
+creat he implementation plan and implement but in a separate branch
+```
+
+#### Result
+Design spec and implementation plan in `docs/superpowers/`, decided with the user (one review per book, visibility follows the profile, no audience selector, real friend and public lists, first page only). Built the `features/review/` backend module, migration 0010, four routes, the review panel, book page lists and profile Reviews section, with unit, integration and component tests.
+

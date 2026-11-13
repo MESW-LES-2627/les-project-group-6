@@ -14,6 +14,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
 | Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with search-as-you-type (fuzzy title, author and ISBN via `pg_trgm`, `GET /book?q=`) and Trending / Most read this week lists, `GET /explore`, migrations 0008–0009. Explore page merged in PR #141, fuzzy search in PR #142. Open Library fallback (#120) in PR #144; manual add of a missing book (#120, F-BOOK-02) from the search results |
 | E2E tests (#127) | 13 Playwright tests and the `e2e.yml` workflow written, not run yet (fixtures and secrets missing) |
+| Reviews (#122, F-LIB-02) | Rate 1–5 with an optional comment, edit and delete, only for In progress, Finished or DNF books. Book page shows my, friends' and public reviews and the public average; profile lists my reviews. Migration 0010. Branch `feat/rate-review-book`, not merged |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
 
 ## Log
@@ -59,6 +60,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 - In project 23, add the views that the API cannot create: **Current sprint** (board, filter `iteration:@current`, columns by Status) and group **Prioritized backlog** by Iteration.
 - Check and close the open issues that look done in the code: #10 #25 (book page), #28 #30 (library and status), #43 #49 (session API and summary), #52 #55 #59 (group invites, done in #107).
 - Create the e2e fixtures and GitHub secrets (see the [e2e README](../../apps/frontend/e2e/README.md)), then run the e2e suite twice and the workflow once (#127).
+- Open a PR for `feat/rate-review-book` (#122, #146) and merge it after review.
 - Fill in [`release_notes.md`](release_notes.md) before running "Iteration release" for `iter-2`.
 
 ### 2026-11-08: Component diagram updated to iteration 1
@@ -188,3 +190,14 @@ A running record of what the team did and decided in iteration 2. The [release n
 - 13 tests are written and listed by `playwright test --list`, but they have **not been run yet**: the fixtures (test users, book, group) do not exist and the GitHub secrets are not set. The workflow has not run either.
 - Deviation from the plan: `apps/frontend/.gitignore` has `!.env.e2e.example`, because the root `.gitignore` ignores `.env.*`.
 - Code review fixes (`90ec8f8`): the login submit and the `?redirect=` check would have failed every run; the profile reset now refuses to delete a user it did not create; the session test needs the fixture book in "reading" and fails clearly if another session is running. Draft PR [#149](https://github.com/MESW-LES-2627/les-project-group-6/pull/149).
+### 2026-11-13: Rate and review a book (#122, F-LIB-02)
+
+- Designed and built from the [spec](../../superpowers/specs/2026-11-13-rate-review-book-design.md) and the [plan](../../superpowers/plans/2026-11-13-rate-review-book.md), commits `e02187d` to `010ed79` on branch `feat/rate-review-book`.
+- **Backend.** New `features/review/` module on the existing `reviews` table: `Rating` (1 to 5) and `ReviewComment` (trimmed, up to 2,000 characters) value objects, a `Review` aggregate, a Drizzle repository that upserts on `(user_id, book_id)`, a `ReviewQuery` read model and a `ReviewService`. Each `ReadingState` now says whether it `allowsReview`. Routes `PUT`/`DELETE /book/:bookId/review`, `GET /book/:bookId/reviews` and `GET /users/:userId/reviews` (see the [backend README](../../../apps/backend/README.md)). Migration `0010_review_per_book` adds `updated_at`, the unique constraint and an index.
+- **Frontend.** `BookThoughtsPanel` saves, edits and deletes my review and is disabled with a hint for Not started books. The book page's friend and public lists and the public average come from the API; the sort control, "Read more" and "found helpful" were removed. The profile has a new Reviews section.
+- **Decision: one review per reader per book**; saving again replaces it. *Rejected:* one per read-through (needs a link to each finished read).
+- **Decision: who sees a review follows the author's profile** (public: everyone; private: the author and accepted friends), and only public profiles count in the average (F-LIB-02 rule 5, Q4). The audience selector in the mock was removed. *Rejected:* a per-review audience setting.
+- **Decision: the public list shows the 10 newest reviews only.** Sorting and "Read more" wait for a later story.
+- Note: the board split this story into review (#122) and comment (#146) the same day; this work also covers the comment.
+- **Tests.** Backend 349 passing (40 new); frontend tests for the panel, book page and profile updated and added. `make check` passes.
+
