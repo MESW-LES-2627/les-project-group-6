@@ -19,21 +19,21 @@ The issue's "Runs in CI" scenario asks for a seeded test database and for pull r
 ## Decisions
 
 - **Tool: Playwright.** Headless in CI, a `setup` project shares the login between tests.
-- **Sign-in: a real Supabase test user.** The login form is exercised once in the `setup` project. The backend verifies the same tokens, so no test-only auth code ships in the app. *Rejected:* a test auth bypass behind an env flag (test code in the app, login not exercised); mocking Supabase in the browser (the backend still rejects the fake token).
-- **Data: fixed test entities, reversible actions.** The backend has no delete route for groups, books or profiles, so tests cannot remove those once created. The test user owns permanent fixtures instead (see *Test data*), and tests only perform actions the API can undo: shelf entries (`DELETE /library/:bookId`), reading sessions (`DELETE /reading-sessions/:id`), reading status. *Rejected:* creating new groups and books in each test (they pile up in the production database); adding delete routes only for tests (scope creep); cleaning everything up with direct SQL (bypasses the domain; kept only for the complete-profile reset).
-- **Stack: production build.** The frontend is served with `vite preview` (the built app, with the `/api` proxy) and the backend with its `start` script. *Rejected:* `vite dev` (dev-only behaviour); a deployed URL (no staging environment; tests would depend on deploys).
+- **Sign-in: a real Supabase test user.** The login form is exercised once in the `setup` project. The backend verifies the same tokens, so no test-only auth code ships in the app. _Rejected:_ a test auth bypass behind an env flag (test code in the app, login not exercised); mocking Supabase in the browser (the backend still rejects the fake token).
+- **Data: fixed test entities, reversible actions.** The backend has no delete route for groups, books or profiles, so tests cannot remove those once created. The test user owns permanent fixtures instead (see _Test data_), and tests only perform actions the API can undo: shelf entries (`DELETE /library/:bookId`), reading sessions (`DELETE /reading-sessions/:id`), reading status. _Rejected:_ creating new groups and books in each test (they pile up in the production database); adding delete routes only for tests (scope creep); cleaning everything up with direct SQL (bypasses the domain; kept only for the complete-profile reset).
+- **Stack: production build.** The frontend is served with `vite preview` (the built app, with the `/api` proxy) and the backend with its `start` script. _Rejected:_ `vite dev` (dev-only behaviour); a deployed URL (no staging environment; tests would depend on deploys).
 - **CI: `e2e.yml` GitHub Actions workflow, on pushes to `main` and on manual dispatch.**
 
 ## Test data
 
 Created once by hand in the production database and Supabase, documented in `apps/frontend/e2e/README.md`:
 
-| Fixture | Used by |
-| --- | --- |
-| Test user (Supabase account + `users` row with `id` = Supabase user id) | every authenticated test |
-| A permanent group owned by the test user | groups, group detail |
-| A seeded book ("Emma", from `seed.ts`) on the test user's shelf | explore, book detail, library, active session |
-| A second Supabase account with **no** `users` row | complete-profile |
+| Fixture                                                                           | Used by                                       |
+| --------------------------------------------------------------------------------- | --------------------------------------------- |
+| Test user (Supabase account + `users` row with `id` = Supabase user id)           | every authenticated test                      |
+| A permanent group owned by the test user                                          | groups, group detail                          |
+| A seeded book ("Emma", from `seed.ts`) on the test user's shelf, status "reading" | explore, book detail, library, active session |
+| A second Supabase account with **no** `users` row                                 | complete-profile                              |
 
 Rules for tests:
 
@@ -44,16 +44,16 @@ Rules for tests:
 
 ## Layout
 
-| Path | Purpose |
-| --- | --- |
-| `apps/frontend/playwright.config.ts` | Projects (`setup`, `chromium`), base URL, traces and screenshots on failure. `webServer` starts the stack for local runs; in CI it reuses the servers the workflow started (`reuseExistingServer`). |
-| `apps/frontend/e2e/auth.setup.ts` | Logs in through the real login form with **"Keep me signed in" ticked**, then saves the browser state to `e2e/.auth/user.json` (git-ignored). Without the tick the session lives in `sessionStorage`, which Playwright does not save. |
-| `apps/frontend/e2e/fixtures.ts` | Fixtures: the IDs of the permanent group and book (from env), and helpers that undo shelf and session changes in teardown. |
-| `apps/frontend/e2e/*.spec.ts` | One spec per area: `login`, `complete-profile`, `home`, `library`, `book`, `session`, `groups`, `group-create`, `group-detail`, `profile`, `explore`, `not-found`. |
-| `apps/frontend/e2e/README.md` | How to create the fixtures and run the suite locally. |
-| `apps/frontend/.env.e2e` | Local credentials and fixture IDs (git-ignored). `.env.e2e.example` is committed. |
-| `apps/frontend/package.json` | Script `test:e2e` (`playwright test`). Adds `@playwright/test` as a dev dependency. |
-| `.github/workflows/e2e.yml` | The CI workflow (see below). |
+| Path                                 | Purpose                                                                                                                                                                                                                               |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/frontend/playwright.config.ts` | Projects (`setup`, `chromium`), base URL, traces and screenshots on failure. `webServer` starts the stack for local runs; in CI it reuses the servers the workflow started (`reuseExistingServer`).                                   |
+| `apps/frontend/e2e/auth.setup.ts`    | Logs in through the real login form with **"Keep me signed in" ticked**, then saves the browser state to `e2e/.auth/user.json` (git-ignored). Without the tick the session lives in `sessionStorage`, which Playwright does not save. |
+| `apps/frontend/e2e/fixtures.ts`      | Fixtures: the IDs of the permanent group and book (from env), and helpers that undo shelf and session changes in teardown.                                                                                                            |
+| `apps/frontend/e2e/*.spec.ts`        | One spec per area: `login`, `complete-profile`, `home`, `library`, `book`, `session`, `groups`, `group-create`, `group-detail`, `profile`, `explore`, `not-found`.                                                                    |
+| `apps/frontend/e2e/README.md`        | How to create the fixtures and run the suite locally.                                                                                                                                                                                 |
+| `apps/frontend/.env.e2e`             | Local credentials and fixture IDs (git-ignored). `.env.e2e.example` is committed.                                                                                                                                                     |
+| `apps/frontend/package.json`         | Script `test:e2e` (`playwright test`). Adds `@playwright/test` as a dev dependency.                                                                                                                                                   |
+| `.github/workflows/e2e.yml`          | The CI workflow (see below).                                                                                                                                                                                                          |
 
 Vitest already excludes `e2e/**`, so unit tests are unaffected.
 
