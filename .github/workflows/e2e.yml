@@ -1,0 +1,95 @@
+# Runs the Playwright e2e suite against the shared database (#127).
+# Not a pull request check: it writes to the shared database, see the spec.
+name: E2E
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One run at a time: all runs share one test user.
+  group: e2e
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: true
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      VITE_API_BASE_URL: /api
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      E2E_PROFILELESS_EMAIL: ${{ secrets.E2E_PROFILELESS_EMAIL }}
+      E2E_PROFILELESS_PASSWORD: ${{ secrets.E2E_PROFILELESS_PASSWORD }}
+      E2E_BOOK_ID: ${{ secrets.E2E_BOOK_ID }}
+      E2E_BOOK_TITLE: Emma
+      E2E_GROUP_ID: ${{ secrets.E2E_GROUP_ID }}
+      E2E_GROUP_NAME: E2E fixture group
+    steps:
+      - uses: actions/checkout@v5
+
+      # Uses the pnpm version pinned in packageManager (root package.json)
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm --filter @bookmarked/frontend exec playwright install --with-deps chromium
+
+      - name: Build backend
+        run: pnpm --filter @bookmarked/backend build
+
+      # Vite inlines the VITE_* values at build time, so they are set as env above.
+      - name: Build frontend
+        run: pnpm --filter @bookmarked/frontend build-only
+
+      - name: Start backend
+        run: |
+          pnpm --filter @bookmarked/backend start > backend.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:3000/health | grep -q '"status":"ok"' && exit 0
+            sleep 2
+          done
+          cat backend.log
+          exit 1
+
+      - name: Start frontend
+        run: |
+          pnpm --filter @bookmarked/frontend preview --port 4173 --strictPort > frontend.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:4173 > /dev/null && exit 0
+            sleep 2
+          done
+          cat frontend.log
+          exit 1
+
+      - name: E2E tests
+        run: pnpm --filter @bookmarked/frontend test:e2e
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/frontend/playwright-report/
+            apps/frontend/test-results/
+            backend.log
+            frontend.log
+          retention-days: 7
