@@ -1,31 +1,61 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
-import type { BookDetail, ReviewAudience } from '@/types/library';
+import { deleteReview, saveReview, type ApiReview } from '@/services/api';
+import type { ReadingStatus } from '@/types/library';
 
-const props = defineProps<{ detail: BookDetail }>();
+const props = defineProps<{ bookId: string; status: ReadingStatus; review: ApiReview | null }>();
+const emit = defineEmits<{ changed: [] }>();
 
-const rating = ref(props.detail.thoughts.rating);
-const comment = ref(props.detail.thoughts.comment);
-const audience = ref<ReviewAudience>(props.detail.thoughts.audience);
+const rating = ref(0);
+const comment = ref('');
+const busy = ref(false);
+const error = ref('');
 const stars = [1, 2, 3, 4, 5];
 
-function setRating(value: number) {
-  rating.value = value;
+// F-LIB-02: In progress, Finished and Did not finish can be reviewed; Not started cannot.
+const canReview = computed(() => props.status !== 'not-started');
+
+watch(
+  () => props.review,
+  (review) => {
+    rating.value = review?.rating ?? 0;
+    comment.value = review?.comment ?? '';
+  },
+  { immediate: true },
+);
+
+async function run(action: () => Promise<void>) {
+  busy.value = true;
+  error.value = '';
+  try {
+    await action();
+    emit('changed');
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Something went wrong';
+  } finally {
+    busy.value = false;
+  }
 }
 
-function toggleAudience() {
-  audience.value = audience.value === 'friends' ? 'public' : 'friends';
+function save() {
+  void run(() => saveReview(props.bookId, { rating: rating.value, comment: comment.value }));
+}
+
+function remove() {
+  if (!window.confirm('Delete your rating and review?')) return;
+  void run(() => deleteReview(props.bookId));
 }
 </script>
 
 <template>
   <section class="thoughts-panel" aria-labelledby="thoughts-title">
     <h2 id="thoughts-title" class="panel-title">Your thoughts</h2>
-    <p class="helper">
+    <p v-if="canReview" class="helper">
       You can review a book while <strong>In progress</strong>, <strong>Finished</strong>, or
       <strong>Did not finish</strong>.
     </p>
+    <p v-else class="helper start-hint">Start reading this book to rate and review it.</p>
 
     <div class="stars" role="group" aria-label="Your rating">
       <button
@@ -35,14 +65,13 @@ function toggleAudience() {
         :class="['star', { empty: star > rating }]"
         :aria-label="`Rate ${star} out of 5`"
         :aria-pressed="rating === star"
-        @click="setRating(star)"
+        :disabled="!canReview || busy"
+        @click="rating = star"
       >
         ★
       </button>
     </div>
-    <p class="rating-copy">
-      {{ rating }} of 5 <span aria-hidden="true">•</span> Change your rating
-    </p>
+    <p class="rating-copy">{{ rating > 0 ? `${rating} of 5` : 'Pick a rating' }}</p>
 
     <label class="field-label" for="thought-comment">Comment</label>
     <textarea
@@ -50,25 +79,10 @@ function toggleAudience() {
       v-model="comment"
       class="comment"
       rows="2"
+      maxlength="2000"
       placeholder="What stayed with you?"
+      :disabled="!canReview || busy"
     ></textarea>
-
-    <p class="field-label">Review audience</p>
-    <button type="button" class="audience" @click="toggleAudience">
-      {{ audience === 'friends' ? 'Friends only' : 'Public' }}
-      <svg
-        width="11"
-        height="11"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        aria-hidden="true"
-      >
-        <path d="m6 9 6 6 6-6" />
-      </svg>
-    </button>
 
     <div class="privacy-note">
       <svg
@@ -87,14 +101,29 @@ function toggleAudience() {
         <path d="M8 10V7a4 4 0 0 1 8 0v3" />
       </svg>
       <div>
-        <p class="privacy-title">Not part of the public average</p>
+        <p class="privacy-title">Follows your profile</p>
         <p class="privacy-copy">
-          Your private review is visible to accepted friends, not strangers.
+          On a public profile everyone sees your review and it counts in the public average. On a
+          private one only accepted friends see it.
         </p>
       </div>
     </div>
 
-    <button type="button" class="save-button">Save rating &amp; comment</button>
+    <p v-if="error" class="error" role="alert">{{ error }}</p>
+
+    <div class="actions">
+      <button
+        type="button"
+        class="save-button"
+        :disabled="!canReview || busy || rating === 0"
+        @click="save"
+      >
+        {{ busy ? 'Saving…' : 'Save rating & comment' }}
+      </button>
+      <button v-if="review" type="button" class="delete-button" :disabled="busy" @click="remove">
+        Delete review
+      </button>
+    </div>
   </section>
 </template>
 
@@ -147,7 +176,7 @@ function toggleAudience() {
   color: var(--color-track);
 }
 
-.star:hover {
+.star:not(:disabled):hover {
   color: var(--color-copper);
 }
 
@@ -185,27 +214,6 @@ function toggleAudience() {
 .comment:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
-}
-
-.audience {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-control);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--font-size-xs);
-  text-align: left;
-  cursor: pointer;
-}
-
-.audience:hover {
-  border-color: var(--color-accent);
 }
 
 .privacy-note {
@@ -252,8 +260,54 @@ function toggleAudience() {
   transition: background-color var(--duration-fast);
 }
 
-.save-button:hover {
+.save-button:not(:disabled):hover {
   background: var(--color-primary-hover);
+}
+
+.star:disabled,
+.comment:disabled,
+.save-button:disabled,
+.delete-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.start-hint {
+  color: var(--color-primary);
+}
+
+.error {
+  margin: 12px 0 0;
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.actions .save-button {
+  margin-top: 0;
+}
+
+.delete-button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.delete-button:not(:disabled):hover {
+  border-color: var(--color-primary);
 }
 
 @media (max-width: 639px) {
