@@ -42,6 +42,13 @@ import type { GroupMembership } from '../../src/features/group-chat/group-member
 import type { SystemMessages } from '../../src/features/group-chat/chat-service.js';
 import type { IChallengeGroupRepository } from '../../src/features/challenge-group/challenge-group-repository.js';
 import type { IUserRepository } from '../../src/features/user/user-repository.js';
+import type { Review } from '../../src/features/review/review.js';
+import type { IReviewRepository } from '../../src/features/review/review-repository.js';
+import type {
+  BookReviewsView,
+  ProfileReviewView,
+  ReviewQuery,
+} from '../../src/features/review/review-query.js';
 import {
   UsernameTakenError,
   type User,
@@ -429,5 +436,35 @@ export class RecordingSystemMessages implements SystemMessages {
 
   get texts(): string[] {
     return this.posts.map((p) => p.text);
+  }
+}
+
+export class InMemoryReviewRepository implements IReviewRepository {
+  private readonly reviews = new Map<string, Review>();
+
+  async findByUserAndBook(userId: UserId, bookId: BookId): Promise<Review | null> {
+    return this.reviews.get(`${userId.value}:${bookId.value}`) ?? null;
+  }
+
+  async save(review: Review): Promise<void> {
+    this.reviews.set(`${review.userId.value}:${review.bookId.value}`, review);
+  }
+
+  async delete(userId: UserId, bookId: BookId): Promise<boolean> {
+    return this.reviews.delete(`${userId.value}:${bookId.value}`);
+  }
+}
+
+/** Records the calls; the visibility rules are covered by the integration tests. */
+export class InMemoryReviewQuery implements ReviewQuery {
+  readonly profileCalls: string[] = [];
+
+  async forBook(): Promise<BookReviewsView> {
+    return { mine: null, friends: [], publicReviews: [], publicAverage: null, publicCount: 0 };
+  }
+
+  async forUser(userId: UserId): Promise<ProfileReviewView[]> {
+    this.profileCalls.push(userId.value);
+    return [];
   }
 }
