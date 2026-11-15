@@ -874,62 +874,110 @@ export async function getFriends(): Promise<GroupMember[]> {
   return friends.map(mapApiFriend);
 }
 
-export async function getFriendRequests(): Promise<ApiFriendRequest[]> {
-  return getJson<ApiFriendRequest[]>('/me/friend-requests', 'Failed to load friend requests');
+// ---------------------------------------------------------------------------
+// User profiles and friendships (F-PROF-02, F-SOC-02)
+// ---------------------------------------------------------------------------
+
+export type FriendshipStatusWithViewer =
+  'self' | 'none' | 'friends' | 'pending_sent' | 'pending_received';
+
+export interface ApiUserProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  photoUrl: string | null;
+  bio: string | null;
+  timezone: string;
+  profileVisibility: 'public' | 'private';
+  createdAt: string;
+  isSelf: boolean;
+  isVisible: boolean;
+  friendshipStatus: FriendshipStatusWithViewer;
+  friendRequestId: string | null;
+  currentStreak: number;
+  longestStreak: number;
+  totalMinutes: number;
+  sessionsCount: number;
 }
 
-export async function answerFriendRequest(
-  requestId: string,
-  answer: 'accept' | 'decline',
-): Promise<void> {
-  await ensureOk(
-    await apiFetch(`/friend-requests/${id(requestId)}/${answer}`, { method: 'POST' }),
-    `Failed to ${answer} the friend request`,
+export interface ApiFriendship {
+  id: string;
+  requesterId: string;
+  addresseeId: string;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: string;
+  respondedAt: string | null;
+}
+
+export interface UserSearchResult {
+  id: string;
+  username: string;
+  displayName: string;
+  photoUrl: string | null;
+  bio: string | null;
+  profileVisibility: 'public' | 'private';
+}
+
+export async function getUserProfile(username: string): Promise<ApiUserProfile> {
+  const clean = username.trim().replace(/^@/, '');
+  return getJson<ApiUserProfile>(
+    `/users/${encodeURIComponent(clean)}`,
+    'Failed to load user profile',
   );
 }
 
-// ---------------------------------------------------------------------------
-// Home circle sections (F-SOC-03, F-SOC-04)
-// ---------------------------------------------------------------------------
-
-/** The few book fields the Home cards show. */
-export interface ApiCircleBook {
-  id: string;
-  title: string;
-  coverUrl: string | null;
-  pageCount: number | null;
+/** F-SOC-02, F-EXP-01: search readers by username or display name. */
+export async function searchUsers(
+  query: string,
+  signal?: AbortSignal,
+): Promise<UserSearchResult[]> {
+  const clean = query.trim().replace(/^@/, '');
+  if (!clean) return [];
+  return getJson<UserSearchResult[]>(
+    `/users?q=${encodeURIComponent(clean)}`,
+    'Failed to search readers',
+    { signal },
+  );
 }
 
-/** The book a friend is reading, and whether a session is running right now. */
-export interface ApiFriendReading {
-  userId: string;
-  displayName: string;
-  username: string;
-  book: ApiCircleBook;
-  currentPage: number;
-  readingNow: boolean;
+export async function sendFriendRequest(targetUserId: string): Promise<ApiFriendship> {
+  return sendJson<ApiFriendship>(
+    'POST',
+    '/friend-requests',
+    { targetUserId },
+    'Failed to send friend request',
+  );
 }
 
-/** A recent comment in one of the reader's groups (the group chat). */
-export interface ApiCircleComment {
-  id: string;
-  groupId: string;
-  groupName: string;
-  authorId: string;
-  authorName: string;
-  body: string;
-  createdAt: string;
+export async function getFriendRequests(): Promise<ApiFriendship[]> {
+  return getJson<ApiFriendship[]>('/me/friend-requests', 'Failed to load friend requests');
 }
 
-/** One in-progress book per friend, friends reading right now first. */
-export async function getFriendsReading(): Promise<ApiFriendReading[]> {
-  return getJson<ApiFriendReading[]>('/me/friends/reading', 'Failed to load friends reading');
+export async function acceptFriendRequest(friendRequestId: string): Promise<ApiFriendship> {
+  return sendJson<ApiFriendship>(
+    'POST',
+    `/friend-requests/${id(friendRequestId)}/accept`,
+    {},
+    'Failed to accept friend request',
+  );
 }
 
-/** Newest comments across the groups the reader belongs to. */
-export async function getCircleComments(limit?: number): Promise<ApiCircleComment[]> {
-  const search = limit === undefined ? '' : `?limit=${encodeURIComponent(limit)}`;
-  return getJson<ApiCircleComment[]>(`/me/circle/comments${search}`, 'Failed to load your circle');
+export async function declineFriendRequest(friendRequestId: string): Promise<void> {
+  await ensureOk(
+    await apiFetch(`/friend-requests/${id(friendRequestId)}/decline`, {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: '{}',
+    }),
+    'Failed to decline friend request',
+  );
+}
+
+export async function removeFriend(userId: string): Promise<void> {
+  await ensureOk(
+    await apiFetch(`/friends/${id(userId)}`, { method: 'DELETE' }),
+    'Failed to remove friend',
+  );
 }
 
 export async function inviteToGroup(groupId: string, inviteeId: string): Promise<ApiGroupInvite> {

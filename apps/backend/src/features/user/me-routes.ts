@@ -1,6 +1,6 @@
 import { Router, type RequestHandler } from 'express';
 import { rateLimit } from 'express-rate-limit';
-import { currentIdentity, currentUser } from '../../middleware/auth.js';
+import { currentIdentity, currentUser, currentUserId } from '../../middleware/auth.js';
 import type { User } from './user.js';
 import type { UserService } from './user-service.js';
 
@@ -72,6 +72,17 @@ export function meRoutes(
     res
       .status(200)
       .json(toMeDto(await users.updateProfile(currentUser(res), { displayName, timezone })));
+  });
+
+  router.get('/users', authenticated, withUser, async (req, res) => {
+    const query = typeof req.query.q === 'string' ? req.query.q : '';
+    const results = await users.searchUsers(query);
+    res.status(200).json(results);
+  });
+
+  router.get('/users/:username', authenticated, withUser, async (req, res) => {
+    const profile = await users.getProfileByUsername(req.params.username, currentUserId(res));
+    res.status(200).json(profile);
   });
 
   return router;

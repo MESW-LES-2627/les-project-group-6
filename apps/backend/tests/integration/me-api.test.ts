@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createApp } from '../../src/app.js';
 import { createDb } from '../../src/database/pool.js';
 import type { MeDto } from '../../src/features/user/me-routes.js';
+import type { UserProfileView } from '../../src/features/user/user-service.js';
 import { DrizzleUserRepository } from '../../src/features/user/user-repository.js';
 import { UserId } from '../../src/features/user/user.js';
 import { authHeader, FakeAuthProvider } from '../helpers/auth.js';
@@ -173,6 +174,61 @@ describe('/me API', () => {
       assert.equal(blocked.status, 429);
       assert.equal(((await blocked.json()) as { code: string }).code, 'TOO_MANY_REQUESTS');
       assert.ok(blocked.headers.get('ratelimit'));
+    });
+  });
+
+  test('GET /users/:username returns the profile and friendship status', async () => {
+    await withApp(app, async (url) => {
+      await signUpAna(url);
+      await send(url, 'POST', '/me', BOB, {
+        username: 'bob_reads',
+        displayName: 'Bob',
+      });
+
+      const res = await send(url, 'GET', '/users/ana_reads', BOB);
+      assert.equal(res.status, 200);
+      const profile = (await res.json()) as UserProfileView;
+      assert.equal(profile.id, ANA);
+      assert.equal(profile.username, 'ana_reads');
+      assert.equal(profile.displayName, 'Ana');
+      assert.equal(profile.isSelf, false);
+      assert.equal(profile.friendshipStatus, 'none');
+
+      const notFound = await send(url, 'GET', '/users/unknown_user', BOB);
+      assert.equal(notFound.status, 404);
+
+      const unauth = await send(url, 'GET', '/users/ana_reads');
+      assert.equal(unauth.status, 401);
+    });
+  });
+
+  test('GET /users?q= searches users by username or display name', async () => {
+    await withApp(app, async (url) => {
+      await signUpAna(url);
+      await send(url, 'POST', '/me', BOB, {
+        username: 'bob_reads',
+        displayName: 'Bob The Reader',
+      });
+
+      const res = await send(url, 'GET', '/users?q=ana', BOB);
+      assert.equal(res.status, 200);
+      const results = (await res.json()) as { username: string; displayName: string }[];
+      assert.equal(results.length, 1);
+      assert.equal(results[0]?.username, 'ana_reads');
+      assert.equal(results[0]?.displayName, 'Ana');
+
+      const byName = await send(url, 'GET', '/users?q=Reader', ANA);
+      assert.equal(byName.status, 200);
+      const resultsByName = (await byName.json()) as { username: string }[];
+      assert.equal(resultsByName.length, 1);
+      assert.equal(resultsByName[0]?.username, 'bob_reads');
+
+      const empty = await send(url, 'GET', '/users?q=x', ANA);
+      assert.equal(empty.status, 200);
+      assert.deepEqual(await empty.json(), []);
+
+      const unauth = await send(url, 'GET', '/users?q=ana');
+      assert.equal(unauth.status, 401);
     });
   });
 });
