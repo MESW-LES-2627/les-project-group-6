@@ -27,6 +27,8 @@ Wiring: [`apps/backend/src/api/router.ts`](../../apps/backend/src/api/router.ts)
 | POST | `/me` | Token only | Creates the signed-in reader's `users` row (`username`, `displayName`, `timezone`); `409 USERNAME_TAKEN` if taken. |
 | GET | `/me` | Token + profile | Returns the signed-in reader's profile. |
 | PATCH | `/me` | Token + profile | Updates the reader's `displayName` and/or `timezone`. |
+| GET | `/users?q=` | Token + profile | Searches readers by username or display name (F-SOC-02, F-EXP-01). Strips `@`, matches case-insensitively, returns at most 20 matching reader cards (`id`, `username`, `displayName`, `photoUrl`, `bio`, `profileVisibility`). |
+| GET | `/users/:username` | Token + profile | Returns another reader's profile by username (case-insensitive, `@` stripped). Enforces privacy (F-PROF-02) and returns friendship status with the caller (`none`, `pending_sent`, `pending_received`, `friends`, `self`). |
 
 ### Books (`features/book/book-routes.ts`)
 
@@ -191,4 +193,5 @@ Defined in [`apps/frontend/src/router/index.ts`](../../apps/frontend/src/router/
 | `/groups/new` | `group-create` | Signed in | Creates a challenge or a book club. |
 | `/groups/:groupId` | `group-detail` | Signed in | A challenge or book club page, with standings, chat, voting and admin. |
 | `/profile` | `profile` | Signed in | The reader's profile. |
+| `/users/:username` | `user-profile` | Signed in | Another reader's profile, reading activity, and friendship actions. |
 | `/:pathMatch(.*)*` | `not-found` | Signed in | Not-found page for unknown paths. |

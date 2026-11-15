@@ -211,3 +211,37 @@ A running record of what the team did and decided in iteration 2. The [release n
 - Note: the board split this story into review (#122) and comment (#146) the same day; this work also covers the comment.
 - **Tests.** Backend 349 passing (40 new); frontend tests for the panel, book page and profile updated and added. `make check` passes.
 
+### 2026-11-14: User profile view and friend request (#123, #36, #58)
+
+- Branch `feat/friends-us`. Covers viewing other users' profiles by username and interacting via friend requests.
+- **Backend.**
+  - Added `getProfileByUsername` on `UserService` (`apps/backend/src/features/user/user-service.ts`) with `IFriendRepository` and `IReadingSessionRepository` injection.
+  - Implemented `GET /users/:username` route in `me-routes.ts`. Looks up user profiles case-insensitively, handles self-detection (`isSelf`), evaluates privacy visibility (`F-PROF-02`), checks friendship status with the viewer (`none`, `pending_sent`, `pending_received`, `friends`, `self`), and computes reading streak and reading session statistics.
+  - 8 new unit tests in `apps/backend/tests/unit/user-service.test.ts` covering visibility, self view, pending requests, accepted friends, and error handling.
+  - Integration test added to `apps/backend/tests/integration/me-api.test.ts`.
+- **Frontend.**
+  - Added `UserView.vue` (`apps/frontend/src/views/UserView.vue`) for route `/users/:username`. Based on `ProfileView.vue` and `ProfileBookplate.vue` with an actions slot for friendship interactions.
+  - Interactive friendship controls: "Add friend" for strangers, "Friend request sent" status, "Accept" and "Decline" buttons for incoming requests, and "Friends" badge with friend removal.
+  - Enforces privacy: displays a dedicated private profile card explaining that reading activity and reviews are only visible to confirmed friends. When visible, displays reading streaks (`StreakCalendar.vue`), reading time (`ReadingTime.vue`), and user reviews (`ReviewList.vue`).
+  - Redirects to `/profile` if the viewer opens their own username profile.
+  - Added API client methods in `apps/frontend/src/services/api.ts`: `getUserProfile`, `sendFriendRequest`, `getFriendRequests`, `acceptFriendRequest`, `declineFriendRequest`, `removeFriend`.
+  - Registered route `/users/:username` in `apps/frontend/src/router/index.ts`.
+  - Added 9 unit tests in `apps/frontend/src/views/__tests__/UserView.spec.ts` and router test in `apps/frontend/src/router/__tests__/index.spec.ts`.
+
+### 2026-11-15: Reader search on Explore (#123, #58, F-SOC-02, F-EXP-01)
+
+- Extended Explore tab with dedicated reader search matching the book search design.
+- **Backend.**
+  - Added `search(query, limit)` to `IUserRepository` and implemented in `DrizzleUserRepository`, `InMemoryUserRepository`, and `FakeUserRepository`.
+  - Added `searchUsers(rawQuery, limit)` in `UserService` (`apps/backend/src/features/user/user-service.ts`) returning `UserSearchResultDto[]`.
+  - Mounted `GET /users?q=` in `me-routes.ts` behind authentication.
+  - 3 new unit tests in `user-service.test.ts` and HTTP integration test in `me-api.test.ts`. Backend 248 unit tests passing.
+- **Frontend.**
+  - Added `searchUsers` client function in `apps/frontend/src/services/api.ts`.
+  - Added [`UserSearchBar.vue`](../../../apps/frontend/src/components/explore/UserSearchBar.vue) matching `ExploreSearchBar.vue` styling.
+  - Added [`UserSearchResults.vue`](../../../apps/frontend/src/components/explore/UserSearchResults.vue) displaying matching readers, initials avatar, display name, `@username`, private badge, bio, and "View profile" link.
+  - Integrated both search bars and results into [`ExploreView.vue`](../../../apps/frontend/src/views/ExploreView.vue) with debounce and URL synchronization (`?uq=`).
+  - Added unit tests: `UserSearchBar.spec.ts`, `UserSearchResults.spec.ts`, and updated `ExploreView.spec.ts`. Frontend 188 unit tests passing.
+
+
+
