@@ -1,12 +1,13 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ApiBook, ApiExplore } from '@/services/api';
+import type { ApiBook, ApiExplore, UserSearchResult } from '@/services/api';
 import ExploreView from '../ExploreView.vue';
 
 const api = vi.hoisted(() => ({
   getExplore: vi.fn<() => Promise<ApiExplore>>(),
   searchBooks: vi.fn<(query: string, signal?: AbortSignal) => Promise<ApiBook[]>>(),
+  searchUsers: vi.fn<(query: string, signal?: AbortSignal) => Promise<UserSearchResult[]>>(),
   addBook: vi.fn<(book: { title: string }) => Promise<ApiBook>>(),
   addToLibrary: vi.fn<(bookId: string) => Promise<void>>(),
 }));
@@ -30,6 +31,7 @@ async function mountView(path = '/explore') {
     routes: [
       { path: '/explore', name: 'explore', component: ExploreView },
       { path: '/library/:bookId', name: 'book-detail', component: { template: '<p />' } },
+      { path: '/users/:username', name: 'user-profile', component: { template: '<p />' } },
     ],
   });
   await router.push(path);
@@ -52,6 +54,7 @@ describe('ExploreView', () => {
       suggestions: [],
     });
     api.searchBooks.mockReset().mockResolvedValue([book('b3', 'Dune')]);
+    api.searchUsers.mockReset().mockResolvedValue([]);
   });
 
   it('shows trending books first and most read on the other tab', async () => {
@@ -246,5 +249,58 @@ describe('ExploreView', () => {
     expect(api.addBook).toHaveBeenCalledWith({ title: "My grandmother's diary" });
     expect(api.addToLibrary).toHaveBeenCalledWith('b9');
     expect(router.currentRoute.value.fullPath).toBe('/library/b9');
+  });
+
+  describe('Reader search', () => {
+    it('searches readers from the user search bar and displays results', async () => {
+      api.searchUsers.mockResolvedValue([
+        {
+          id: 'u1',
+          username: 'pedro_reads',
+          displayName: 'Pedro Silva',
+          photoUrl: null,
+          bio: 'Literature enthusiast.',
+          profileVisibility: 'public',
+        },
+      ]);
+      const { wrapper, router } = await mountView();
+
+      const userInput = wrapper.get('#user-search');
+      await userInput.setValue('pedro');
+      await wrapper.findAll('form')[1]?.trigger('submit');
+      await flushPromises();
+
+      expect(router.currentRoute.value.query.uq).toBe('pedro');
+      expect(api.searchUsers).toHaveBeenCalledWith('pedro', expect.any(AbortSignal));
+      expect(wrapper.get('#user-results-title').text()).toBe('Readers');
+      expect(wrapper.text()).toContain('Pedro Silva');
+      expect(wrapper.text()).toContain('@pedro_reads');
+
+      await wrapper.get('#user-results-title + p .link-button').trigger('click');
+      await flushPromises();
+
+      expect(router.currentRoute.value.query.uq).toBeUndefined();
+      expect(wrapper.find('#user-results-title').exists()).toBe(false);
+    });
+
+    it('runs reader search from the URL on load', async () => {
+      api.searchUsers.mockResolvedValue([
+        {
+          id: 'u2',
+          username: 'alice_w',
+          displayName: 'Alice Wonder',
+          photoUrl: null,
+          bio: null,
+          profileVisibility: 'private',
+        },
+      ]);
+      const { wrapper } = await mountView('/explore?uq=alice');
+
+      expect(api.searchUsers).toHaveBeenCalledWith('alice', expect.any(AbortSignal));
+      expect((wrapper.get('#user-search').element as HTMLInputElement).value).toBe('alice');
+      expect(wrapper.text()).toContain('Alice Wonder');
+      expect(wrapper.text()).toContain('@alice_w');
+      expect(wrapper.text()).toContain('Private');
+    });
   });
 });

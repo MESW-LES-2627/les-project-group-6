@@ -8,6 +8,8 @@ export interface IUserRepository {
   findById(id: UserId): Promise<User | null>;
   /** Matches ignoring case, since usernames are unique case-insensitively. */
   findByUsername(username: Username): Promise<User | null>;
+  /** Searches users by username or display name (case-insensitive substring match). */
+  search(query: string, limit: number): Promise<User[]>;
   /** Inserts a new user only; throws if the id, username or email is already used. */
   add(user: User): Promise<void>;
   /** Inserts or updates; throws `UsernameTakenError` if another user holds the username. */
@@ -84,6 +86,24 @@ export class DrizzleUserRepository implements IUserRepository {
       .limit(1);
     const row = rows[0];
     return row ? toDomain(row) : null;
+  }
+
+  async search(query: string, limit: number): Promise<User[]> {
+    const trimmed = query.trim().replace(/^@/, '');
+    if (!trimmed) return [];
+    const pattern = `%${trimmed.toLowerCase()}%`;
+    const rows = await this.db
+      .select()
+      .from(users)
+      .where(
+        sql`lower(${users.username}) LIKE ${pattern} OR lower(${users.displayName}) LIKE ${pattern}`,
+      )
+      .orderBy(
+        sql`CASE WHEN lower(${users.username}) = lower(${trimmed}) THEN 0 WHEN lower(${users.username}) LIKE ${trimmed.toLowerCase() + '%'} THEN 1 ELSE 2 END`,
+        users.displayName,
+      )
+      .limit(limit);
+    return rows.map(toDomain);
   }
 
   async add(user: User): Promise<void> {
