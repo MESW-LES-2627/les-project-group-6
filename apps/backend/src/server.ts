@@ -21,6 +21,7 @@ import { DrizzleGroupInviteRepository } from './features/group-invite/group-invi
 import { DrizzleGroupRosterRepository } from './features/group/group-roster-repository.js';
 import { DrizzleLibraryQuery } from './features/library/library-query.js';
 import { DrizzleFolderRepository } from './features/library-folder/folder-repository.js';
+import { DrizzleTagRepository } from './features/library-tag/tag-repository.js';
 import { DrizzleReadingActivityQuery } from './features/reading-session/reading-activity-query.js';
 import { DrizzleReadingSessionRepository } from './features/reading-session/reading-session-repository.js';
 import { DrizzleReadingProgressQuery } from './features/reading-status/reading-progress-query.js';
@@ -54,6 +55,7 @@ const server = createApp({
   readingStatusRepository: new DrizzleReadingStatusRepository(db),
   libraryQuery: new DrizzleLibraryQuery(db),
   folderRepository: new DrizzleFolderRepository(db),
+  tagRepository: new DrizzleTagRepository(db),
   readingSessionRepository: new DrizzleReadingSessionRepository(db),
   readingActivityQuery: new DrizzleReadingActivityQuery(db),
   readingProgressQuery: new DrizzleReadingProgressQuery(db),

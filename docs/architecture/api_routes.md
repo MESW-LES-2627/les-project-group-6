@@ -57,7 +57,7 @@ There is no `DELETE /book/:id`: other readers' statuses, reviews and sessions de
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/me/library?status=` | Lists the reader's books with their reading status and `folderIds`, optionally filtered by status. |
+| GET | `/me/library?status=` | Lists the reader's books with their reading status, `folderIds` and `tagIds`, optionally filtered by status. |
 
 ### Library folders (`features/library-folder/library-folder-routes.ts`, F-LIB-03)
 
@@ -71,6 +71,16 @@ Every route is scoped to the signed-in reader: a folder that belongs to someone 
 | DELETE | `/me/library/folders/:folderId` | Deletes the folder (`204`); its books stay in the reader's library and in their other folders. |
 | PUT | `/me/library/folders/:folderId/books/:bookId` | Puts a book that is already in the reader's library into the folder (`204`). A book can be in several folders; adding it twice is a no-op. |
 | DELETE | `/me/library/folders/:folderId/books/:bookId` | Removes the book from that folder only (`204`); its reading status is untouched. |
+
+### Library tags (`features/library-tag/library-tag-routes.ts`, F-LIB-04)
+
+Tags are private to the reader. They are created on first use, stored in lower case (`Audiobook` and `audiobook` are the same tag) and deleted once no book carries them. Another reader's tag answers `404`.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/me/library/tags` | Lists the reader's tags with their book `count`, sorted by name. |
+| POST | `/me/library/books/:bookId/tags` | Adds the tag `name` (1 to 40 characters) to a book already in the reader's library, creating the tag if needed, and returns it (`200`). Tagging twice is a no-op. |
+| DELETE | `/me/library/books/:bookId/tags/:tagId` | Removes the tag from that book (`204`); the tag is deleted when no book has it any more. |
 
 ### Explore (`features/explore/explore-routes.ts`)
 
