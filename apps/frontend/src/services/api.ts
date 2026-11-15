@@ -854,6 +854,112 @@ export async function getFriends(): Promise<GroupMember[]> {
   return friends.map(mapApiFriend);
 }
 
+// ---------------------------------------------------------------------------
+// User profiles and friendships (F-PROF-02, F-SOC-02)
+// ---------------------------------------------------------------------------
+
+export type FriendshipStatusWithViewer =
+  'self' | 'none' | 'friends' | 'pending_sent' | 'pending_received';
+
+export interface ApiUserProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  photoUrl: string | null;
+  bio: string | null;
+  timezone: string;
+  profileVisibility: 'public' | 'private';
+  createdAt: string;
+  isSelf: boolean;
+  isVisible: boolean;
+  friendshipStatus: FriendshipStatusWithViewer;
+  friendRequestId: string | null;
+  currentStreak: number;
+  longestStreak: number;
+  totalMinutes: number;
+  sessionsCount: number;
+}
+
+export interface ApiFriendship {
+  id: string;
+  requesterId: string;
+  addresseeId: string;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: string;
+  respondedAt: string | null;
+}
+
+export interface UserSearchResult {
+  id: string;
+  username: string;
+  displayName: string;
+  photoUrl: string | null;
+  bio: string | null;
+  profileVisibility: 'public' | 'private';
+}
+
+export async function getUserProfile(username: string): Promise<ApiUserProfile> {
+  const clean = username.trim().replace(/^@/, '');
+  return getJson<ApiUserProfile>(
+    `/users/${encodeURIComponent(clean)}`,
+    'Failed to load user profile',
+  );
+}
+
+/** F-SOC-02, F-EXP-01: search readers by username or display name. */
+export async function searchUsers(
+  query: string,
+  signal?: AbortSignal,
+): Promise<UserSearchResult[]> {
+  const clean = query.trim().replace(/^@/, '');
+  if (!clean) return [];
+  return getJson<UserSearchResult[]>(
+    `/users?q=${encodeURIComponent(clean)}`,
+    'Failed to search readers',
+    { signal },
+  );
+}
+
+export async function sendFriendRequest(targetUserId: string): Promise<ApiFriendship> {
+  return sendJson<ApiFriendship>(
+    'POST',
+    '/friend-requests',
+    { targetUserId },
+    'Failed to send friend request',
+  );
+}
+
+export async function getFriendRequests(): Promise<ApiFriendship[]> {
+  return getJson<ApiFriendship[]>('/me/friend-requests', 'Failed to load friend requests');
+}
+
+export async function acceptFriendRequest(friendRequestId: string): Promise<ApiFriendship> {
+  return sendJson<ApiFriendship>(
+    'POST',
+    `/friend-requests/${id(friendRequestId)}/accept`,
+    {},
+    'Failed to accept friend request',
+  );
+}
+
+export async function declineFriendRequest(friendRequestId: string): Promise<void> {
+  await ensureOk(
+    await apiFetch(`/friend-requests/${id(friendRequestId)}/decline`, {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: '{}',
+    }),
+    'Failed to decline friend request',
+  );
+}
+
+export async function removeFriend(userId: string): Promise<void> {
+  await ensureOk(
+    await apiFetch(`/friends/${id(userId)}`, { method: 'DELETE' }),
+    'Failed to remove friend',
+  );
+}
+
 export async function inviteToGroup(groupId: string, inviteeId: string): Promise<ApiGroupInvite> {
   return sendJson('POST', `/groups/${id(groupId)}/invites`, { inviteeId }, 'Failed to invite');
 }
