@@ -1,6 +1,13 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { books, listBooks, lists, readingStatus } from '../../database/schema.js';
+import {
+  books,
+  bookTags,
+  listBooks,
+  lists,
+  readingStatus,
+  userTags,
+} from '../../database/schema.js';
 import type { ReadingStatusType } from '../reading-status/reading-state.js';
 import type { UserId } from '../user/user.js';
 
@@ -27,6 +34,8 @@ export interface LibraryItemView {
   updatedAt: string;
   /** The reader's folders that hold this book; a book can be in several. */
   folderIds: string[];
+  /** The reader's own tags on this book. */
+  tagIds: string[];
 }
 
 export interface LibraryQuery {
@@ -54,10 +63,9 @@ export class DrizzleLibraryQuery implements LibraryQuery {
       .innerJoin(books, eq(readingStatus.bookId, books.id))
       .where(and(...conditions));
 
-    const folderIdsByBook = await this.folderIdsByBook(
-      userId,
-      rows.map((row) => row.book.id),
-    );
+    const bookIds = rows.map((row) => row.book.id);
+    const folderIdsByBook = await this.folderIdsByBook(userId, bookIds);
+    const tagIdsByBook = await this.tagIdsByBook(userId, bookIds);
 
     return rows.map((row) => ({
       id: row.id,
@@ -77,6 +85,7 @@ export class DrizzleLibraryQuery implements LibraryQuery {
       finishedOn: row.finishedOn ?? null,
       updatedAt: new Date(row.updatedAt).toISOString(),
       folderIds: folderIdsByBook.get(row.book.id) ?? [],
+      tagIds: tagIdsByBook.get(row.book.id) ?? [],
     }));
   }
 
@@ -99,6 +108,28 @@ export class DrizzleLibraryQuery implements LibraryQuery {
       const ids = byBook.get(membership.bookId) ?? [];
       ids.push(membership.folderId);
       byBook.set(membership.bookId, ids);
+    }
+    return byBook;
+  }
+
+  private async tagIdsByBook(
+    userId: UserId,
+    bookIds: readonly string[],
+  ): Promise<Map<string, string[]>> {
+    const byBook = new Map<string, string[]>();
+    if (bookIds.length === 0) return byBook;
+
+    const rows = await this.db
+      .select({ tagId: bookTags.tagId, bookId: bookTags.bookId })
+      .from(bookTags)
+      .innerJoin(userTags, eq(bookTags.tagId, userTags.id))
+      .where(and(eq(userTags.userId, userId.value), inArray(bookTags.bookId, [...bookIds])))
+      .orderBy(userTags.name);
+
+    for (const row of rows) {
+      const ids = byBook.get(row.bookId) ?? [];
+      ids.push(row.tagId);
+      byBook.set(row.bookId, ids);
     }
     return byBook;
   }

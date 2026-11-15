@@ -877,3 +877,50 @@ export const bookClubVotes = pgTable(
     primaryKey({ columns: [table.pollId, table.userId], name: 'book_club_votes_pkey' }),
   ],
 );
+
+// F-LIB-04: a reader's free tags ("borrowed", "audiobook"). Names are stored in
+// lower case, so one reader cannot have the same tag twice.
+export const userTags = pgTable(
+  'user_tags',
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    userId: uuid('user_id').notNull(),
+    name: varchar({ length: 40 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: 'user_tags_user_id_fkey',
+    }).onDelete('cascade'),
+    unique('user_tags_user_name_key').on(table.userId, table.name),
+  ],
+);
+
+export const bookTags = pgTable(
+  'book_tags',
+  {
+    tagId: uuid('tag_id').notNull(),
+    bookId: uuid('book_id').notNull(),
+    addedAt: timestamp('added_at', { withTimezone: true, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.tagId],
+      foreignColumns: [userTags.id],
+      name: 'book_tags_tag_id_fkey',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.bookId],
+      foreignColumns: [books.id],
+      name: 'book_tags_book_id_fkey',
+    }).onDelete('cascade'),
+    primaryKey({ columns: [table.tagId, table.bookId], name: 'book_tags_pkey' }),
+    index('book_tags_book_id_idx').on(table.bookId),
+  ],
+);

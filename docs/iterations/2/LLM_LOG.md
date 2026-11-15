@@ -450,3 +450,24 @@ Create the user search extending the Explore tab using the same style as the boo
 
 #### Explanation of Changes
 Extended the Explore tab with a dedicated reader search using the same design patterns as book search. Implemented `search(query, limit)` on `IUserRepository` and `DrizzleUserRepository`, `searchUsers` on `UserService`, and the authenticated endpoint `GET /users?q=`. Built `UserSearchBar.vue` and `UserSearchResults.vue` with initials avatar, display name, `@username`, private profile badge, bio, and "View profile" link to `/users/:username`. Integrated into `ExploreView.vue` with debounced search-as-you-type and URL query sync (`?uq=`). Added unit tests for backend service, repositories, and frontend components and views. Updated API routes and iteration log.
+
+### 2026-11-15: Library tags backend and prod migration repair
+
+- **Date:** 2026-11-15
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database
+
+#### Prompt
+```text
+We don't have the tags implementation yet, right? I can save books to my folders but I cant add tags to them
+-> yes (open an issue and build it like folders)
+I can't save a review: {"rating":5,"comment":"..."} this returns me 500 error. Why?
+-> i added in the .env, can you run the migrations for me please? run the tags too
+-> create a pr to the tag feature
+```
+
+#### Explanation of Changes
+Opened #152 and built the tags backend following the folders feature: `user_tags`/`book_tags` tables (migration 0012), `Tag` aggregate, repository, service, routes, `tagIds` on library items, unit and integration tests and docs. Traced the review 500 to Backend CD never starting (GitHub Actions spending limit) and a mismatched 0011 record in prod; repaired the prod migration history by hand and applied 0010 to 0012.
+
