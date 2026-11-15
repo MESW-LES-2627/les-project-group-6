@@ -9,12 +9,20 @@ import {
   createLibraryFolder,
   deleteLibraryFolder,
   getLibraryFolders,
+  getLibraryTags,
   getUserLibrary,
   mapApiLibraryItemToBook,
   renameLibraryFolder,
 } from '@/services/api';
 import { isSignedIn } from '@/stores/session';
-import type { FolderSummary, LibraryBook, LibrarySort, Shelf, ShelfId } from '@/types/library';
+import type {
+  FolderSummary,
+  LibraryBook,
+  LibrarySort,
+  Shelf,
+  ShelfId,
+  TagSummary,
+} from '@/types/library';
 import { sortBooks } from '@/utils/library';
 
 const rawBooks = ref<LibraryBook[]>(isSignedIn.value ? [] : mockLibrary.books);
@@ -22,6 +30,8 @@ const libraryError = ref<string | null>(null);
 
 const folders = ref<FolderSummary[]>(isSignedIn.value ? [] : mockLibrary.folders);
 const folderError = ref<string | null>(null);
+
+const tags = ref<TagSummary[]>(isSignedIn.value ? [] : mockLibrary.tags);
 
 const DUPLICATE_FOLDER = 'You already have a folder with this name';
 
@@ -60,9 +70,21 @@ async function fetchFolders() {
   }
 }
 
+async function fetchTags() {
+  if (!isSignedIn.value) return;
+
+  try {
+    tags.value = await getLibraryTags();
+  } catch {
+    // The tag filter is optional; the library still works without it.
+    tags.value = [];
+  }
+}
+
 onMounted(() => {
   void fetchLibraryData();
   void fetchFolders();
+  void fetchTags();
 });
 
 const hasFolderName = (name: string, exceptId?: string) =>
@@ -142,6 +164,17 @@ const displayFolders = computed<FolderSummary[]>(() => {
     ...folder,
     count: rawBooks.value.filter((book) => book.folderIds.includes(folder.id)).length,
   }));
+});
+
+// Counts follow the loaded books, like folders; tags no book carries are hidden.
+const displayTags = computed<TagSummary[]>(() => {
+  if (!isSignedIn.value) return tags.value;
+  return tags.value
+    .map((tag) => ({
+      ...tag,
+      count: rawBooks.value.filter((book) => book.tagIds.includes(tag.id)).length,
+    }))
+    .filter((tag) => tag.count > 0);
 });
 
 const shelves = computed<Shelf[]>(() => {
@@ -305,7 +338,7 @@ function showEverything() {
       <div class="layout">
         <LibrarySidebar
           :folders="displayFolders"
-          :tags="mockLibrary.tags"
+          :tags="displayTags"
           :active-folder="activeFolder || null"
           :active-tag="activeTag || null"
           :error="folderError"

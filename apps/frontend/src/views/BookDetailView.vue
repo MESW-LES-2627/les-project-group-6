@@ -12,6 +12,7 @@ import {
   getBook,
   getBookReviews,
   getLibraryFolders,
+  getLibraryTags,
   getUserLibrary,
   mapApiBookToLibraryBook,
   mapApiLibraryItemToBook,
@@ -19,12 +20,13 @@ import {
   type ApiReview,
 } from '@/services/api';
 import { isSignedIn } from '@/stores/session';
-import type { FolderSummary, LibraryBook, ReadingStatus } from '@/types/library';
+import type { FolderSummary, LibraryBook, ReadingStatus, TagSummary } from '@/types/library';
 
 const props = defineProps<{ bookId: string }>();
 
 const apiBook = ref<LibraryBook | null>(null);
 const folders = ref<FolderSummary[]>(isSignedIn.value ? [] : mockLibrary.folders);
+const tags = ref<TagSummary[]>(isSignedIn.value ? [] : [...mockLibrary.tags]);
 
 const book = computed(() => {
   if (apiBook.value) return apiBook.value;
@@ -73,10 +75,21 @@ async function fetchFolders() {
   }
 }
 
+async function fetchTags() {
+  if (!isSignedIn.value) return;
+
+  try {
+    tags.value = await getLibraryTags();
+  } catch {
+    tags.value = [];
+  }
+}
+
 onMounted(() => {
   void fetchBookData();
   void loadReviews();
   void fetchFolders();
+  void fetchTags();
 });
 
 watch(
@@ -108,12 +121,14 @@ function onFoldersUpdated(folderIds: string[]) {
   }
 }
 
-const tags = computed(() => {
-  if (!book.value) return [];
-  return mockLibrary.tags
-    .filter((tag) => book.value?.tagIds.includes(tag.id))
-    .map((tag) => tag.name);
-});
+function onTagsUpdated(update: { tagIds: string[]; tags: TagSummary[] }) {
+  tags.value = update.tags;
+  if (apiBook.value) {
+    apiBook.value = { ...apiBook.value, tagIds: [...update.tagIds] };
+  } else if (book.value) {
+    book.value.tagIds = [...update.tagIds];
+  }
+}
 
 const friendReviews = computed(() => reviews.value?.friends ?? []);
 const publicReviews = computed(() => reviews.value?.publicReviews ?? []);
@@ -192,6 +207,7 @@ const mailtoHref = computed(() => {
               :tags="tags"
               @updated="onStatusUpdated"
               @folders-updated="onFoldersUpdated"
+              @tags-updated="onTagsUpdated"
             />
 
             <section class="about-section" aria-labelledby="about-title">

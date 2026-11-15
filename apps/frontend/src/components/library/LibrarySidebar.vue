@@ -185,6 +185,7 @@ function submitRename() {
           </button>
         </li>
       </ul>
+      <p v-if="tags.length === 0" class="tag-empty">No tags yet. Add them from a book's page.</p>
     </section>
   </aside>
 </template>
@@ -208,6 +209,12 @@ function submitRename() {
 }
 
 .folder-list,
+.tag-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
 .tag-list {
   margin: 0;
   padding: 0;

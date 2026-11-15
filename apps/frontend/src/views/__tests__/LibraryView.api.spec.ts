@@ -10,6 +10,7 @@ const api = vi.hoisted(() => ({
   createLibraryFolder: vi.fn<(...args: unknown[]) => unknown>(),
   renameLibraryFolder: vi.fn<(...args: unknown[]) => unknown>(),
   deleteLibraryFolder: vi.fn<(...args: unknown[]) => unknown>(),
+  getLibraryTags: vi.fn<(...args: unknown[]) => unknown>(),
 }));
 
 vi.mock('@/services/api', async (importOriginal) => ({
@@ -36,7 +37,7 @@ const folder = (id: string, name: string) => ({
   createdAt: '2026-11-12T00:00:00.000Z',
 });
 
-const book = (id: string, title: string, folderIds: string[] = []) => ({
+const book = (id: string, title: string, folderIds: string[] = [], tagIds: string[] = []) => ({
   id: `status-${id}`,
   book: {
     id,
@@ -50,6 +51,7 @@ const book = (id: string, title: string, folderIds: string[] = []) => ({
   currentPage: 10,
   updatedAt: '2026-11-12T00:00:00.000Z',
   folderIds,
+  tagIds,
 });
 
 function mountView() {
@@ -60,6 +62,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   api.getUserLibrary.mockResolvedValue([]);
   api.getLibraryFolders.mockResolvedValue([]);
+  api.getLibraryTags.mockResolvedValue([]);
 });
 
 describe('LibraryView with a signed-in reader', () => {
@@ -129,5 +132,31 @@ describe('LibraryView with a signed-in reader', () => {
     await row('Club').trigger('click');
     expect(wrapper.findAll('article')).toHaveLength(1);
     expect(wrapper.get('#books-title').text()).toBe('Club');
+  });
+
+  it('lists the reader tags and filters the books by tag', async () => {
+    const TAG = '44444444-4444-4444-8444-444444444444';
+    api.getUserLibrary.mockResolvedValue([book(BOOK_A, 'Emma', [], [TAG]), book(BOOK_B, 'Circe')]);
+    api.getLibraryTags.mockResolvedValue([{ id: TAG, name: 'audiobook', count: 1 }]);
+
+    const wrapper = mountView();
+    await flushPromises();
+
+    const tag = wrapper.get('.tag-list .tag');
+    expect(tag.text()).toContain('audiobook');
+    expect(tag.text()).toContain('1');
+    expect(wrapper.text()).not.toContain('No tags yet');
+
+    await tag.trigger('click');
+    expect(wrapper.findAll('article')).toHaveLength(1);
+    expect(wrapper.get('article').text()).toContain('Emma');
+  });
+
+  it('shows a hint when the reader has no tags', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.findAll('.tag-list .tag')).toHaveLength(0);
+    expect(wrapper.text()).toContain("No tags yet. Add them from a book's page.");
   });
 });

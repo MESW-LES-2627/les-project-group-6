@@ -9,7 +9,7 @@ import type {
   PastResult,
   WinMetric,
 } from '@/types/groups';
-import type { FolderSummary, LibraryBook, ReadingStatus } from '@/types/library';
+import type { FolderSummary, LibraryBook, ReadingStatus, TagSummary } from '@/types/library';
 import { authProvider, isAuthConfigured } from '@/services/auth';
 import { formatLongDate, formatPeriod, initialsOf } from '@/utils/groups';
 
@@ -136,6 +136,8 @@ export interface ApiLibraryItem {
   updatedAt: string;
   /** The reader's folders that hold this book (F-LIB-03). */
   folderIds?: string[];
+  /** The reader's own tags on this book (F-LIB-04). */
+  tagIds?: string[];
 }
 
 const KNOWN_AUTHORS: Record<string, string> = {
@@ -196,7 +198,7 @@ export function mapApiLibraryItemToBook(item: ApiLibraryItem): LibraryBook {
     genre,
     summary,
     folderIds: item.folderIds ?? [],
-    tagIds: [],
+    tagIds: item.tagIds ?? [],
     chip,
     updatedAt: item.updatedAt,
   };
@@ -289,6 +291,36 @@ export async function addBookToFolder(folderId: string, bookId: string): Promise
       { method: 'PUT' },
     ),
     'Failed to add the book to the folder',
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Library tags (F-LIB-04)
+// ---------------------------------------------------------------------------
+
+/** The reader's private tags with how many books carry each. */
+export async function getLibraryTags(): Promise<TagSummary[]> {
+  return getJson<TagSummary[]>('/me/library/tags', 'Failed to load your tags');
+}
+
+/** Tags a book in the library; the tag is created on first use. */
+export async function tagBook(bookId: string, name: string): Promise<TagSummary> {
+  return sendJson<TagSummary>(
+    'POST',
+    `/me/library/books/${encodeURIComponent(bookId)}/tags`,
+    { name },
+    'Failed to add the tag',
+  );
+}
+
+/** Removes a tag from one book; the server deletes the tag once no book has it. */
+export async function untagBook(bookId: string, tagId: string): Promise<void> {
+  await ensureOk(
+    await apiFetch(
+      `/me/library/books/${encodeURIComponent(bookId)}/tags/${encodeURIComponent(tagId)}`,
+      { method: 'DELETE' },
+    ),
+    'Failed to remove the tag',
   );
 }
 

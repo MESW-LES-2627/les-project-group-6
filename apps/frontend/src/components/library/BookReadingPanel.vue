@@ -2,20 +2,34 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
-import { addBookToFolder, removeBookFromFolder, updateReadingStatus } from '@/services/api';
-import type { BookDetail, FolderSummary, LibraryBook, ReadingStatus } from '@/types/library';
+import {
+  addBookToFolder,
+  removeBookFromFolder,
+  tagBook,
+  untagBook,
+  updateReadingStatus,
+} from '@/services/api';
+import type {
+  BookDetail,
+  FolderSummary,
+  LibraryBook,
+  ReadingStatus,
+  TagSummary,
+} from '@/types/library';
 import { progressPercent, readingStatusLabels } from '@/utils/library';
 
 const props = defineProps<{
   book: LibraryBook;
   detail: BookDetail;
   folders: FolderSummary[];
-  tags: string[];
+  /** All the reader's tags, used for suggestions and names. */
+  tags: TagSummary[];
 }>();
 
 const emit = defineEmits<{
   updated: [data: { status: ReadingStatus; currentPage: number }];
   foldersUpdated: [folderIds: string[]];
+  tagsUpdated: [update: { tagIds: string[]; tags: TagSummary[] }];
 }>();
 
 const isEditing = ref(false);
@@ -31,6 +45,12 @@ const selectedFolderIds = ref<string[]>([...props.book.folderIds]);
 const isSavingFolders = ref(false);
 const folderMessage = ref<string | null>(null);
 
+const selectedTagIds = ref<string[]>([...props.book.tagIds]);
+const newTag = ref('');
+const isSavingTags = ref(false);
+const tagMessage = ref<string | null>(null);
+const MAX_TAG_LENGTH = 40;
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isApiId = (value: string) => UUID_PATTERN.test(value);
 
@@ -40,6 +60,7 @@ watch(
     selectedStatus.value = newBook.status === 'not-started' ? 'in-progress' : newBook.status;
     selectedPage.value = newBook.currentPage || 10;
     selectedFolderIds.value = [...newBook.folderIds];
+    selectedTagIds.value = [...newBook.tagIds];
   },
   { deep: true },
 );
@@ -91,7 +112,70 @@ const folderLabel = computed(
       .map((folder) => folder.name)
       .join(' • ') || 'No folder yet',
 );
-const tagLabel = computed(() => props.tags.join(' • ') || 'No tags');
+const bookTags = computed(() =>
+  props.tags
+    .filter((tag) => selectedTagIds.value.includes(tag.id))
+    .sort((a, b) => a.name.localeCompare(b.name)),
+);
+const tagSuggestions = computed(() =>
+  props.tags.filter((tag) => !selectedTagIds.value.includes(tag.id)),
+);
+
+/** Same normalisation as the server: trimmed, single spaces, lower case. */
+const normaliseTag = (raw: string) => raw.trim().replace(/\s+/g, ' ').toLowerCase();
+
+async function addTag() {
+  const name = normaliseTag(newTag.value);
+  tagMessage.value = null;
+  if (!name || isSavingTags.value) return;
+  if (name.length > MAX_TAG_LENGTH) {
+    tagMessage.value = `Tags can have at most ${MAX_TAG_LENGTH} characters`;
+    return;
+  }
+  if (bookTags.value.some((tag) => tag.name === name)) {
+    newTag.value = '';
+    return;
+  }
+
+  isSavingTags.value = true;
+  try {
+    // Mock books stay client-only.
+    const saved: TagSummary = isApiId(props.book.id)
+      ? await tagBook(props.book.id, name)
+      : (props.tags.find((tag) => tag.name === name) ?? { id: `tag-${name}`, name, count: 0 });
+    const others = props.tags.filter((tag) => tag.id !== saved.id);
+    const count = isApiId(props.book.id) ? saved.count : saved.count + 1;
+    selectedTagIds.value = [...selectedTagIds.value, saved.id];
+    newTag.value = '';
+    emit('tagsUpdated', {
+      tagIds: [...selectedTagIds.value],
+      tags: [...others, { ...saved, count }],
+    });
+  } catch (error) {
+    tagMessage.value = error instanceof Error ? error.message : 'Failed to add the tag';
+  } finally {
+    isSavingTags.value = false;
+  }
+}
+
+async function removeTag(tag: TagSummary) {
+  if (isSavingTags.value) return;
+  tagMessage.value = null;
+  isSavingTags.value = true;
+  try {
+    if (isApiId(props.book.id) && isApiId(tag.id)) await untagBook(props.book.id, tag.id);
+    selectedTagIds.value = selectedTagIds.value.filter((id) => id !== tag.id);
+    // The server deletes a tag no book carries any more; mirror that here.
+    const tags = props.tags
+      .map((item) => (item.id === tag.id ? { ...item, count: item.count - 1 } : item))
+      .filter((item) => item.count > 0);
+    emit('tagsUpdated', { tagIds: [...selectedTagIds.value], tags });
+  } catch (error) {
+    tagMessage.value = error instanceof Error ? error.message : 'Failed to remove the tag';
+  } finally {
+    isSavingTags.value = false;
+  }
+}
 
 async function toggleFolder(folderId: string) {
   if (isSavingFolders.value) return;
@@ -222,13 +306,114 @@ async function toggleFolder(folderId: string) {
       </div>
       <div class="meta-block">
         <p class="meta-label">Tags</p>
-        <div class="meta-value">{{ tagLabel }}</div>
+        <ul v-if="bookTags.length" class="tag-chips">
+          <li v-for="tag in bookTags" :key="tag.id" class="tag-chip">
+            {{ tag.name }}
+            <button
+              type="button"
+              class="tag-remove"
+              :aria-label="`Remove tag ${tag.name}`"
+              :disabled="isSavingTags"
+              @click="removeTag(tag)"
+            >
+              ×
+            </button>
+          </li>
+        </ul>
+        <p v-else class="meta-value">No tags</p>
+        <form class="tag-form" @submit.prevent="addTag">
+          <input
+            v-model="newTag"
+            class="tag-input"
+            type="text"
+            list="tag-suggestions"
+            placeholder="Add a tag, e.g. borrowed"
+            aria-label="New tag"
+            :maxlength="MAX_TAG_LENGTH + 10"
+            :disabled="isSavingTags"
+          />
+          <datalist id="tag-suggestions">
+            <option v-for="tag in tagSuggestions" :key="tag.id" :value="tag.name"></option>
+          </datalist>
+          <button type="submit" class="tag-add" :disabled="isSavingTags || !newTag.trim()">
+            Add
+          </button>
+        </form>
+        <p v-if="tagMessage" class="folder-message" role="alert">{{ tagMessage }}</p>
       </div>
     </div>
   </section>
 </template>
 
 <style scoped>
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag-chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 4px 2px 10px;
+  border-radius: 999px;
+  background: var(--color-cream);
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+}
+
+.tag-remove {
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tag-remove:hover {
+  color: var(--color-primary-hover);
+}
+
+.tag-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.tag-input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+}
+
+.tag-add {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.tag-add:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .reading-panel {
   min-width: 0;
   padding: 19px 20px 20px;
