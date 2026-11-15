@@ -418,3 +418,24 @@ creat he implementation plan and implement but in a separate branch
 
 #### Result
 Design spec and implementation plan in `docs/superpowers/`, decided with the user (one review per book, visibility follows the profile, no audience selector, real friend and public lists, first page only). Built the `features/review/` backend module, migration 0010, four routes, the review panel, book page lists and profile Reviews section, with unit, integration and component tests.
+
+### 2026-11-15: Library tags backend and prod migration repair
+
+- **Date:** 2026-11-15
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database
+
+#### Prompt
+```text
+We don't have the tags implementation yet, right? I can save books to my folders but I cant add tags to them
+-> yes (open an issue and build it like folders)
+I can't save a review: {"rating":5,"comment":"..."} this returns me 500 error. Why?
+-> i added in the .env, can you run the migrations for me please? run the tags too
+-> create a pr to the tag feature
+```
+
+#### Explanation of Changes
+Opened #152 and built the tags backend following the folders feature: `user_tags`/`book_tags` tables (migration 0012), `Tag` aggregate, repository, service, routes, `tagIds` on library items, unit and integration tests and docs. Traced the review 500 to Backend CD never starting (GitHub Actions spending limit) and a mismatched 0011 record in prod; repaired the prod migration history by hand and applied 0010 to 0012.
+

@@ -12,6 +12,9 @@ import type { IFolderRepository } from '../features/library-folder/folder-reposi
 import { LibraryFolderService } from '../features/library-folder/library-folder-service.js';
 import { libraryFolderRoutes } from '../features/library-folder/library-folder-routes.js';
 import { ReadingStatusLibraryMembership } from '../features/library-folder/library-membership.js';
+import { LibraryTagService } from '../features/library-tag/library-tag-service.js';
+import { libraryTagRoutes } from '../features/library-tag/library-tag-routes.js';
+import type { ITagRepository } from '../features/library-tag/tag-repository.js';
 import type { IReadingStatusRepository } from '../features/reading-status/reading-status-repository.js';
 import type { ReadingActivityQuery } from '../features/reading-session/reading-activity-query.js';
 import type { IReadingSessionRepository } from '../features/reading-session/reading-session-repository.js';
@@ -66,6 +69,7 @@ export interface ApiDependencies {
   readingStatusRepository?: IReadingStatusRepository;
   libraryQuery?: LibraryQuery;
   folderRepository?: IFolderRepository;
+  tagRepository?: ITagRepository;
   readingSessionRepository?: IReadingSessionRepository;
   readingActivityQuery?: ReadingActivityQuery;
   readingProgressQuery?: ReadingProgressQuery;
@@ -101,6 +105,7 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
     readingStatusRepository,
     libraryQuery,
     folderRepository,
+    tagRepository,
     readingSessionRepository,
     readingActivityQuery,
     readingProgressQuery,
@@ -254,6 +259,17 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
 
   if (libraryQuery) {
     router.use(libraryRoutes(libraryQuery));
+  }
+
+  if (tagRepository && readingStatusRepository) {
+    router.use(
+      libraryTagRoutes(
+        new LibraryTagService(
+          tagRepository,
+          new ReadingStatusLibraryMembership(readingStatusRepository),
+        ),
+      ),
+    );
   }
 
   if (folderRepository && readingStatusRepository) {
