@@ -53,13 +53,16 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | `DELETE` | `/reading-status?bookId=`                         | Deletes the reader's entry for that book (`204` or `404`) |
 | `PUT`    | `/library/:bookId`                                | Adds or updates the book in the reader's library with status, page and dates (`200 OK`) |
 | `DELETE` | `/library/:bookId`                                | Removes the book from the reader's library (`204` or `404`); `DELETE /me/library/:bookId` does the same |
-| `GET`    | `/me/library`                                     | Returns the reader's library with progress, dates and `folderIds`, supports `?status=` (`200 OK`) |
+| `GET`    | `/me/library`                                     | Returns the reader's library with progress, dates, `folderIds` and `tagIds`, supports `?status=` (`200 OK`) |
 | `GET`    | `/me/library/folders`                             | Lists the reader's private folders with their book count (`200 OK`) |
 | `POST`   | `/me/library/folders`                             | Creates a folder (`name`); duplicate names ignoring case answer `409 FOLDER_NAME_TAKEN` (`201`) |
 | `PATCH`  | `/me/library/folders/:folderId`                   | Renames one of the reader's folders (`200`; `404` for another reader's, `409` for a duplicate name) |
 | `DELETE` | `/me/library/folders/:folderId`                   | Deletes the folder (`204`); the books stay in the reader's library and in their other folders |
 | `PUT`    | `/me/library/folders/:folderId/books/:bookId`     | Adds a book that is already in the reader's library to a folder (`204`); a book can be in several folders |
 | `DELETE` | `/me/library/folders/:folderId/books/:bookId`     | Removes the book from that folder only, keeping its reading status (`204`) |
+| `GET`    | `/me/library/tags`                                | Lists the reader's tags with their book count (`200 OK`) |
+| `POST`   | `/me/library/books/:bookId/tags`                  | Tags a book in the reader's library (`name`), creating the tag on first use (`200 OK`) |
+| `DELETE` | `/me/library/books/:bookId/tags/:tagId`           | Removes the tag from the book; an unused tag is deleted (`204`) |
 | `PUT`    | `/book/:bookId/review`                            | Creates or replaces the reader's review, `{ rating, comment? }` (1 to 5 stars, comment up to 2,000 characters) (`200`; `400` out of range; `409` unless the book is In progress, Finished or Did not finish) |
 | `DELETE` | `/book/:bookId/review`                            | Deletes the reader's review (`204`, also when there was none) |
 | `GET`    | `/book/:bookId/reviews`                           | `{ mine, friends, publicReviews, publicAverage, publicCount }`: friends' reviews whatever their profile setting, the 10 newest public-profile reviews, and the average over public profiles only (`200`; `404` unknown book) |
@@ -150,6 +153,7 @@ apps/backend/
 │   │   ├── user/          # User entity + value objects (UserId, Email, Username), repository, UserService, /me routes
 │   │   ├── library/       # Read-side query (CQRS) and the library route
 │   │   └── library-folder/ # F-LIB-03: Folder aggregate + FolderName, repository (lists/list_books), LibraryMembership port, service, DTO, routes
+│   │   └── library-tag/ # F-LIB-04: Tag aggregate + TagName, repository (user_tags/book_tags), service, routes
 │   ├── api/               # router.ts wires each feature's service and mounts its routes; health route
 │   ├── config/            # env.ts: every setting read from the environment
 │   ├── middleware/        # CORS, auth (authenticate, requireUser) and the domain-error to HTTP status mapping

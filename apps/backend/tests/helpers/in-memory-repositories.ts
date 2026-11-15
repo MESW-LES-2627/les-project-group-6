@@ -54,6 +54,8 @@ import type {
   IFolderRepository,
 } from '../../src/features/library-folder/folder-repository.js';
 import type { Folder, FolderId, FolderName } from '../../src/features/library-folder/folder.js';
+import type { ITagRepository, TagView } from '../../src/features/library-tag/tag-repository.js';
+import type { Tag, TagId, TagName } from '../../src/features/library-tag/tag.js';
 import {
   UsernameTakenError,
   type User,
@@ -482,6 +484,59 @@ export class InMemoryFolderRepository implements IFolderRepository {
 
   async countBooks(folderId: FolderId): Promise<number> {
     return this.members.get(folderId.value)?.size ?? 0;
+  }
+}
+
+export class InMemoryTagRepository implements ITagRepository {
+  private readonly tags = new Map<string, Tag>();
+  private readonly books = new Map<string, Set<string>>();
+
+  async listForUser(userId: UserId): Promise<TagView[]> {
+    return [...this.tags.values()]
+      .filter((tag) => tag.userId.equals(userId))
+      .sort((a, b) => a.name.value.localeCompare(b.name.value))
+      .map((tag) => ({
+        id: tag.id.value,
+        name: tag.name.value,
+        count: this.books.get(tag.id.value)?.size ?? 0,
+      }));
+  }
+
+  async findById(id: TagId): Promise<Tag | null> {
+    return this.tags.get(id.value) ?? null;
+  }
+
+  async findByName(userId: UserId, name: TagName): Promise<Tag | null> {
+    return (
+      [...this.tags.values()].find((tag) => tag.userId.equals(userId) && tag.name.equals(name)) ??
+      null
+    );
+  }
+
+  async saveOrFind(tag: Tag): Promise<Tag> {
+    const existing = await this.findByName(tag.userId, tag.name);
+    if (existing) return existing;
+    this.tags.set(tag.id.value, tag);
+    return tag;
+  }
+
+  async delete(id: TagId): Promise<void> {
+    this.tags.delete(id.value);
+    this.books.delete(id.value);
+  }
+
+  async addBook(tagId: TagId, bookId: BookId): Promise<void> {
+    const books = this.books.get(tagId.value) ?? new Set<string>();
+    books.add(bookId.value);
+    this.books.set(tagId.value, books);
+  }
+
+  async removeBook(tagId: TagId, bookId: BookId): Promise<boolean> {
+    return this.books.get(tagId.value)?.delete(bookId.value) ?? false;
+  }
+
+  async countBooks(tagId: TagId): Promise<number> {
+    return this.books.get(tagId.value)?.size ?? 0;
   }
 }
 
