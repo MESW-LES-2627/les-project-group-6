@@ -13,7 +13,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Friends (F-SOC-01) | Friend request API (send, list incoming, accept, decline, remove) behind the auth middleware (PR #114) |
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
 | Library folders (#125, F-LIB-03) | Folder create/rename/delete and book membership behind the auth middleware, reusing `lists`/`list_books` (migration 0011); frontend sidebar CRUD and a book-page picker. Branch `feat/125-organize-library` |
-| Library tags (#152, F-LIB-04) | Backend done: `user_tags`/`book_tags` (migration 0012), tag/untag routes and `tagIds` in the library. Frontend still mocked. Branch `feat/152-library-tags` |
+| Library tags (#152, F-LIB-04) | `user_tags`/`book_tags` (migration 0012), tag/untag routes and `tagIds` in the library; frontend tag editor on the book page and real tag filter in the sidebar. Draft PR [#153](https://github.com/MESW-LES-2627/les-project-group-6/pull/153) |
 | Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with search-as-you-type (fuzzy title, author and ISBN via `pg_trgm`, `GET /book?q=`) and Trending / Most read this week lists, `GET /explore`, migrations 0008–0009. Explore page merged in PR #141, fuzzy search in PR #142. Open Library fallback (#120) in PR #144; manual add of a missing book (#120, F-BOOK-02) from the search results |
 | E2E tests (#127) | 13 Playwright tests and the `e2e.yml` workflow written, not run yet (fixtures and secrets missing) |
 | Reviews (#122, F-LIB-02) | Rate 1–5 with an optional comment, edit and delete, only for In progress, Finished or DNF books. Book page shows my, friends' and public reviews and the public average; profile lists my reviews. Migration 0010. Draft PR #150 |
@@ -220,10 +220,11 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 ### 2026-11-15: Library tags backend (#152, F-LIB-04)
 
-- New story [#152](https://github.com/MESW-LES-2627/les-project-group-6/issues/152), branch `feat/152-library-tags`. Readers can add free tags to books in their library and remove them.
+- New story [#152](https://github.com/MESW-LES-2627/les-project-group-6/issues/152), branch `feat/152-library-tags`, draft PR [#153](https://github.com/MESW-LES-2627/les-project-group-6/pull/153) (`c1c5794`). Readers can add free tags to books in their library and remove them.
 - **Decision: new `user_tags` and `book_tags` tables** ([migration 0012](../../../apps/backend/src/database/migrations/0012_library_tags.sql), RLS on). *Rejected:* reusing `lists` like folders, since a tag has no visibility or group owner and would mix two concepts in one table.
 - **Decision: tags are created on first use and deleted when no book has them**, so there is no separate create/rename/delete. Names are trimmed and stored in lower case, unique per reader.
 - **Backend.** New [`features/library-tag/`](../../../apps/backend/src/features/library-tag/) feature (`Tag` aggregate, `TagName`, `DrizzleTagRepository`, `LibraryTagService`, routes), reusing the `LibraryMembership` port so only books in the library can be tagged. `GET /me/library` now includes `tagIds`. Routes in [`api_routes.md`](../../architecture/api_routes.md).
 - **Tests.** 7 unit tests pass; the integration suite needs Postgres and runs in CI.
-- **Next:** frontend (tag a book on the book page, real tags in the library sidebar filter).
+- **Frontend.** [`BookReadingPanel.vue`](../../../apps/frontend/src/components/library/BookReadingPanel.vue) shows the book's tags as chips with a remove button and an input that suggests the reader's existing tags. [`LibraryView.vue`](../../../apps/frontend/src/views/LibraryView.vue) loads tags from the API, counts them from the loaded books like folders, and the [sidebar](../../../apps/frontend/src/components/library/LibrarySidebar.vue) shows a hint when there are none. Signed-out visitors keep the mock tags.
+- **Frontend tests.** 7 new (tag editor and sidebar filter); 179 passing, typecheck and lint clean. Not checked in a browser: the local database was not running.
 

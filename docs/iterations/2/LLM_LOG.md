@@ -439,3 +439,19 @@ I can't save a review: {"rating":5,"comment":"..."} this returns me 500 error. W
 #### Explanation of Changes
 Opened #152 and built the tags backend following the folders feature: `user_tags`/`book_tags` tables (migration 0012), `Tag` aggregate, repository, service, routes, `tagIds` on library items, unit and integration tests and docs. Traced the review 500 to Backend CD never starting (GitHub Actions spending limit) and a mismatched 0011 record in prod; repaired the prod migration history by hand and applied 0010 to 0012.
 
+### 2026-11-15: Library tags frontend
+
+- **Date:** 2026-11-15
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, testing
+
+#### Prompt
+```text
+do the frontend part then
+```
+
+#### Explanation of Changes
+Replaced the mocked tags with the #152 API: API client functions, a tag editor on the book page (chips, remove, add with suggestions), real tags with derived counts in the library sidebar filter, and 7 new component and view tests.
+
