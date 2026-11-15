@@ -574,3 +574,24 @@ add the e2e tests for the implementation in this branch
 - The loading test uses `page.route('**/api/me/**')` to hold every Home request for 1.5 s, asserts `.skeleton` is visible and the empty states are not, then releases the requests and waits for the skeletons to disappear.
 - The suite lists 16 tests (`playwright test --list`); it was not executed because `.env.e2e` and the permanent fixtures are still missing. Frontend typecheck, lint and format pass. Updated the iteration 2 log and status table.
 
+
+### 2026-11-15: Library tags backend and prod migration repair
+
+- **Date:** 2026-11-15
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database
+
+#### Prompt
+```text
+We don't have the tags implementation yet, right? I can save books to my folders but I cant add tags to them
+-> yes (open an issue and build it like folders)
+I can't save a review: {"rating":5,"comment":"..."} this returns me 500 error. Why?
+-> i added in the .env, can you run the migrations for me please? run the tags too
+-> create a pr to the tag feature
+```
+
+#### Explanation of Changes
+Opened #152 and built the tags backend following the folders feature: `user_tags`/`book_tags` tables (migration 0012), `Tag` aggregate, repository, service, routes, `tagIds` on library items, unit and integration tests and docs. Traced the review 500 to Backend CD never starting (GitHub Actions spending limit) and a mismatched 0011 record in prod; repaired the prod migration history by hand and applied 0010 to 0012.
+
