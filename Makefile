@@ -28,7 +28,7 @@ done
 endef
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev start build lint typecheck format format-check test coverage test-history check clean
+.PHONY: help install dev start build lint typecheck format format-check test coverage mutation traceability test-history check clean
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -64,6 +64,12 @@ test: ## Run the tests (apps without tests are skipped)
 
 coverage: ## Run the tests with coverage (reports in apps/<name>/coverage/)
 	$(call run,test:coverage)
+
+mutation: ## Mutation testing with Stryker (slow; reports in apps/<name>/reports/mutation/)
+	$(call run,test:mutation)
+
+traceability: ## Markdown table of tests per requirement (from the @req tags)
+	@node scripts/traceability.mjs
 
 test-history: ## Markdown table of source vs test files changed per merged PR
 	@./scripts/test-history.sh

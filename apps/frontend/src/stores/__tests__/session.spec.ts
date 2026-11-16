@@ -1,3 +1,4 @@
+// @req F-READ-01
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/services/api';
 import { browserTimezone, createSession, USERNAME_TAKEN } from '../session';

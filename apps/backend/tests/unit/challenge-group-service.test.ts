@@ -1,3 +1,4 @@
+// @req F-GRP-01 F-GRP-04 F-GRP-03
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { ChallengeGroupService } from '../../src/features/challenge-group/challenge-group-service.js';

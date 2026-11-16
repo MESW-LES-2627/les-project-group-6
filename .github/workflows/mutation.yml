@@ -1,0 +1,82 @@
+# Mutation testing with Stryker (make mutation). Not a pull request check: a
+# full run takes about 25 minutes per app, so it runs weekly and on demand.
+# The score is written to the run summary and the HTML report is uploaded.
+name: Mutation
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # Mondays 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v5
+
+      # Uses the pnpm version pinned in packageManager (root package.json)
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Stryker's incremental file skips mutants whose code and tests did not
+      # change since the last run, so later runs are much faster.
+      - name: Restore incremental results
+        uses: actions/cache@v4
+        with:
+          path: apps/${{ matrix.app }}/reports/stryker-incremental.json
+          key: stryker-${{ matrix.app }}-${{ github.sha }}
+          restore-keys: stryker-${{ matrix.app }}-
+
+      # Backend mutants are checked by the unit tests only, so no database is needed
+      - name: Mutation testing
+        run: pnpm --filter @bookmarked/${{ matrix.app }} test:mutation --concurrency 4
+
+      - name: Score summary
+        if: always()
+        working-directory: apps/${{ matrix.app }}
+        run: |
+          [ -f reports/mutation/mutation.json ] || { echo "No mutation report" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+          node -e '
+            const r = require("./reports/mutation/mutation.json");
+            const rows = [], total = { k: 0, s: 0 };
+            for (const [file, { mutants }] of Object.entries(r.files)) {
+              const k = mutants.filter(m => ["Killed", "Timeout"].includes(m.status)).length;
+              const s = mutants.filter(m => ["Survived", "NoCoverage"].includes(m.status)).length;
+              total.k += k; total.s += s;
+              if (k + s) rows.push([file, k, s, (100 * k / (k + s)).toFixed(1)]);
+            }
+            rows.sort((a, b) => a[3] - b[3]);
+            const score = (100 * total.k / (total.k + total.s)).toFixed(1);
+            console.log(`## ${process.argv[1]} mutation score: ${score}%\n`);
+            console.log(`${total.k} mutants killed, ${total.s} survived.\n`);
+            console.log("| File | Killed | Survived | Score |\n|---|---:|---:|---:|");
+            for (const r of rows) console.log(`| ${r[0]} | ${r[1]} | ${r[2]} | ${r[3]}% |`);
+          ' '${{ matrix.app }}' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-mutation
+          path: apps/${{ matrix.app }}/reports/mutation/
+          if-no-files-found: ignore

@@ -50,3 +50,7 @@ pnpm-debug.log*
 .supabase/
 .vercel/
 .claude/settings.local.json
+
+# Mutation testing (Stryker)
+.stryker-tmp/
+reports/

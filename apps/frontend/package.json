@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "run-p typecheck \"build-only {@}\" --",
     "preview": "vite preview",
+    "test:mutation": "stryker run",
     "test:coverage": "vitest run --coverage",
     "test": "vitest run",
     "build-only": "vite build",
@@ -27,6 +28,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
     "@tsconfig/node24": "^24.0.5",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^24.13.4",

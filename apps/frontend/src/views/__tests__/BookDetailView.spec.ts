@@ -1,3 +1,4 @@
+// @req F-BOOK-01 F-EXP-02 F-LIB-03
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

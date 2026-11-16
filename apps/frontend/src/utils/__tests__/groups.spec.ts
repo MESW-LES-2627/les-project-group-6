@@ -1,3 +1,4 @@
+// @req F-GRP-04
 import { describe, expect, it } from 'vitest';
 
 import { endDate, formatLongDate, formatPeriod, initialsOf } from '../groups';

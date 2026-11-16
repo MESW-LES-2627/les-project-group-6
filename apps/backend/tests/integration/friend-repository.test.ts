@@ -1,3 +1,4 @@
+// @req F-SOC-01
 import { after, beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createDb } from '../../src/database/pool.js';

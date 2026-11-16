@@ -1,3 +1,4 @@
+// @req F-READ-01
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 

@@ -1,3 +1,4 @@
+// @req F-GRP-07 F-GRP-08
 import { test, describe, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createDb } from '../../src/database/pool.js';
