@@ -299,7 +299,7 @@ A running record of what the team did and decided in iteration 2. The [release n
   - Added `searchUsers(rawQuery, limit)` in `UserService` (`apps/backend/src/features/user/user-service.ts`) returning `UserSearchResultDto[]`.
   - Mounted `GET /users?q=` in `me-routes.ts` behind authentication.
   - 3 new unit tests in `user-service.test.ts` and HTTP integration test in `me-api.test.ts`. Backend 248 unit tests passing.
-- **Frontend.**
+- **Frontend.** 
   - Added `searchUsers` client function in `apps/frontend/src/services/api.ts`.
   - Added [`UserSearchBar.vue`](../../../apps/frontend/src/components/explore/UserSearchBar.vue) matching `ExploreSearchBar.vue` styling.
   - Added [`UserSearchResults.vue`](../../../apps/frontend/src/components/explore/UserSearchResults.vue) displaying matching readers, initials avatar, display name, `@username`, private badge, bio, and "View profile" link.
