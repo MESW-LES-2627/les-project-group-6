@@ -13,7 +13,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Friends (F-SOC-01) | Friend request API (send, list incoming, accept, decline, remove) behind the auth middleware (PR #114) |
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
 | Library folders (#125, F-LIB-03) | Folder create/rename/delete and book membership behind the auth middleware, reusing `lists`/`list_books` (migration 0011); frontend sidebar CRUD and a book-page picker. Branch `feat/125-organize-library` |
-| Library tags (#152, F-LIB-04) | Backend done: `user_tags`/`book_tags` (migration 0012), tag/untag routes and `tagIds` in the library. Frontend still mocked. Branch `feat/152-library-tags` |
+| Library tags (#152, F-LIB-04) | Backend and frontend done: tag/untag on the book page, real tags with counts and filter in the library sidebar, 2 e2e tests. Branch `feat/152-library-tags-frontend` |
 | Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with search-as-you-type (fuzzy title, author and ISBN via `pg_trgm`, `GET /book?q=`) and Trending / Most read this week lists, `GET /explore`, migrations 0008–0009. Explore page merged in PR #141, fuzzy search in PR #142. Open Library fallback (#120) in PR #144; manual add of a missing book (#120, F-BOOK-02) from the search results |
 | E2E tests (#127) | 13 Playwright tests and the `e2e.yml` workflow written, not run yet (fixtures and secrets missing) |
 | Reviews (#122, F-LIB-02) | Rate 1–5 with an optional comment, edit and delete, only for In progress, Finished or DNF books. Book page shows my, friends' and public reviews and the public average; profile lists my reviews. Migration 0010. Draft PR #150 |
@@ -277,3 +277,10 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 - New [Mutation workflow](../../../.github/workflows/mutation.yml) runs Stryker for both apps every Monday and on manual dispatch, writes the score per file to the run summary and uploads the HTML report. Stryker's incremental file is cached between runs, so only changed code is mutated again.
 - **Decision: not a pull request check.** A full run takes about 25 minutes per app, which would make every PR wait. *Rejected:* running it in Backend and Frontend CI.
+
+### 2026-11-16: Library tags frontend (#152, F-LIB-04)
+
+- Branch `feat/152-library-tags-frontend`. The backend from `feat/152-library-tags` was merged but the UI still showed mock tags, so tags could not be added.
+- **Frontend.** [`api.ts`](../../../apps/frontend/src/services/api.ts) gets `getLibraryTags`, `tagBook` and `untagBook`, and maps `tagIds` from `GET /me/library`. The [book panel](../../../apps/frontend/src/components/library/BookReadingPanel.vue) shows the book's tags as chips with a remove button and an "Add tag" field that suggests the reader's existing tags. [`LibraryView.vue`](../../../apps/frontend/src/views/LibraryView.vue) loads the tags from the API, counts them from the loaded books and hides tags on no book; the filter already existed.
+- **Decision: the panel normalises names like the API (trim, single spaces, lower case)** and refuses a tag the book already has before calling the API. *Rejected:* a separate tag manager, since the backend creates tags on first use and deletes them when empty.
+- **Tests.** 13 new unit tests ([`BookReadingPanel.spec.ts`](../../../apps/frontend/src/components/library/__tests__/BookReadingPanel.spec.ts), `LibraryView.api.spec.ts`, `BookDetailView.spec.ts`); frontend 201 unit tests pass. New e2e [`library-tags.spec.ts`](../../../apps/frontend/e2e/library-tags.spec.ts): tag the fixture book, filter the library by it, remove it, and several tags on one book. They use unique names and remove the tags in teardown.
