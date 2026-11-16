@@ -103,7 +103,6 @@ describe('UserView', () => {
           id: 'b-1',
           title: 'Pride and Prejudice',
           coverUrl: null,
-          pageCount: 300,
         },
         rating: 5,
         comment: 'A masterpiece.',
