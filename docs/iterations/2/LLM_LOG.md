@@ -471,3 +471,23 @@ I can't save a review: {"rating":5,"comment":"..."} this returns me 500 error. W
 #### Explanation of Changes
 Opened #152 and built the tags backend following the folders feature: `user_tags`/`book_tags` tables (migration 0012), `Tag` aggregate, repository, service, routes, `tagIds` on library items, unit and integration tests and docs. Traced the review 500 to Backend CD never starting (GitHub Actions spending limit) and a mismatched 0011 record in prod; repaired the prod migration history by hand and applied 0010 to 0012.
 
+---
+
+### 2026-11-16: Test coverage and test history with make
+
+- **Date:** 2026-11-16
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** testing
+
+#### Prompt
+```text
+[pasted the course rubric for test metrics] this is how we are evaluating the tests in this academic repo. How can I get test metrics of this repo?
+-> can we do this with makefile?
+-> run for me to see if something is missing
+-> ok, so, can we add in the CI the min of 95% of coverage to pass in CI? (chose: 95% everywhere now)
+```
+
+#### Explanation of Changes
+Added `test:coverage` scripts to both apps (Vitest v8 coverage on the frontend, Node's built-in coverage on the backend) that leave out code with no logic, plus `make coverage` and `make test-history`. The second runs a new `scripts/test-history.sh` that lists source vs test files changed per merged PR. Updated the README. Then added a 95% line-coverage gate to both apps and switched Backend and Frontend CI to run coverage and upload the report.
