@@ -2,20 +2,35 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
-import { addBookToFolder, removeBookFromFolder, updateReadingStatus } from '@/services/api';
-import type { BookDetail, FolderSummary, LibraryBook, ReadingStatus } from '@/types/library';
+import {
+  addBookToFolder,
+  removeBookFromFolder,
+  tagBook,
+  untagBook,
+  updateReadingStatus,
+} from '@/services/api';
+import type {
+  BookDetail,
+  FolderSummary,
+  LibraryBook,
+  ReadingStatus,
+  TagSummary,
+} from '@/types/library';
 import { progressPercent, readingStatusLabels } from '@/utils/library';
 
 const props = defineProps<{
   book: LibraryBook;
   detail: BookDetail;
   folders: FolderSummary[];
-  tags: string[];
+  /** All of the reader's tags, used to name the ids on this book. */
+  tags: TagSummary[];
 }>();
 
 const emit = defineEmits<{
   updated: [data: { status: ReadingStatus; currentPage: number }];
   foldersUpdated: [folderIds: string[]];
+  tagAdded: [tag: TagSummary];
+  tagRemoved: [tagId: string];
 }>();
 
 const isEditing = ref(false);
@@ -30,6 +45,11 @@ const isEditingFolders = ref(false);
 const selectedFolderIds = ref<string[]>([...props.book.folderIds]);
 const isSavingFolders = ref(false);
 const folderMessage = ref<string | null>(null);
+
+const newTag = ref('');
+const isSavingTags = ref(false);
+const tagMessage = ref<string | null>(null);
+const MAX_TAG_LENGTH = 40;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isApiId = (value: string) => UUID_PATTERN.test(value);
@@ -91,7 +111,57 @@ const folderLabel = computed(
       .map((folder) => folder.name)
       .join(' • ') || 'No folder yet',
 );
-const tagLabel = computed(() => props.tags.join(' • ') || 'No tags');
+const bookTags = computed(() =>
+  props.book.tagIds
+    .map((id) => props.tags.find((tag) => tag.id === id))
+    .filter((tag): tag is TagSummary => tag !== undefined),
+);
+
+/** Same rule as the API: trimmed, single spaces, lower case. */
+const normaliseTag = (raw: string) => raw.trim().replace(/\s+/g, ' ').toLowerCase();
+
+async function addTag() {
+  const name = normaliseTag(newTag.value);
+  if (!name || isSavingTags.value) return;
+  tagMessage.value = null;
+
+  if (bookTags.value.some((tag) => tag.name === name)) {
+    tagMessage.value = `This book already has the tag "${name}"`;
+    return;
+  }
+
+  isSavingTags.value = true;
+  try {
+    // Mock books are client-only: reuse a known tag or make a local one.
+    const tag = isApiId(props.book.id)
+      ? await tagBook(props.book.id, name)
+      : (props.tags.find((known) => known.name === name) ?? {
+          id: `local-${Date.now()}`,
+          name,
+          count: 0,
+        });
+    emit('tagAdded', tag);
+    newTag.value = '';
+  } catch (error) {
+    tagMessage.value = error instanceof Error ? error.message : 'Failed to add the tag';
+  } finally {
+    isSavingTags.value = false;
+  }
+}
+
+async function removeTag(tagId: string) {
+  if (isSavingTags.value) return;
+  tagMessage.value = null;
+  isSavingTags.value = true;
+  try {
+    if (isApiId(props.book.id) && isApiId(tagId)) await untagBook(props.book.id, tagId);
+    emit('tagRemoved', tagId);
+  } catch (error) {
+    tagMessage.value = error instanceof Error ? error.message : 'Failed to remove the tag';
+  } finally {
+    isSavingTags.value = false;
+  }
+}
 
 async function toggleFolder(folderId: string) {
   if (isSavingFolders.value) return;
@@ -221,8 +291,40 @@ async function toggleFolder(folderId: string) {
         </div>
       </div>
       <div class="meta-block">
-        <p class="meta-label">Tags</p>
-        <div class="meta-value">{{ tagLabel }}</div>
+        <p class="meta-label">Tags <span>• only you see them</span></p>
+        <ul v-if="bookTags.length" class="tag-chips" aria-label="Tags on this book">
+          <li v-for="tag in bookTags" :key="tag.id" class="tag-chip">
+            {{ tag.name }}
+            <button
+              type="button"
+              class="tag-remove"
+              :aria-label="`Remove tag ${tag.name}`"
+              :disabled="isSavingTags"
+              @click="removeTag(tag.id)"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+          </li>
+        </ul>
+        <p v-else class="tag-empty">No tags</p>
+        <form class="tag-form" @submit.prevent="addTag">
+          <input
+            v-model="newTag"
+            class="tag-input"
+            type="text"
+            list="known-tags"
+            :maxlength="MAX_TAG_LENGTH"
+            placeholder="borrowed, audiobook…"
+            aria-label="New tag"
+          />
+          <datalist id="known-tags">
+            <option v-for="tag in tags" :key="tag.id" :value="tag.name" />
+          </datalist>
+          <button type="submit" class="tag-add" :disabled="isSavingTags || !newTag.trim()">
+            Add tag
+          </button>
+        </form>
+        <p v-if="tagMessage" class="tag-message" role="alert">{{ tagMessage }}</p>
       </div>
     </div>
   </section>
@@ -510,6 +612,90 @@ async function toggleFolder(folderId: string) {
 
 .folder-message {
   color: var(--color-copper);
+  font-weight: var(--font-weight-medium);
+}
+
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.tag-chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 4px 2px 10px;
+  border-radius: 999px;
+  background: var(--color-cream);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+}
+
+.tag-remove {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tag-remove:hover {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.tag-empty {
+  margin: 0 0 8px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.tag-form {
+  display: flex;
+  gap: 6px;
+}
+
+.tag-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: #ffffff;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+}
+
+.tag-add {
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.tag-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tag-message {
+  margin: 6px 0 0;
+  color: var(--color-copper);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
 }
 

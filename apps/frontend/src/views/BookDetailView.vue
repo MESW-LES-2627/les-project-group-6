@@ -13,6 +13,7 @@ import {
   getBook,
   getBookReviews,
   getLibraryFolders,
+  getLibraryTags,
   getUserLibrary,
   mapApiBookToLibraryBook,
   mapApiLibraryItemToBook,
@@ -20,12 +21,13 @@ import {
   type ApiReview,
 } from '@/services/api';
 import { isSignedIn } from '@/stores/session';
-import type { FolderSummary, LibraryBook, ReadingStatus } from '@/types/library';
+import type { FolderSummary, LibraryBook, ReadingStatus, TagSummary } from '@/types/library';
 
 const props = defineProps<{ bookId: string }>();
 
 const apiBook = ref<LibraryBook | null>(null);
 const folders = ref<FolderSummary[]>(isSignedIn.value ? [] : mockLibrary.folders);
+const tags = ref<TagSummary[]>(isSignedIn.value ? [] : [...mockLibrary.tags]);
 /** True until the request that decides whether the book exists has finished. */
 const loading = ref(true);
 let loadToken = 0;
@@ -84,10 +86,21 @@ async function fetchFolders() {
   }
 }
 
+async function fetchTags() {
+  if (!isSignedIn.value) return;
+
+  try {
+    tags.value = await getLibraryTags();
+  } catch {
+    tags.value = [];
+  }
+}
+
 onMounted(() => {
   void fetchBookData();
   void loadReviews();
   void fetchFolders();
+  void fetchTags();
 });
 
 watch(
@@ -122,12 +135,22 @@ function onFoldersUpdated(folderIds: string[]) {
   }
 }
 
-const tags = computed(() => {
-  if (!book.value) return [];
-  return mockLibrary.tags
-    .filter((tag) => book.value?.tagIds.includes(tag.id))
-    .map((tag) => tag.name);
-});
+// The mock books are not reactive, so a copy goes into apiBook to re-render.
+function setTagIds(tagIds: string[]) {
+  if (book.value) apiBook.value = { ...book.value, tagIds };
+}
+
+function onTagAdded(tag: TagSummary) {
+  if (!book.value) return;
+  // Adding the same tag twice is a no-op in the API, so keep the ids unique here too.
+  if (!tags.value.some((known) => known.id === tag.id)) tags.value = [...tags.value, tag];
+  if (!book.value.tagIds.includes(tag.id)) setTagIds([...book.value.tagIds, tag.id]);
+}
+
+function onTagRemoved(tagId: string) {
+  if (!book.value) return;
+  setTagIds(book.value.tagIds.filter((id) => id !== tagId));
+}
 
 const friendReviews = computed(() => reviews.value?.friends ?? []);
 const publicReviews = computed(() => reviews.value?.publicReviews ?? []);
@@ -206,6 +229,8 @@ const mailtoHref = computed(() => {
               :tags="tags"
               @updated="onStatusUpdated"
               @folders-updated="onFoldersUpdated"
+              @tag-added="onTagAdded"
+              @tag-removed="onTagRemoved"
             />
 
             <section class="about-section" aria-labelledby="about-title">

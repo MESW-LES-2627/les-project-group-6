@@ -10,12 +10,20 @@ import {
   createLibraryFolder,
   deleteLibraryFolder,
   getLibraryFolders,
+  getLibraryTags,
   getUserLibrary,
   mapApiLibraryItemToBook,
   renameLibraryFolder,
 } from '@/services/api';
 import { isSignedIn } from '@/stores/session';
-import type { FolderSummary, LibraryBook, LibrarySort, Shelf, ShelfId } from '@/types/library';
+import type {
+  FolderSummary,
+  LibraryBook,
+  LibrarySort,
+  Shelf,
+  ShelfId,
+  TagSummary,
+} from '@/types/library';
 import { sortBooks } from '@/utils/library';
 
 const rawBooks = ref<LibraryBook[]>(isSignedIn.value ? [] : mockLibrary.books);
@@ -24,6 +32,8 @@ const addBookOpen = ref(false);
 
 const folders = ref<FolderSummary[]>(isSignedIn.value ? [] : mockLibrary.folders);
 const folderError = ref<string | null>(null);
+
+const tags = ref<TagSummary[]>(isSignedIn.value ? [] : mockLibrary.tags);
 
 const DUPLICATE_FOLDER = 'You already have a folder with this name';
 
@@ -62,9 +72,21 @@ async function fetchFolders() {
   }
 }
 
+async function fetchTags() {
+  if (!isSignedIn.value) return;
+
+  try {
+    tags.value = await getLibraryTags();
+  } catch {
+    // The tag filter is optional; the books still load without it.
+    tags.value = [];
+  }
+}
+
 onMounted(() => {
   void fetchLibraryData();
   void fetchFolders();
+  void fetchTags();
 });
 
 const hasFolderName = (name: string, exceptId?: string) =>
@@ -144,6 +166,18 @@ const displayFolders = computed<FolderSummary[]>(() => {
     ...folder,
     count: rawBooks.value.filter((book) => book.folderIds.includes(folder.id)).length,
   }));
+});
+
+// Counts follow the loaded books so they match the grid; tags on no book are hidden.
+const displayTags = computed<TagSummary[]>(() => {
+  if (!isSignedIn.value) return tags.value;
+  return tags.value
+    .map((tag) => ({
+      ...tag,
+      count: rawBooks.value.filter((book) => book.tagIds.includes(tag.id)).length,
+    }))
+    .filter((tag) => tag.count > 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
 });
 
 const shelves = computed<Shelf[]>(() => {
@@ -316,7 +350,7 @@ function handleBookAdded(book: LibraryBook) {
       <div class="layout">
         <LibrarySidebar
           :folders="displayFolders"
-          :tags="mockLibrary.tags"
+          :tags="displayTags"
           :active-folder="activeFolder || null"
           :active-tag="activeTag || null"
           :error="folderError"
