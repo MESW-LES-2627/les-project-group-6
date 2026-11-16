@@ -57,6 +57,13 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('profile');
   });
 
+  it('routes to another reader profile page with username', async () => {
+    await router.push('/users/jane_doe');
+
+    expect(router.currentRoute.value.name).toBe('user-profile');
+    expect(router.currentRoute.value.params.username).toBe('jane_doe');
+  });
+
   it('routes unknown paths to the not-found page', async () => {
     await router.push('/unknown');
 

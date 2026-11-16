@@ -208,6 +208,18 @@ export class InMemoryUserRepository implements IUserRepository {
     return [...this.users.values()].find((u) => u.username.value.toLowerCase() === wanted) ?? null;
   }
 
+  async search(query: string, limit: number): Promise<User[]> {
+    const trimmed = query.trim().replace(/^@/, '').toLowerCase();
+    if (!trimmed) return [];
+    return [...this.users.values()]
+      .filter(
+        (u) =>
+          u.username.value.toLowerCase().includes(trimmed) ||
+          u.displayName.toLowerCase().includes(trimmed),
+      )
+      .slice(0, limit);
+  }
+
   async add(user: User): Promise<void> {
     if (this.users.has(user.id.value)) {
       throw new BusinessRuleViolationError('Your profile already exists');

@@ -4,7 +4,15 @@ import { computed } from 'vue';
 import type { ProfileUser } from '@/types/profile';
 import { formatMonthYear } from '@/utils/date';
 
-const props = defineProps<{ user: ProfileUser }>();
+const props = withDefaults(
+  defineProps<{
+    user: ProfileUser;
+    isSelf?: boolean;
+  }>(),
+  {
+    isSelf: true,
+  },
+);
 
 const privacyLabel = computed(
   () =>
@@ -32,30 +40,36 @@ const privacyLabel = computed(
           <p v-if="user.genres.length > 0" class="secondary genres">
             {{ user.genres.join(', ') }}
           </p>
-          <a v-if="!user.bio && user.genres.length === 0" href="#" class="secondary add-details">
+          <a
+            v-if="isSelf && !user.bio && user.genres.length === 0"
+            href="#"
+            class="secondary add-details"
+          >
             Add a short bio and your favourite genres
           </a>
         </div>
       </div>
       <div class="actions">
-        <a href="#" class="edit-button">Edit profile</a>
-        <a href="#" class="privacy">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <rect x="4" y="11" width="16" height="10" rx="2" />
-            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-          </svg>
-          {{ privacyLabel }}<span class="sr-only"> (privacy settings)</span>
-        </a>
+        <slot name="actions">
+          <a href="#" class="edit-button">Edit profile</a>
+          <a href="#" class="privacy">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="4" y="11" width="16" height="10" rx="2" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            </svg>
+            {{ privacyLabel }}<span class="sr-only"> (privacy settings)</span>
+          </a>
+        </slot>
       </div>
     </div>
   </section>

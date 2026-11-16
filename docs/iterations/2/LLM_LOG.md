@@ -419,6 +419,38 @@ creat he implementation plan and implement but in a separate branch
 #### Result
 Design spec and implementation plan in `docs/superpowers/`, decided with the user (one review per book, visibility follows the profile, no audience selector, real friend and public lists, first page only). Built the `features/review/` backend module, migration 0010, four routes, the review panel, book page lists and profile Reviews section, with unit, integration and component tests.
 
+### 2026-11-14: User profile page and friend requests (#123, #36, #58)
+
+- **Date:** 2026-11-14
+- **Author:** Vasco
+- **Model:** Gemini 2.5 Pro
+- **Tool:** Antigravity
+- **Domain:** backend, frontend, testing, docs
+
+#### Prompt
+```text
+You are going to base yourself on the ProfileView and create the UserView page to check out the profile of other person and the endpoint should be /users/:username like in the issue that it asks, this for the front end. This should call the backend API implemented already with the endpoints to manage friendships and base API request to fetch a users information to introduce private profile or friend profile. Backend uses the Supabase token to authenticate a legitimate request by an authenticated user. 
+```
+
+#### Explanation of Changes
+Implemented the backend endpoint `GET /users/:username` supporting case-insensitive username lookup, privacy checking (F-PROF-02), friendship status derivation (`none`, `pending_sent`, `pending_received`, `friends`, `self`), and reading streak & time aggregation. Created the `UserView.vue` frontend component and `/users/:username` route, allowing readers to view another user's profile, send friend requests, accept/decline incoming requests, remove friends, and view reading streaks and reviews when allowed by privacy settings. Added unit and component test suites in backend and frontend. Updated API routes documentation and iteration log.
+
+### 2026-11-15: Reader search on Explore (#123, #58)
+
+- **Date:** 2026-11-15
+- **Author:** Vasco
+- **Model:** Gemini 2.5 Pro
+- **Tool:** Antigravity
+- **Domain:** backend, frontend, testing, docs
+
+#### Prompt
+```text
+Create the user search extending the Explore tab using the same style as the book search but a separate one for users. Start by the backend endpoint that receives a search with a query and connects to the User Repository in order to fetch matching users in the database. It should then display a quick card of the users that should redirect to the implemented users page.
+```
+
+#### Explanation of Changes
+Extended the Explore tab with a dedicated reader search using the same design patterns as book search. Implemented `search(query, limit)` on `IUserRepository` and `DrizzleUserRepository`, `searchUsers` on `UserService`, and the authenticated endpoint `GET /users?q=`. Built `UserSearchBar.vue` and `UserSearchResults.vue` with initials avatar, display name, `@username`, private profile badge, bio, and "View profile" link to `/users/:username`. Integrated into `ExploreView.vue` with debounced search-as-you-type and URL query sync (`?uq=`). Added unit tests for backend service, repositories, and frontend components and views. Updated API routes and iteration log.
+
 ### 2026-11-15: Library tags backend and prod migration repair
 
 - **Date:** 2026-11-15

@@ -5,6 +5,8 @@ import AddBookForm from '@/components/explore/AddBookForm.vue';
 import BookSearchResults from '@/components/explore/BookSearchResults.vue';
 import ExploreSearchBar from '@/components/explore/ExploreSearchBar.vue';
 import TrendingBookCard from '@/components/explore/TrendingBookCard.vue';
+import UserSearchBar from '@/components/explore/UserSearchBar.vue';
+import UserSearchResults from '@/components/explore/UserSearchResults.vue';
 import PageHeader from '@/components/layout/PageHeader.vue';
 import {
   addBook,
@@ -12,8 +14,10 @@ import {
   getExplore,
   mapApiBookToLibraryBook,
   searchBooks,
+  searchUsers,
   type ApiExplore,
   type NewBookPayload,
+  type UserSearchResult,
 } from '@/services/api';
 import type { LibraryBook } from '@/types/library';
 
@@ -98,6 +102,23 @@ function toQuery(text: string): string {
   return trimmed.length >= MIN_QUERY_LENGTH ? trimmed : '';
 }
 
+function routeWith(changes: { q?: string; uq?: string }) {
+  const next: Record<string, string> = {};
+  const currentQ = typeof route.query.q === 'string' ? route.query.q.trim() : '';
+  const currentUq = typeof route.query.uq === 'string' ? route.query.uq.trim() : '';
+
+  const finalQ = changes.q !== undefined ? changes.q : currentQ;
+  const finalUq = changes.uq !== undefined ? changes.uq : currentUq;
+
+  if (finalQ) next.q = finalQ;
+  if (finalUq) next.uq = finalUq;
+
+  return { name: 'explore', query: next };
+}
+
+// ---------------------------------------------------------------------------
+// Book Search
+// ---------------------------------------------------------------------------
 const query = computed(() => (typeof route.query.q === 'string' ? route.query.q.trim() : ''));
 const draft = ref(query.value);
 const results = ref<LibraryBook[]>([]);
@@ -107,21 +128,18 @@ let latestSearch = 0;
 let inFlight: AbortController | undefined;
 let typingTimer: ReturnType<typeof setTimeout> | undefined;
 
-function routeTo(text: string) {
-  const q = toQuery(text);
-  return { name: 'explore', query: q ? { q } : {} };
-}
-
 watch(draft, (text) => {
   clearTimeout(typingTimer);
   if (toQuery(text) === query.value) return;
-  typingTimer = setTimeout(() => void router.replace(routeTo(text)), TYPING_DELAY_MS);
+  typingTimer = setTimeout(
+    () => void router.replace(routeWith({ q: toQuery(text) })),
+    TYPING_DELAY_MS,
+  );
 });
 
 watch(
   query,
   async (q) => {
-    // Back, forward, Clear and first load fill the field; typing never gets overwritten.
     if (toQuery(draft.value) !== q) draft.value = q;
     inFlight?.abort();
     searchError.value = false;
@@ -137,7 +155,6 @@ watch(
       const found = await searchBooks(q, controller.signal);
       if (id === latestSearch) results.value = found.map((b) => mapApiBookToLibraryBook(b));
     } catch {
-      // A cancelled search is always an older one, so this guard drops it too.
       if (id === latestSearch) {
         results.value = [];
         searchError.value = true;
@@ -151,7 +168,62 @@ watch(
 
 function search(text: string) {
   clearTimeout(typingTimer);
-  void router.push(routeTo(text));
+  void router.push(routeWith({ q: toQuery(text) }));
+}
+
+// ---------------------------------------------------------------------------
+// Reader Search (F-SOC-02, F-EXP-01)
+// ---------------------------------------------------------------------------
+const userQuery = computed(() => (typeof route.query.uq === 'string' ? route.query.uq.trim() : ''));
+const userDraft = ref(userQuery.value);
+const userResults = ref<UserSearchResult[]>([]);
+const userSearching = ref(false);
+const userSearchError = ref(false);
+let latestUserSearch = 0;
+let userInFlight: AbortController | undefined;
+let userTypingTimer: ReturnType<typeof setTimeout> | undefined;
+
+watch(userDraft, (text) => {
+  clearTimeout(userTypingTimer);
+  if (toQuery(text) === userQuery.value) return;
+  userTypingTimer = setTimeout(
+    () => void router.replace(routeWith({ uq: toQuery(text) })),
+    TYPING_DELAY_MS,
+  );
+});
+
+watch(
+  userQuery,
+  async (uq) => {
+    if (toQuery(userDraft.value) !== uq) userDraft.value = uq;
+    userInFlight?.abort();
+    userSearchError.value = false;
+    const id = ++latestUserSearch;
+    if (!uq) {
+      userResults.value = [];
+      userSearching.value = false;
+      return;
+    }
+    userSearching.value = true;
+    const controller = (userInFlight = new AbortController());
+    try {
+      const found = await searchUsers(uq, controller.signal);
+      if (id === latestUserSearch) userResults.value = found;
+    } catch {
+      if (id === latestUserSearch) {
+        userResults.value = [];
+        userSearchError.value = true;
+      }
+    } finally {
+      if (id === latestUserSearch) userSearching.value = false;
+    }
+  },
+  { immediate: true },
+);
+
+function searchUsersSubmit(text: string) {
+  clearTimeout(userTypingTimer);
+  void router.push(routeWith({ uq: toQuery(text) }));
 }
 
 // F-BOOK-02: a book no source knows is created by the reader and shelved as "Not started".
@@ -180,8 +252,11 @@ async function saveBook(payload: NewBookPayload) {
 
 onBeforeUnmount(() => {
   clearTimeout(typingTimer);
+  clearTimeout(userTypingTimer);
   latestSearch++;
+  latestUserSearch++;
   inFlight?.abort();
+  userInFlight?.abort();
 });
 </script>
 
@@ -190,29 +265,46 @@ onBeforeUnmount(() => {
     <PageHeader
       eyebrow="Discover something good"
       title="Follow your curiosity."
-      subtitle="Your next favorite book might be one search away."
+      subtitle="Your next favorite book or fellow reader might be one search away."
     />
 
-    <ExploreSearchBar v-model="draft" @submit="search" />
+    <div class="search-bars">
+      <div class="search-column">
+        <ExploreSearchBar v-model="draft" @submit="search" />
 
-    <BookSearchResults
-      v-if="query"
-      :query="query"
-      :books="results"
-      :loading="searching && results.length === 0"
-      :error="searchError"
-      @clear="search('')"
-      @add="adding = true"
-    />
+        <BookSearchResults
+          v-if="query"
+          :query="query"
+          :books="results"
+          :loading="searching && results.length === 0"
+          :error="searchError"
+          @clear="search('')"
+          @add="adding = true"
+        />
 
-    <AddBookForm
-      v-if="query && adding"
-      :initial-title="query"
-      :saving="saving"
-      :error="addError"
-      @submit="saveBook"
-      @cancel="adding = false"
-    />
+        <AddBookForm
+          v-if="query && adding"
+          :initial-title="query"
+          :saving="saving"
+          :error="addError"
+          @submit="saveBook"
+          @cancel="adding = false"
+        />
+      </div>
+
+      <div class="search-column">
+        <UserSearchBar v-model="userDraft" @submit="searchUsersSubmit" />
+
+        <UserSearchResults
+          v-if="userQuery"
+          :query="userQuery"
+          :users="userResults"
+          :loading="userSearching && userResults.length === 0"
+          :error="userSearchError"
+          @clear="searchUsersSubmit('')"
+        />
+      </div>
+    </div>
 
     <section class="trending" aria-labelledby="trending-title">
       <h2 id="trending-title" class="trending-title">A good time to pick these up.</h2>
@@ -262,6 +354,18 @@ onBeforeUnmount(() => {
   gap: var(--space-6);
   padding-top: var(--space-8);
   padding-bottom: var(--space-8);
+}
+
+.search-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.search-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 .trending-title {

@@ -27,6 +27,18 @@ class FakeUserRepository implements IUserRepository {
     return [...this.users.values()].find((u) => u.username.equals(username)) ?? null;
   }
 
+  async search(query: string, limit: number): Promise<User[]> {
+    const trimmed = query.trim().replace(/^@/, '').toLowerCase();
+    if (!trimmed) return [];
+    return [...this.users.values()]
+      .filter(
+        (u) =>
+          u.username.value.toLowerCase().includes(trimmed) ||
+          u.displayName.toLowerCase().includes(trimmed),
+      )
+      .slice(0, limit);
+  }
+
   async add(user: User): Promise<void> {
     this.users.set(user.id.value, user);
   }

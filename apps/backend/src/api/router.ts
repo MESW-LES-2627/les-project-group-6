@@ -131,7 +131,13 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
   const authenticated = authenticate(authProvider);
   const withUser = requireUser(userRepository);
   if (userRepository) {
-    router.use(meRoutes(new UserService(userRepository), authenticated, withUser));
+    router.use(
+      meRoutes(
+        new UserService(userRepository, friendRepository, readingSessionRepository),
+        authenticated,
+        withUser,
+      ),
+    );
   }
 
   // Everything mounted below is protected (401 without a token, 403 PROFILE_REQUIRED without a profile).
