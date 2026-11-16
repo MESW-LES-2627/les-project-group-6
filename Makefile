@@ -28,7 +28,7 @@ done
 endef
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev start build lint typecheck format format-check test check clean
+.PHONY: help install dev start build lint typecheck format format-check test coverage test-history check clean
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -61,6 +61,12 @@ format-check: ## Check formatting with Prettier
 
 test: ## Run the tests (apps without tests are skipped)
 	$(call run,test)
+
+coverage: ## Run the tests with coverage (reports in apps/<name>/coverage/)
+	$(call run,test:coverage)
+
+test-history: ## Markdown table of source vs test files changed per merged PR
+	@./scripts/test-history.sh
 
 check: lint typecheck format-check test build ## Everything CI should run
 
