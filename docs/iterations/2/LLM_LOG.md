@@ -529,3 +529,23 @@ ok, so mutation tests apparently takes a lot of time to run, maybe we can can ad
 
 #### Explanation of Changes
 Added `.github/workflows/mutation.yml`: Stryker for backend and frontend on a weekly schedule and manual dispatch, with the incremental file cached, the score per file in the job summary and the report uploaded as an artifact. PR CI is unchanged.
+
+---
+
+### 2026-11-16: Library tags frontend
+
+- **Date:** 2026-11-16
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, testing
+
+#### Prompt
+```text
+I merged the tag changes, why I can't add tags in frontend in my ui?
+-> yes, create a pr for me. be sure to add e2e tests
+```
+
+#### Explanation of Changes
+Found that PR #153 was backend only. Added the tag API client, the add/remove tag editor on the book page, real tags with counts in the library sidebar, unit tests and two Playwright e2e tests for F-LIB-04.
+
