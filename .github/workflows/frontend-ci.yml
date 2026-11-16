@@ -52,8 +52,17 @@ jobs:
       - name: Typecheck
         run: pnpm --filter @bookmarked/frontend typecheck
 
-      - name: Test
-        run: pnpm --filter @bookmarked/frontend test
+      # Fails when line coverage drops below 95% (threshold in the app's coverage config)
+      - name: Test with coverage
+        run: pnpm --filter @bookmarked/frontend test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: apps/frontend/coverage/
+          if-no-files-found: ignore
 
       - name: Build
         run: pnpm --filter @bookmarked/frontend build
