@@ -1,3 +1,4 @@
+// @req F-AUTH-01
 import { expect, test } from '@playwright/test';
 import { testUser } from './env';
 import { logIn } from './login-form';

@@ -1,3 +1,4 @@
+// @req F-PROF-01
 import { expect, test } from '@playwright/test';
 
 test('the profile shows the reader name', async ({ page }) => {

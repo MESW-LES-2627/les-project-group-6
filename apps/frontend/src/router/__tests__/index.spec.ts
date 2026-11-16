@@ -1,3 +1,4 @@
+// @req F-AUTH-01
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { describe, expect, it, vi } from 'vitest';
 import { createSession } from '@/stores/session';

@@ -1,3 +1,4 @@
+// @req F-GRP-01
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { JoinAnnouncer } from '../../src/features/group-chat/join-announcer.js';

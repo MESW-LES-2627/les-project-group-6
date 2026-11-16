@@ -31,6 +31,16 @@ How to write an entry:
 
 The log is the day-to-day history. The `release_notes.md` of the iteration is the summary written at the end.
 
+## Tag every test file with its requirement
+
+The first line of each test file names the requirements it checks, using the IDs in [docs/requirements/features_priority.md](docs/requirements/features_priority.md):
+
+```ts
+// @req F-LIB-04 F-LIB-03
+```
+
+`make traceability` builds the tests-per-requirement report from these tags. Infrastructure tests (health check, CORS, 404 page) have no tag.
+
 ## Keep the LLM log up to date
 
 Every major change in content and major code generation performed with AI must be logged in the current iteration's LLM log at `docs/sprints/iteration_N/LLM_LOG.md` (currently [iteration 2](docs/sprints/iteration_2/LLM_LOG.md)), determined by the context of the conversation.

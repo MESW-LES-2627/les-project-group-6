@@ -1,3 +1,4 @@
+// @req F-AUTH-01
 import { expect, test } from '@playwright/test';
 import pg from 'pg';
 import { profilelessUser, required, testUser } from './env';

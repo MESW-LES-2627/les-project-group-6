@@ -1,3 +1,4 @@
+// @req F-GRP-03 F-GRP-07 F-GRP-08 F-GRP-02
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 

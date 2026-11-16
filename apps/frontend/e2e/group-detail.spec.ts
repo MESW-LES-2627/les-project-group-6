@@ -1,3 +1,4 @@
+// @req F-GRP-03
 import { expect, test } from '@playwright/test';
 import { fixtureGroup } from './env';
 

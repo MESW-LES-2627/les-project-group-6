@@ -1,3 +1,4 @@
+// @req F-GRP-01
 import { expect, test } from '@playwright/test';
 
 test('the new-group form previews the name without creating a group', async ({ page }) => {

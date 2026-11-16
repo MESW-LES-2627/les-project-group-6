@@ -1,3 +1,4 @@
+// @req F-GRP-02
 import { beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GroupId } from '../../src/features/group/group.js';
