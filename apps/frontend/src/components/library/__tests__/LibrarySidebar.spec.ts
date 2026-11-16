@@ -1,3 +1,4 @@
+// @req F-LIB-03 F-LIB-04
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 

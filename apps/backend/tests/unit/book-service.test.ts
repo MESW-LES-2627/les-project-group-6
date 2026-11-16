@@ -1,3 +1,4 @@
+// @req F-EXP-01 F-BOOK-02
 import { test, describe, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { Book, type Isbn13 } from '../../src/features/book/book.js';

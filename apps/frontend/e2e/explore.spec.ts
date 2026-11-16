@@ -1,3 +1,4 @@
+// @req F-EXP-01 F-EXP-04
 import { expect, test } from '@playwright/test';
 import { fixtureBook } from './env';
 

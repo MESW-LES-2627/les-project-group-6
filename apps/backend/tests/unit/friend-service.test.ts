@@ -1,3 +1,4 @@
+// @req F-SOC-01
 import { beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { InMemoryFriendRepository } from '../helpers/in-memory-repositories.js';

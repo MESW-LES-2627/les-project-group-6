@@ -1,3 +1,4 @@
+// @req F-LIB-02 F-EXP-02
 import { test, describe, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from '../../src/app.js';

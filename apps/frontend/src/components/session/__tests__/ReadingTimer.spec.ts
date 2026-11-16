@@ -1,3 +1,4 @@
+// @req F-READ-01
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

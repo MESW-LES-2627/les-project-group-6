@@ -1,3 +1,4 @@
+// @req F-EXP-01
 import { mount } from '@vue/test-utils';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { describe, expect, it } from 'vitest';

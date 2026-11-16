@@ -459,3 +459,23 @@ Opened #152 and built the tags backend following the folders feature: `user_tags
 
 #### Explanation of Changes
 Added `test:coverage` scripts to both apps (Vitest v8 coverage on the frontend, Node's built-in coverage on the backend) that leave out code with no logic, plus `make coverage` and `make test-history`. The second runs a new `scripts/test-history.sh` that lists source vs test files changed per merged PR. Updated the README. Then added a 95% line-coverage gate to both apps and switched Backend and Frontend CI to run coverage and upload the report.
+
+---
+
+### 2026-11-16: Mutation testing and requirement traceability
+
+- **Date:** 2026-11-16
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** testing
+
+#### Prompt
+```text
+ok, so, what other metric we can have other than coverage to have a good grade on tests
+-> do the mutation tests and the traceability
+-> create a pr
+```
+
+#### Explanation of Changes
+Set up Stryker in both apps (`make mutation`), limited to domain, service and store logic. Tagged every test file with the requirement IDs it checks and wrote `scripts/traceability.mjs` (`make traceability`), which reports tests per requirement and layer and lists untested requirements. Added the tagging rule to AGENTS.md.

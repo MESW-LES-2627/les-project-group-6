@@ -1,3 +1,4 @@
+// @req F-LIB-01 F-LIB-03
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

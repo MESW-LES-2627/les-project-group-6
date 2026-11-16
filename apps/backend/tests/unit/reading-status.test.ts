@@ -1,3 +1,4 @@
+// @req F-LIB-01 F-LIB-06
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { BookId, PageCount } from '../../src/features/book/book.js';

@@ -1,3 +1,4 @@
+// @req F-AUTH-01
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { Email, User, UserId, Username } from '../../src/features/user/user.js';

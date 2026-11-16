@@ -1,3 +1,4 @@
+// @req F-LIB-02
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, type ApiReview } from '@/services/api';

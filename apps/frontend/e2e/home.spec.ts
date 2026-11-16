@@ -1,3 +1,4 @@
+// @req F-HOME-01
 import { expect, test } from '@playwright/test';
 
 test('home greets the reader and shows the week', async ({ page }) => {

@@ -1,3 +1,4 @@
+// @req F-AUTH-01
 import { beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { AuthIdentity } from '../../src/features/auth/auth-provider.js';

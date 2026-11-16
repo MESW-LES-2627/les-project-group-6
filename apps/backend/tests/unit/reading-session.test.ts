@@ -1,3 +1,4 @@
+// @req F-READ-01
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { BookId } from '../../src/features/book/book.js';

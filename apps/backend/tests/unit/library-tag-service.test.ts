@@ -1,3 +1,4 @@
+// @req F-LIB-04
 import { beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { BookId } from '../../src/features/book/book.js';
