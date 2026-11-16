@@ -57,7 +57,14 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 - The old feature parents #9 #11 #15 #16 #17 #18 #19 were closed as superseded by these stories and removed from project 23; their tasks moved under the stories.
 
-## Next steps
+### 2026-11-16: Test metrics with make
+
+- New `make coverage` runs each app's `test:coverage` script. Frontend uses `@vitest/coverage-v8` (text, HTML, lcov, json-summary in `apps/frontend/coverage/`); backend uses Node's built-in coverage with an lcov file in `apps/backend/coverage/`.
+- **Decision: measure only code that can break.** Excluded: migrations and seeds (`src/database/`), DTOs, `server.ts`, frontend `main.ts`, `types/` and `mocks/`. *Rejected:* `c8` or a Jest migration for the backend, since Node 24 already measures coverage with no new dependency.
+- New `make test-history` ([`scripts/test-history.sh`](../../../scripts/test-history.sh)) prints, for each PR merged into `main`, how many source and test files it changed. It is the evidence that tests arrive with each change.
+- First run: backend 378 tests pass, 95.4% lines and 93.6% branches (with Postgres up and migrations applied); frontend 172 tests pass, 83.7% statements and 79.8% branches.
+- **Decision: CI fails below 95% line coverage** in both apps (`--test-coverage-lines=95` in the backend, `thresholds.lines` in [`vitest.config.ts`](../../../apps/frontend/vitest.config.ts)). Backend and Frontend CI now run `test:coverage` and upload the report as an artifact. *Rejected:* a ratchet that locks the current numbers. **The frontend (84.8%) fails the gate until tests are added**, which also blocks frontend prod deploys, since CD calls CI. Start with `services/api.ts` and `chat-socket.ts`.
+
 
 - Home: make F-SOC-04 friend presence opt-in (a settings choice) and replace the mock streak and goals once their APIs exist.
 - Split #125, #126 and #127 into Task sub-issues and assign owners. #126 now has a [spec](../../superpowers/specs/2026-11-11-explore-page-design.md) to split from.
