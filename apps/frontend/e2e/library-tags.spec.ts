@@ -29,7 +29,8 @@ test('a reader tags a book, filters the library by it and removes it', async ({ 
     await expect(page.getByRole('heading', { level: 1, name: book.title })).toBeVisible();
 
     // Typed in mixed case: the tag is stored and shown in lower case.
-    await page.getByRole('textbox', { name: 'New tag' }).fill(tag.toUpperCase());
+    // The field suggests the reader's existing tags (a datalist), so its role is combobox.
+    await page.getByRole('combobox', { name: 'New tag' }).fill(tag.toUpperCase());
     await page.getByRole('button', { name: 'Add tag' }).click();
     const chips = page.getByRole('list', { name: 'Tags on this book' });
     await expect(chips.getByText(tag, { exact: true })).toBeVisible();
@@ -71,7 +72,7 @@ test('a book can carry several tags at once', async ({ page }) => {
 
   try {
     await page.goto(`/library/${book.id}`);
-    const input = page.getByRole('textbox', { name: 'New tag' });
+    const input = page.getByRole('combobox', { name: 'New tag' });
     const chips = page.getByRole('list', { name: 'Tags on this book' });
 
     for (const name of [borrowed, reread]) {
