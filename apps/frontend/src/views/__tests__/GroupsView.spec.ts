@@ -40,7 +40,7 @@ const club: ApiBookClub = {
     finished: 0,
     expected: 3,
     daysLeft: 30,
-    book: { id: 'emma', title: 'Emma', pageCount: 474, coverUrl: null },
+    book: { id: 'emma', title: 'Emma', authors: [], pageCount: 474, coverUrl: null },
   },
   createdAt: '2026-11-04T10:00:00Z',
 };
@@ -80,23 +80,73 @@ function mountView() {
   return mount(GroupsView, { global: { plugins: [router] } });
 }
 
+async function mountLoaded() {
+  const wrapper = mountView();
+  await flushPromises();
+  return wrapper;
+}
+
+/** Challenges and clubs in every status: 2 active, 1 coming up, 2 completed. */
+function useGroups() {
+  getUserGroups.mockResolvedValue([
+    challenge,
+    { ...challenge, id: 'scheduled-1', name: 'Spring Pages', status: 'scheduled' },
+    { ...challenge, id: 'completed-1', name: 'October Sprint', status: 'completed' },
+  ]);
+  getUserBookClubs.mockResolvedValue([
+    club,
+    {
+      ...club,
+      id: 'completed-club',
+      name: 'Classics',
+      round: { ...club.round, outcome: 'completed' },
+    },
+  ]);
+  getPendingInvites.mockResolvedValue([]);
+}
+
 describe('GroupsView', () => {
   afterEach(() => {
     vi.resetAllMocks();
   });
 
-  it('shows the plate, the invitation and all six groups by status', () => {
-    const wrapper = mountView();
+  it('shows the plate and the reader groups from the API by status', async () => {
+    useGroups();
+    const wrapper = await mountLoaded();
 
     expect(wrapper.get('h1').text()).toBe('Groups');
-    expect(wrapper.text()).toContain('The Sunday Shelf');
-    expect(wrapper.findAll('article')).toHaveLength(6);
+    expect(wrapper.findAll('article')).toHaveLength(5);
     const sections = wrapper.findAll('.group-section h2').map((h) => h.text());
     expect(sections).toEqual(['Active', 'Coming up', 'Completed']);
+    expect(wrapper.text()).toContain('2 active');
+  });
+
+  it('shows no mock groups or invitation', async () => {
+    getUserGroups.mockResolvedValue([]);
+    getUserBookClubs.mockResolvedValue([]);
+    getPendingInvites.mockResolvedValue([]);
+    const wrapper = await mountLoaded();
+
+    expect(wrapper.findAll('article')).toHaveLength(0);
+    expect(wrapper.find('.invites').exists()).toBe(false);
+    expect(wrapper.text()).toContain('No groups here yet.');
+  });
+
+  it('shows an error instead of groups when the API cannot be reached', async () => {
+    getUserGroups.mockRejectedValue(new Error('offline'));
+    getUserBookClubs.mockResolvedValue([]);
+    getPendingInvites.mockResolvedValue([]);
+    const wrapper = await mountLoaded();
+
+    expect(wrapper.findAll('article')).toHaveLength(0);
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      'We could not load your groups. Please refresh the page.',
+    );
   });
 
   it('filters by kind', async () => {
-    const wrapper = mountView();
+    useGroups();
+    const wrapper = await mountLoaded();
     const tab = (label: string) =>
       wrapper.findAll('.page-tab').find((b) => b.text().startsWith(label))!;
 
@@ -105,42 +155,18 @@ describe('GroupsView', () => {
     expect(tab('Challenges').attributes('aria-pressed')).toBe('true');
 
     await tab('Book clubs').trigger('click');
-    expect(wrapper.findAll('article')).toHaveLength(3);
-    expect(wrapper.text()).not.toContain('October Sprint');
+    expect(wrapper.findAll('article')).toHaveLength(2);
+    expect(wrapper.text()).not.toContain('Winter Minutes');
   });
 
-  it('adds the group when the invitation is accepted', async () => {
-    const wrapper = mountView();
-
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text() === 'View and accept')!
-      .trigger('click');
-
-    expect(wrapper.findAll('article')).toHaveLength(7);
-    expect(wrapper.text()).not.toContain('invited you to The Sunday Shelf');
-    expect(wrapper.get('[role="status"]').text()).toBe('You joined The Sunday Shelf.');
-  });
-
-  it('removes the invitation when it is declined', async () => {
-    const wrapper = mountView();
-
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text() === 'Decline')!
-      .trigger('click');
-
-    expect(wrapper.findAll('article')).toHaveLength(6);
-    expect(wrapper.text()).not.toContain('invited you to The Sunday Shelf');
-  });
-
-  it('links to the create page and to each group', () => {
-    const wrapper = mountView();
+  it('links to the create page and to each group', async () => {
+    useGroups();
+    const wrapper = await mountLoaded();
     const hrefs = wrapper.findAll('a').map((a) => a.attributes('href'));
 
     expect(hrefs).toContain('/groups/new');
-    expect(hrefs).toContain('/groups/october-sprint');
-    expect(hrefs).toContain('/groups/classics');
+    expect(hrefs).toContain(`/groups/${challenge.id}`);
+    expect(hrefs).toContain(`/groups/${club.id}`);
   });
 
   it('accepts a real invite and lists the joined book club', async () => {
@@ -161,20 +187,20 @@ describe('GroupsView', () => {
     expect(answerInvite).toHaveBeenCalledWith('i1', 'accept');
     expect(wrapper.text()).not.toContain('Maya Laurent invited you to a book club');
     expect(wrapper.get('[role="status"]').text()).toBe('You joined Sunday Classics.');
-    expect(wrapper.findAll('article')).toHaveLength(7);
+    expect(wrapper.findAll('article')).toHaveLength(1);
     expect(wrapper.text()).toContain('0 of 3 finished');
   });
 
-  it('lists the reader challenges from the API before the mock groups', async () => {
+  it('lists the reader challenges from the API', async () => {
     getUserGroups.mockResolvedValue([challenge]);
     getUserBookClubs.mockResolvedValue([]);
     getPendingInvites.mockResolvedValue([]);
     const wrapper = mountView();
     await flushPromises();
 
-    expect(wrapper.findAll('article')).toHaveLength(7);
+    expect(wrapper.findAll('article')).toHaveLength(1);
     expect(wrapper.findAll('article')[0]!.text()).toContain('Winter Minutes');
-    expect(wrapper.text()).toContain('3 active');
+    expect(wrapper.text()).toContain('1 active');
   });
 
   it('declines a real invite without loading the groups again', async () => {
@@ -214,16 +240,5 @@ describe('GroupsView', () => {
 
     expect(wrapper.get('[role="status"]').text()).toBe('Invite expired');
     expect(wrapper.text()).toContain('Maya Laurent invited you to a book club');
-  });
-
-  it('offers to set up a rematch of a completed group', async () => {
-    const wrapper = mountView();
-
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text() === 'Rematch')!
-      .trigger('click');
-
-    expect(wrapper.get('[role="status"]').text()).toMatch(/^A rematch of .+ is ready to set up\.$/);
   });
 });

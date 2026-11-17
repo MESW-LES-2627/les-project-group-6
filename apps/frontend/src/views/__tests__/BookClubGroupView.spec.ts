@@ -2,7 +2,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { mockClub } from '@/mocks/groups';
+import { testClub } from '@/__tests__/group-fixtures';
 import router from '@/router';
 import type { ApiBook } from '@/services/api';
 import type { BookClubDetail, GroupMember } from '@/types/groups';
@@ -35,6 +35,7 @@ const NEW_FRIEND: GroupMember = {
 const PIRANESI: ApiBook = {
   id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a05',
   title: 'Piranesi',
+  authors: [],
   description: null,
   isbn13: null,
   pageCount: 272,
@@ -42,7 +43,7 @@ const PIRANESI: ApiBook = {
 };
 
 const liveClub = (overrides: Partial<BookClubDetail> = {}): BookClubDetail => ({
-  ...mockClub,
+  ...testClub,
   id: 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380c09',
   isAdmin: true,
   roundOver: true,
@@ -51,7 +52,7 @@ const liveClub = (overrides: Partial<BookClubDetail> = {}): BookClubDetail => ({
 
 function mountClub(club: BookClubDetail) {
   return mount(BookClubGroupView, {
-    props: { club, meId: mockClub.members[0]!.id, live: true },
+    props: { club, meId: testClub.members[0]!.id },
     global: { plugins: [router] },
   });
 }
@@ -70,10 +71,10 @@ async function pickBook(wrapper: ReturnType<typeof mountClub>, inputId: string) 
   await wrapper.get('.result').trigger('click');
 }
 
-describe('BookClubGroupView (live)', () => {
+describe('BookClubGroupView', () => {
   beforeEach(() => {
     api.getGroupMessages.mockResolvedValue([]);
-    api.getFriends.mockResolvedValue([mockClub.members[1]!, NEW_FRIEND]);
+    api.getFriends.mockResolvedValue([testClub.members[1]!, NEW_FRIEND]);
     api.searchBooks.mockResolvedValue([PIRANESI]);
   });
   afterEach(() => {
@@ -196,23 +197,5 @@ describe('BookClubGroupView (live)', () => {
 
     expect(wrapper.get('.action-error').text()).toBe('Failed to load friends');
     expect(wrapper.text()).toContain('All your friends are already here.');
-  });
-});
-
-describe('BookClubGroupView (mock club)', () => {
-  it('counts a first vote locally without calling the API', async () => {
-    const club: BookClubDetail = {
-      ...mockClub,
-      voting: { ...mockClub.voting!, yourVote: null, voted: 2 },
-    };
-    const wrapper = mount(BookClubGroupView, { props: { club }, global: { plugins: [router] } });
-    const first = club.voting!.options[0]!;
-
-    expect(wrapper.text()).toContain(`2 of ${club.voting!.total} have voted`);
-    await button(wrapper, `Vote for ${first.title}`).trigger('click');
-
-    expect(wrapper.text()).toContain(`3 of ${club.voting!.total} have voted`);
-    expect(wrapper.findAll('.options > li')[0]!.get('.your-vote').text()).toBe('Your vote');
-    expect(api.voteForProposal).not.toHaveBeenCalled();
   });
 });

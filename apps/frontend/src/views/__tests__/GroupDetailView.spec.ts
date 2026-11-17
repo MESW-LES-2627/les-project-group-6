@@ -1,6 +1,6 @@
 // @req F-GRP-03 F-GRP-07 F-GRP-08 F-GRP-02
 import { flushPromises, mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import router from '@/router';
 import {
@@ -32,6 +32,11 @@ const getGroupMessages = vi.hoisted(() => vi.fn<(groupId: string) => Promise<Api
 const voteForProposal = vi.hoisted(() =>
   vi.fn<(groupId: string, proposalId: string) => Promise<ApiPoll>>(),
 );
+const sendGroupMessage = vi.hoisted(() =>
+  vi.fn<
+    (groupId: string, payload: { clientId: string; body: string }) => Promise<ApiChatMessage>
+  >(),
+);
 
 vi.mock('@/services/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/api')>()),
@@ -39,6 +44,7 @@ vi.mock('@/services/api', async (importOriginal) => ({
   getBookClub,
   getGroupMessages,
   voteForProposal,
+  sendGroupMessage,
 }));
 
 // The live chat would open a socket; the page tests only need it to exist.
@@ -65,7 +71,7 @@ const apiClub: ApiBookClubDetail = {
     finished: 1,
     expected: 2,
     daysLeft: 26,
-    book: { id: EMMA, title: 'Emma', pageCount: 474, coverUrl: null },
+    book: { id: EMMA, title: 'Emma', authors: [], pageCount: 474, coverUrl: null },
   },
   createdAt: '2026-10-01T10:00:00Z',
   standings: [
@@ -100,7 +106,7 @@ const apiClub: ApiBookClubDetail = {
       finished: 1,
       expected: 2,
       daysLeft: 0,
-      book: { id: 'p', title: 'Persuasion', pageCount: 250, coverUrl: null },
+      book: { id: 'p', title: 'Persuasion', authors: [], pageCount: 250, coverUrl: null },
     },
   ],
   poll: {
@@ -109,8 +115,8 @@ const apiClub: ApiBookClubDetail = {
     closesAt: '2026-11-25T18:00:00Z',
     anonymous: true,
     proposals: [
-      { id: 'p1', bookId: 'b1', title: 'Piranesi', proposedBy: null, votes: 1 },
-      { id: 'p2', bookId: 'b2', title: 'Jane Eyre', proposedBy: null, votes: 0 },
+      { id: 'p1', bookId: 'b1', title: 'Piranesi', authors: [], proposedBy: null, votes: 1 },
+      { id: 'p2', bookId: 'b2', title: 'Jane Eyre', authors: [], proposedBy: null, votes: 0 },
     ],
     yourVote: null,
     voted: 1,
@@ -157,75 +163,74 @@ function mountGroup(groupId: string) {
 }
 
 describe('GroupDetailView', () => {
-  it('shows the challenge page with the leaderboard and sends a chat message', async () => {
-    const wrapper = mountGroup('october-sprint');
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-    expect(wrapper.get('h1').text()).toBe('October Sprint');
-    expect(wrapper.text()).toContain('#2 · 420');
-    expect(wrapper.findAll('.board > li')).toHaveLength(6);
-    expect(wrapper.get('.board').text()).toContain('Eleanor Whitmore · you');
+  it('sends a chat message on a challenge from the API', async () => {
+    getChallengeGroup.mockResolvedValueOnce(apiGroup);
+    getGroupMessages.mockResolvedValue([]);
+    sendGroupMessage.mockImplementation(async (groupId, { clientId, body }) => ({
+      id: 'm9',
+      seq: 9,
+      groupId,
+      kind: 'text',
+      authorId: DEMO_USER_ID,
+      clientId,
+      body,
+      createdAt: '2026-11-17T10:00:00Z',
+      deletedAt: null,
+    }));
+    const wrapper = mountGroup(apiGroup.id);
+    await flushPromises();
 
     await wrapper.get('input[type="text"]').setValue('See you on the leaderboard');
     await wrapper.get('form').trigger('submit');
+    await flushPromises();
 
+    expect(sendGroupMessage).toHaveBeenCalledWith(
+      apiGroup.id,
+      expect.objectContaining({ body: 'See you on the leaderboard' }),
+    );
     expect(wrapper.text()).toContain('See you on the leaderboard');
+    wrapper.unmount();
   });
 
   it('does not send an empty chat message', async () => {
-    const wrapper = mountGroup('october-sprint');
-    const before = wrapper.findAll('.messages > li').length;
+    getChallengeGroup.mockResolvedValueOnce(apiGroup);
+    getGroupMessages.mockResolvedValue([]);
+    sendGroupMessage.mockClear();
+    const wrapper = mountGroup(apiGroup.id);
+    await flushPromises();
 
     await wrapper.get('input[type="text"]').setValue('   ');
     await wrapper.get('form').trigger('submit');
+    await flushPromises();
 
-    expect(wrapper.findAll('.messages > li')).toHaveLength(before);
+    expect(sendGroupMessage).not.toHaveBeenCalled();
+    wrapper.unmount();
   });
 
-  it('shows the reader rank, the fair-reading rules and the last result', async () => {
+  it('shows the signed-in reader rank on a challenge from the API', async () => {
+    getChallengeGroup.mockResolvedValueOnce(apiGroup);
+    getGroupMessages.mockResolvedValue([]);
+    const wrapper = mountGroup(apiGroup.id);
+    await flushPromises();
+
+    expect(wrapper.get('.rank').text()).toBe('#1of 1');
+    expect(wrapper.get('.board').text()).toContain('Demo Reader · you');
+    wrapper.unmount();
+  });
+
+  it('treats the old prototype ids like any other id and asks the API', async () => {
+    getChallengeGroup.mockRejectedValueOnce(new Error('HTTP 404'));
+    getBookClub.mockRejectedValueOnce(new Error('HTTP 404'));
     const wrapper = mountGroup('october-sprint');
+    await flushPromises();
 
-    expect(wrapper.get('.rank').text()).toBe('#2of 6');
-    expect(wrapper.findAll('.rules li')).toHaveLength(6);
-    expect(wrapper.text()).toContain('Completed · September Sprint');
-
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text() === 'Rematch September Sprint')!
-      .trigger('click');
-    expect(wrapper.get('[role="status"]').text()).toContain('A rematch with the same members');
-  });
-
-  it('shows the book club page with the round and the vote', () => {
-    const wrapper = mountGroup('classics');
-
-    expect(wrapper.get('h1').text()).toBe('Classics');
-    expect(wrapper.text()).toContain('2 of 6 finished');
-    expect(wrapper.text()).toContain('Start reading Emma');
-    expect(wrapper.findAll('.options > li')).toHaveLength(3);
-    expect(wrapper.text()).toContain('Round 3 · Completed');
-  });
-
-  it('changes the vote and adds a proposal', async () => {
-    const wrapper = mountGroup('classics');
-
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text() === 'Change my vote')!
-      .trigger('click');
-    await wrapper
-      .findAll('button')
-      .find((b) => b.text() === 'Vote for Piranesi')!
-      .trigger('click');
-
-    const options = wrapper.findAll('.options > li');
-    expect(options[0]!.text()).toContain('2 votes');
-    expect(options[1]!.text()).toContain('3 votes');
-    expect(options[1]!.get('.your-vote').text()).toBe('Your vote');
-
-    await wrapper.get('#proposal-title').setValue('Middlemarch');
-    await wrapper.get('.proposal').trigger('submit');
-
-    expect(wrapper.findAll('.options > li')).toHaveLength(4);
+    expect(getChallengeGroup).toHaveBeenCalledWith('october-sprint');
+    expect(wrapper.get('h1').text()).toBe('This group could not be found.');
+    expect(wrapper.text()).not.toContain('October Sprint');
   });
 
   it('loads a created challenge group from the API with its minutes leaderboard', async () => {

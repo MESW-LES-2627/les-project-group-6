@@ -6,14 +6,12 @@ import BookPicker, { type PickedBook } from '@/components/groups/BookPicker.vue'
 import PageHeader from '@/components/layout/PageHeader.vue';
 import InfoNote from '@/components/groups/InfoNote.vue';
 import ToggleSwitch from '@/components/groups/ToggleSwitch.vue';
-import { mockFriends } from '@/mocks/groups';
 import { createBookClub, createChallengeGroup, getFriends, inviteToGroup } from '@/services/api';
 import type { GroupKind, GroupMember, WinMetric } from '@/types/groups';
-import { endDate, formatLongDate, formatPeriod } from '@/utils/groups';
+import { endDate, formatLongDate, formatPeriod, toIsoDate } from '@/utils/groups';
 
 // Challenges and book clubs are saved through the API, then each selected friend
-// is invited. Friends come from the API; the mock list (when it is unreachable)
-// can be selected but is not invited. The fair-reading settings are not stored yet.
+// (from the API) is invited. The fair-reading settings are not stored yet.
 const router = useRouter();
 
 const metrics: { id: WinMetric; label: string; winner: string }[] = [
@@ -25,22 +23,22 @@ const metrics: { id: WinMetric; label: string; winner: string }[] = [
 const durations = [7, 14, 30, 60];
 
 const kind = ref<GroupKind>('challenge');
-const name = ref('November Pages');
+const name = ref('');
 const picture = ref('');
-const startDate = ref('2026-11-01');
+const startDate = ref(toIsoDate(new Date()));
 const duration = ref(30);
 const metric = ref<WinMetric>('pages');
 const book = ref<PickedBook | null>(null);
-const roundDeadline = ref('2026-11-30');
+const roundDeadline = ref(toIsoDate(new Date(Date.now() + 30 * 86_400_000)));
 const simpleTimer = ref(true);
 const stillReading = ref(false);
 const inactivityPause = ref(false);
 const dailyCap = ref<number | null>(60);
 const endPage = ref(true);
 const friendQuery = ref('');
-const friends = ref<GroupMember[]>(mockFriends);
-const friendsFromApi = ref(false);
-const invited = ref<string[]>(['mayareads', 'priyapages']);
+const friends = ref<GroupMember[]>([]);
+const friendsError = ref('');
+const invited = ref<string[]>([]);
 const submitted = ref(false);
 const saving = ref(false);
 const saveError = ref<string | null>(null);
@@ -74,18 +72,14 @@ const checksSummary = computed(() => {
 
 onMounted(async () => {
   try {
-    const mine = await getFriends();
-    friends.value = mine;
-    friendsFromApi.value = true;
-    invited.value = invited.value.filter((handle) => mine.some((f) => f.handle === handle));
+    friends.value = await getFriends();
   } catch {
-    // Keep the mock friends when the API is unreachable
+    friendsError.value = 'We could not load your friends. You can invite them later.';
   }
 });
 
 /** Invites the selected friends; a failed invite does not undo the group. */
 async function sendInvites(groupId: string): Promise<void> {
-  if (!friendsFromApi.value) return;
   const chosen = friends.value.filter((f) => invited.value.includes(f.handle));
   await Promise.allSettled(chosen.map((f) => inviteToGroup(groupId, f.id)));
 }
@@ -334,7 +328,9 @@ async function submit() {
               </button>
             </li>
           </ul>
-          <p v-if="!visibleFriends.length" class="hint">No friends match that search.</p>
+          <p v-if="friendsError" class="hint" role="alert">{{ friendsError }}</p>
+          <p v-else-if="!friends.length" class="hint">Add friends to invite them to a group.</p>
+          <p v-else-if="!visibleFriends.length" class="hint">No friends match that search.</p>
           <p class="hint">Invitations are friends-only. Readers choose whether to join.</p>
         </section>
 
