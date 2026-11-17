@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
 
 import ProfileBookplate from '@/components/profile/ProfileBookplate.vue';
 import ChallengesSummary from '@/components/profile/ChallengesSummary.vue';
@@ -13,75 +12,101 @@ import ReadingTime from '@/components/profile/ReadingTime.vue';
 import BookShelf from '@/components/profile/BookShelf.vue';
 import ReviewList from '@/components/profile/ReviewList.vue';
 import StreakCalendar from '@/components/profile/StreakCalendar.vue';
-import { mockNewUserProfile, mockProfile } from '@/mocks/profile';
+import { mockProfile } from '@/mocks/profile';
 import {
+  getLibraryFolders,
   getMe,
   getReadingStats,
+  getUserLibrary,
+  getUserProfile,
   getUserReviews,
+  type ApiLibraryItem,
   type ApiProfileReview,
   type ApiReadingStats,
 } from '@/services/api';
+import type { FolderSummary } from '@/types/library';
+import type { ProfileUser } from '@/types/profile';
+import {
+  currentlyReadingFrom,
+  foldersFrom,
+  recentlyAddedFrom,
+  shelfFrom,
+  toProfileUser,
+} from '@/utils/profile';
 
-// Mock data until the profile API exists. `/profile?state=new` shows the empty states.
-// Reading time already comes from the server-timed sessions.
-const route = useRoute();
-const readingStats = ref<ApiReadingStats | null>(null);
-
-const profile = computed(() => {
-  const base = route.query.state === 'new' ? mockNewUserProfile : mockProfile;
-  if (!readingStats.value) return base;
-  const { totalMinutes, sessionsCount } = readingStats.value;
-  return {
-    ...base,
-    readingTime: { ...base.readingTime, countedMinutes: totalMinutes, sessionsCount },
-  };
-});
-
+// The reader, their books, shelf, folders, reading time and reviews come from the API.
+// The chapter, streak, challenges won, imported hours and monthly recap are not built
+// yet and still come from src/mocks/profile.ts.
+const user = ref<ProfileUser | null>(null);
+const loadError = ref('');
+const library = ref<ApiLibraryItem[]>([]);
+const folderSummaries = ref<FolderSummary[]>([]);
+const readingStats = ref<ApiReadingStats>({ totalMinutes: 0, sessionsCount: 0 });
 // F-LIB-02: my rated books. `null` (hidden) when the API cannot be reached or refuses.
 const reviews = ref<ApiProfileReview[] | null>(null);
 
-async function loadReviews() {
+const currentlyReading = computed(() => currentlyReadingFrom(library.value));
+const shelf = computed(() => shelfFrom(library.value));
+const recentlyAdded = computed(() => recentlyAddedFrom(library.value));
+const folders = computed(() => foldersFrom(folderSummaries.value, library.value));
+const readingTime = computed(() => ({
+  countedMinutes: readingStats.value.totalMinutes,
+  sessionsCount: readingStats.value.sessionsCount,
+  importedHours: mockProfile.importedHours,
+}));
+
+async function loadUser() {
   try {
     const me = await getMe();
-    reviews.value = await getUserReviews(me.id);
+    const [profile, mine] = await Promise.all([
+      getUserProfile(me.username).catch(() => null),
+      getUserReviews(me.id).catch(() => null),
+    ]);
+    user.value = toProfileUser(me, profile?.bio ?? null);
+    reviews.value = mine;
   } catch {
-    reviews.value = null;
+    loadError.value = 'We could not load your profile. Please refresh the page.';
   }
 }
 
+// Each section keeps its empty state when its request fails.
 onMounted(async () => {
-  void loadReviews();
-  try {
-    readingStats.value = await getReadingStats();
-  } catch {
-    // Keep the mock reading time when the API is unreachable
-  }
+  void loadUser();
+  const [items, folderList, stats] = await Promise.all([
+    getUserLibrary().catch(() => []),
+    getLibraryFolders().catch(() => []),
+    getReadingStats().catch(() => null),
+  ]);
+  library.value = items;
+  folderSummaries.value = folderList;
+  if (stats) readingStats.value = stats;
 });
 </script>
 
 <template>
   <main class="profile">
-    <ProfileBookplate :user="profile.user" />
+    <ProfileBookplate v-if="user" :user="user" />
+    <p v-else-if="loadError" class="page-column load-error" role="alert">{{ loadError }}</p>
 
     <div class="page-column">
-      <CurrentlyReading :items="profile.currentlyReading" />
+      <CurrentlyReading :items="currentlyReading" />
 
       <div class="columns">
         <div class="column">
-          <BookShelf class="divided" :spines="profile.shelf" />
-          <CoverGrid :books="profile.recentlyAdded" />
+          <BookShelf class="divided" :spines="shelf" />
+          <CoverGrid :books="recentlyAdded" />
         </div>
         <div class="column">
-          <ChapterLevel class="divided" :chapter="profile.chapter" />
-          <StreakCalendar class="divided" :streak="profile.streak" />
-          <ReadingTime class="divided" :stats="profile.readingTime" />
-          <ChallengesSummary :won="profile.challengesWon" />
+          <ChapterLevel class="divided" :chapter="mockProfile.chapter" />
+          <StreakCalendar class="divided" :streak="mockProfile.streak" />
+          <ReadingTime class="divided" :stats="readingTime" />
+          <ChallengesSummary :won="mockProfile.challengesWon" />
         </div>
       </div>
 
-      <FolderList class="top-rule" :folders="profile.folders" />
+      <FolderList class="top-rule" :folders="folders" />
       <ReviewList v-if="reviews" class="top-rule" :reviews="reviews" />
-      <MonthRecap class="top-rule" :recap="profile.recap" />
+      <MonthRecap class="top-rule" :recap="mockProfile.recap" />
     </div>
   </main>
 </template>
@@ -114,6 +139,10 @@ onMounted(async () => {
 
 .top-rule {
   border-top: 1px solid var(--color-border);
+}
+
+.load-error {
+  padding-block: var(--space-12);
 }
 
 @media (max-width: 899px) {

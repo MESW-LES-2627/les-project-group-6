@@ -1,15 +1,37 @@
 // @req F-PROF-01
 import { flushPromises, mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import router from '@/router';
-import { ApiError, type ApiMe, type ApiProfileReview, type ApiReadingStats } from '@/services/api';
+import {
+  ApiError,
+  type ApiLibraryItem,
+  type ApiMe,
+  type ApiProfileReview,
+  type ApiReadingStats,
+  type ApiUserProfile,
+} from '@/services/api';
+import type { FolderSummary } from '@/types/library';
 import ProfileView from '../ProfileView.vue';
 
 const getReadingStats = vi.hoisted(() => vi.fn<() => Promise<ApiReadingStats>>());
+const ME: ApiMe = {
+  id: 'me-id',
+  email: 'eleanor@example.com',
+  username: 'eleanorreads',
+  displayName: 'Eleanor Whitmore',
+  timezone: 'Europe/Lisbon',
+  photoUrl: null,
+  profileVisibility: 'public',
+  createdAt: '2026-03-01T10:00:00.000Z',
+};
+
 const api = vi.hoisted(() => ({
-  getMe: vi.fn<() => Promise<ApiMe>>(async () => ({ id: 'me-id' }) as ApiMe),
+  getMe: vi.fn<() => Promise<ApiMe>>(),
+  getUserProfile: vi.fn<(username: string) => Promise<ApiUserProfile>>(),
   getUserReviews: vi.fn<(userId: string) => Promise<ApiProfileReview[]>>(async () => []),
+  getUserLibrary: vi.fn<() => Promise<ApiLibraryItem[]>>(async () => []),
+  getLibraryFolders: vi.fn<() => Promise<FolderSummary[]>>(async () => []),
 }));
 
 vi.mock('@/services/api', async (importOriginal) => ({
@@ -21,6 +43,94 @@ vi.mock('@/services/api', async (importOriginal) => ({
 function mountView() {
   return mount(ProfileView, { global: { plugins: [router] } });
 }
+
+const item = (
+  id: string,
+  title: string,
+  status: ApiLibraryItem['status'],
+  updatedAt: string,
+  folderIds: string[] = [],
+): ApiLibraryItem => ({
+  id: `li-${id}`,
+  book: {
+    id,
+    title,
+    authors: ['Jane Austen'],
+    description: null,
+    isbn13: null,
+    pageCount: 400,
+    coverUrl: id === 'emma' ? 'https://covers.example/emma.jpg' : null,
+  },
+  status,
+  currentPage: status === 'finished' ? 400 : 100,
+  updatedAt,
+  folderIds,
+});
+
+beforeEach(() => {
+  api.getMe.mockResolvedValue(ME);
+  api.getUserProfile.mockResolvedValue({
+    bio: 'Usually somewhere between a cup of tea and one more chapter.',
+  } as ApiUserProfile);
+});
+
+describe('ProfileView reader and books', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('shows the signed-in reader on the bookplate', async () => {
+    getReadingStats.mockResolvedValueOnce({ totalMinutes: 0, sessionsCount: 0 });
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(api.getUserProfile).toHaveBeenCalledWith('eleanorreads');
+    expect(wrapper.get('.name').text()).toBe('Eleanor Whitmore');
+    expect(wrapper.text()).toContain('@eleanorreads');
+    expect(wrapper.text()).toContain('one more chapter');
+    expect(wrapper.text()).toContain('Public profile');
+  });
+
+  it('shows an error instead of a mock reader when the profile cannot be loaded', async () => {
+    getReadingStats.mockResolvedValueOnce({ totalMinutes: 0, sessionsCount: 0 });
+    api.getMe.mockRejectedValueOnce(new Error('offline'));
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.find('.band').exists()).toBe(false);
+    expect(wrapper.get('[role="alert"]').text()).toContain('We could not load your profile');
+  });
+
+  it('builds currently reading, the shelf, recently added and folders from the library', async () => {
+    getReadingStats.mockResolvedValueOnce({ totalMinutes: 0, sessionsCount: 0 });
+    api.getUserLibrary.mockResolvedValueOnce([
+      item('emma', 'Emma', 'in-progress', '2026-11-16T00:00:00Z', ['f1']),
+      item('persuasion', 'Persuasion', 'finished', '2026-11-10T00:00:00Z', ['f1']),
+      item('sense', 'Sense and Sensibility', 'not-started', '2026-11-01T00:00:00Z'),
+    ]);
+    api.getLibraryFolders.mockResolvedValueOnce([{ id: 'f1', name: 'Austen', count: 2 }]);
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Emma');
+    expect(wrapper.get('.shelf-section .count').text()).toBe('1 finished');
+    expect(wrapper.get('.spine').attributes('aria-label')).toBe('Persuasion by Jane Austen');
+    expect(wrapper.findAll('.cover-grid li')).toHaveLength(3);
+    expect(wrapper.get('.folders').text()).toContain('Austen');
+    expect(wrapper.get('.folders').text()).toContain('2 books');
+    // A real cover image is used when the catalogue has one.
+    expect(wrapper.find('img[src="https://covers.example/emma.jpg"]').exists()).toBe(true);
+  });
+
+  it('shows the empty states for a reader with no books', async () => {
+    getReadingStats.mockResolvedValueOnce({ totalMinutes: 0, sessionsCount: 0 });
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.get('.shelf-section .count').text()).toBe('0 finished');
+    expect(wrapper.findAll('.cover-grid li')).toHaveLength(0);
+  });
+});
 
 describe('ProfileView reading time', () => {
   afterEach(() => {
@@ -49,13 +159,13 @@ describe('ProfileView reading time', () => {
     expect(readingTime.text()).toContain('Start a reading session');
   });
 
-  it('keeps the mock reading time when the API is unreachable', async () => {
+  it('shows no invented reading time when the API is unreachable', async () => {
     getReadingStats.mockRejectedValueOnce(new Error('offline'));
     const wrapper = mountView();
     await flushPromises();
 
-    expect(wrapper.get('.reading-time .number').text()).toBe('4260');
-    expect(wrapper.get('.reading-time .sessions').text()).toBe('across 96 sessions');
+    expect(wrapper.get('.reading-time .number').text()).toBe('0');
+    expect(wrapper.find('.reading-time .sessions').exists()).toBe(false);
   });
 });
 
