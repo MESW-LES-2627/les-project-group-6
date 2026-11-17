@@ -83,7 +83,7 @@ See [docs/architecture/](docs/architecture/) for the infrastructure, API routes 
 │       │   ├── stores/            # session store
 │       │   ├── utils/
 │       │   ├── types/
-│       │   ├── mocks/             # mock data for prototype screens
+│       │   ├── mocks/             # mock data only for features not built yet (home, profile)
 │       │   └── assets/
 │       ├── e2e/                   # Playwright end-to-end tests
 │       ├── playwright.config.ts

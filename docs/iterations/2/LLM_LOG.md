@@ -587,3 +587,43 @@ Now, I want you to create a PR to update the readme. Add the description of what
 #### Explanation of Changes
 
 Rewrote `README.md`: project description, iteration CLAIM links, architecture diagram and summary, commented repository tree, short getting-started block and a table of all Makefile targets.
+
+### 2026-11-17: Replace mock data with API data
+
+- **Date:** 2026-11-17
+- **Author:** Vasco
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, backend, testing, docs
+
+#### Prompt
+
+```text
+We need to replace the mock data in the front end with database data gathered from endpoints on the backend. We have some endpoints implemented that are not applicable. Before making changes do the following:
+1 - Go through issues and current open branches that have not been merged to main and check which mockdata has not been replaced but the issue that it relates to has been set as done (we will not replace mock data for features that have not been implemented)
+2 - List for me all locations and all data that can be replaced and the endpoints that already exist and that can be implemented to help out
+-> Ok, now change the correct the mock data to real data for those that you stated could be replaced because issues were already closed. When you replace remove the mockdata completly so there isn't a fall back that may overwrite real data when cached on browser.
+```
+
+#### Explanation of Changes
+
+Audited mock usage against closed issues and unmerged branches, then replaced the mocks on the home, library, book, session, groups and profile pages with API data and removed every fallback. Added `authors` to book responses and the requester's name to incoming friend requests in the backend. Mocks remain only for unbuilt features. Rewrote the mock-based tests to mock the API; backend 395 and frontend 486 tests pass.
+
+### 2026-11-17: Seed with real Supabase logins
+
+- **Date:** 2026-11-17
+- **Author:** Vasco
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** database, backend, docs
+
+#### Prompt
+
+```text
+Ok, implement in the seed to be used by pnpm db:seed one that reads the .env to get the keys for Supabase and can create users and also populate to the DATABASE_URL, do it in a way that the accounts are directly created and visible in the Authentication tab of supabase but I dont need to go confirming email anywhere. For this is made available the Supabase Secret in the .env such as in .env.example to grab the correct token to authenticate new users.
+```
+
+#### Explanation of Changes
+
+Rewrote `pnpm db:seed`: it creates confirmed logins through the Supabase Auth Admin API (no emails), writes their emails and passwords to a git-ignored file, and fills the database with eight readers and data for every page. Added `SUPABASE_SERVICE_ROLE_KEY` and `SEED_ALLOW_REMOTE_DATABASE` to `.env.example` and documented the seed in the backend README.
+
