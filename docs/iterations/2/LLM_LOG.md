@@ -673,3 +673,23 @@ I merged the tag changes, why I can't add tags in frontend in my ui?
 #### Explanation of Changes
 Found that PR #153 was backend only. Added the tag API client, the add/remove tag editor on the book page, real tags with counts in the library sidebar, unit tests and two Playwright e2e tests for F-LIB-04.
 
+
+---
+
+### 2026-11-17: Frontend test coverage and CI fixes
+
+- **Date:** 2026-11-17
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** testing, ci, frontend
+
+#### Prompt
+```text
+ok, so, in this case, Ii want you to create a pr just to test the coverage step in CI
+-> the frontend lint failed
+-> ok, so, the coverage of frontend is 85%, can you look at ci, see what files and lines we are missing and update the tests?
+```
+
+#### Explanation of Changes
+Opened test PR #161, fixed the frontend lint (`@ts-nocheck`) and Prettier failures that were already on `main`, then read the CI coverage report and added unit tests for the uncovered files (mainly `api.ts`, group and library views). Frontend line coverage went from 85.26% to 99.81%.

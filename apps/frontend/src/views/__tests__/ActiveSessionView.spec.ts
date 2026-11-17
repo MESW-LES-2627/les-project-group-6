@@ -1,6 +1,6 @@
 // @req F-READ-01
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import router from '@/router';
 import ActiveSessionView from '../ActiveSessionView.vue';
@@ -49,5 +49,18 @@ describe('ActiveSessionView', () => {
 
     expect(wrapper.get('h1').text()).toBe('Session not found');
     expect(wrapper.get('.missing-link').attributes('href')).toBe('/library');
+  });
+
+  it('goes back to the book when a mock session is stopped or cancelled', async () => {
+    const wrapper = mountView();
+    const push = vi.spyOn(router, 'push').mockResolvedValue(undefined);
+
+    await wrapper.get('.timer-button--stop').trigger('click');
+    await wrapper.get('.timer-button--cancel').trigger('click');
+
+    const bookRoute = { name: 'book-detail', params: { bookId: 'emma' } };
+    expect(push).toHaveBeenNthCalledWith(1, bookRoute);
+    expect(push).toHaveBeenNthCalledWith(2, bookRoute);
+    push.mockRestore();
   });
 });

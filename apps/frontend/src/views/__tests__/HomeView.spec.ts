@@ -44,4 +44,17 @@ describe('HomeView content', () => {
     expect(wrapper.text()).toContain('No pending invites.');
     wrapper.unmount();
   });
+
+  it('declines a friend request and keeps the group invitation', async () => {
+    const wrapper = mountView();
+    const declines = () => wrapper.findAll('button').filter((b) => b.text() === 'Decline');
+    expect(declines()).toHaveLength(2);
+
+    await declines()[0]!.trigger('click');
+
+    expect(wrapper.get('[role="status"]').text()).toBe("You declined Sofia Chen's request.");
+    expect(wrapper.text()).not.toContain('wants to be friends');
+    expect(declines()).toHaveLength(1);
+    wrapper.unmount();
+  });
 });

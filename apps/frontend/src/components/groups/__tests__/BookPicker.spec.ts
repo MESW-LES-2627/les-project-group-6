@@ -62,4 +62,44 @@ describe('BookPicker', () => {
     expect(addBook).toHaveBeenCalledWith({ title: 'Middlemarch' });
     expect(wrapper.emitted('update:modelValue')![0]).toEqual([{ id: 'b9', title: 'Middlemarch' }]);
   });
+
+  it('shows the error when the search fails', async () => {
+    searchBooks.mockRejectedValue(new Error('Search is down'));
+    const wrapper = mountPicker();
+
+    await wrapper.get('#pick').setValue('Emma');
+
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Search is down'));
+    expect(wrapper.find('.result').exists()).toBe(false);
+  });
+
+  it('shows the error when adding a new book fails', async () => {
+    searchBooks.mockResolvedValue([]);
+    addBook.mockRejectedValue(new Error('Could not add the book'));
+    const wrapper = mountPicker();
+
+    await wrapper.get('#pick').setValue('Middlemarch');
+    await vi.waitFor(() => expect(wrapper.find('.add').exists()).toBe(true));
+    await wrapper.get('.add').trigger('click');
+
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Could not add the book'));
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+  });
+
+  it('shows the picked book and clears it on Change', async () => {
+    const wrapper = mount(BookPicker, {
+      props: {
+        inputId: 'pick',
+        label: 'Selected book',
+        modelValue: { id: 'b1', title: 'Emma' },
+      },
+    });
+
+    expect(wrapper.get('.picked-title').text()).toBe('Emma');
+    expect(wrapper.find('#pick').exists()).toBe(false);
+
+    await wrapper.get('.change').trigger('click');
+
+    expect(wrapper.emitted('update:modelValue')![0]).toEqual([null]);
+  });
 });

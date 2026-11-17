@@ -255,4 +255,44 @@ describe('authentication page and Supabase integration', () => {
     expect(router.currentRoute.value.path).toBe('/home');
     wrapper.unmount();
   });
+
+  it('stays on the page with the error when the profile cannot be loaded', async () => {
+    api.getMe.mockRejectedValue(new ApiError('Internal server error', 500));
+    const { wrapper, router } = await render();
+    await wrapper.get('#login-email').setValue('eleanor@example.com');
+    await wrapper.get('#login-password').setValue('long-password-123');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      'We could not load your profile. Please try again.',
+    );
+    expect(router.currentRoute.value.path).toBe('/login');
+    wrapper.unmount();
+  });
+
+  it('says password recovery is not available yet', async () => {
+    const { wrapper } = await render();
+
+    await wrapper
+      .findAll('.link-button')
+      .find((b) => b.text() === 'Forgot password?')!
+      .trigger('click');
+
+    expect(wrapper.get('[role="status"]').text()).toBe('Password recovery is not available yet.');
+    wrapper.unmount();
+  });
+
+  it('opens the create account form from the "New here?" link', async () => {
+    const { wrapper } = await render();
+
+    await wrapper
+      .findAll('.link-button')
+      .find((b) => b.text() === 'Create an account')!
+      .trigger('click');
+
+    const form = wrapper.get<HTMLFormElement>('form[aria-labelledby="signup-title"]');
+    expect(form.element.style.display).not.toBe('none');
+    wrapper.unmount();
+  });
 });

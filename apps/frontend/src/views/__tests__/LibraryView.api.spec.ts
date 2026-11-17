@@ -191,6 +191,118 @@ describe('LibraryView with a signed-in reader', () => {
     expect(wrapper.findAll('.tag-list .tag')).toHaveLength(0);
   });
 
+  it('shows an error when the library cannot be loaded', async () => {
+    api.getUserLibrary.mockRejectedValue(new Error('offline'));
+
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.get('.library-error').text()).toBe(
+      'We could not load your library. Please refresh the page.',
+    );
+    expect(wrapper.findAll('article')).toHaveLength(0);
+  });
+
+  it('shows an error when the folders cannot be loaded', async () => {
+    api.getLibraryFolders.mockRejectedValue(new Error('offline'));
+
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.get('.folder-error').text()).toBe(
+      'We could not load your folders. Please refresh the page.',
+    );
+    expect(wrapper.findAll('.folder-list .folder-item')).toHaveLength(0);
+  });
+
+  it('lists the tags in alphabetical order', async () => {
+    api.getUserLibrary.mockResolvedValue([book(BOOK_A, 'Emma', [], [TAG_AUDIO, TAG_GONE])]);
+    api.getLibraryTags.mockResolvedValue([
+      { id: TAG_AUDIO, name: 'zebra', count: 1 },
+      { id: TAG_GONE, name: 'apple', count: 1 },
+    ]);
+
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.findAll('.tag-list .tag').map((t) => t.text())).toEqual([
+      'apple · 1',
+      'zebra · 1',
+    ]);
+  });
+
+  it('shows the API error when creating a folder fails', async () => {
+    api.createLibraryFolder.mockRejectedValue(new Error('Too many folders'));
+
+    const wrapper = mountView();
+    await flushPromises();
+    await wrapper.get('.add-folder').trigger('click');
+    await wrapper.get('.create-form .folder-input').setValue('Winter');
+    await wrapper.get('.create-form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.get('.folder-error').text()).toBe('Too many folders');
+    expect(wrapper.get('.folder-list').text()).not.toContain('Winter');
+  });
+
+  it('renames a folder through the API', async () => {
+    api.getLibraryFolders.mockResolvedValue([folder(FOLDER_A, 'Autumn')]);
+    api.renameLibraryFolder.mockResolvedValue(undefined);
+
+    const wrapper = mountView();
+    await flushPromises();
+    await wrapper.get('[aria-label="Rename Autumn"]').trigger('click');
+    await wrapper.get('[aria-label="Rename Autumn"]').setValue('Fall');
+    await wrapper.get('.folder-form').trigger('submit');
+    await flushPromises();
+
+    expect(api.renameLibraryFolder).toHaveBeenCalledWith(FOLDER_A, 'Fall');
+    expect(wrapper.get('.folder-list').text()).toContain('Fall');
+  });
+
+  it('keeps the old name and shows the error when renaming fails', async () => {
+    api.getLibraryFolders.mockResolvedValue([folder(FOLDER_A, 'Autumn')]);
+    api.renameLibraryFolder.mockRejectedValue(new Error('Rename failed'));
+
+    const wrapper = mountView();
+    await flushPromises();
+    await wrapper.get('[aria-label="Rename Autumn"]').trigger('click');
+    await wrapper.get('[aria-label="Rename Autumn"]').setValue('Fall');
+    await wrapper.get('.folder-form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.get('.folder-error').text()).toBe('Rename failed');
+    expect(wrapper.get('.folder-list').text()).toContain('Autumn');
+  });
+
+  it('deletes a folder through the API and drops it from the books', async () => {
+    api.getUserLibrary.mockResolvedValue([book(BOOK_A, 'Emma', [FOLDER_A])]);
+    api.getLibraryFolders.mockResolvedValue([folder(FOLDER_A, 'Autumn')]);
+    api.deleteLibraryFolder.mockResolvedValue(undefined);
+
+    const wrapper = mountView();
+    await flushPromises();
+    await wrapper.get('[aria-label="Delete Autumn"]').trigger('click');
+    await flushPromises();
+
+    expect(api.deleteLibraryFolder).toHaveBeenCalledWith(FOLDER_A);
+    expect(wrapper.findAll('.folder-list .folder-item')).toHaveLength(0);
+    expect(wrapper.findAll('article')).toHaveLength(1);
+  });
+
+  it('keeps the folder and shows the error when deleting fails', async () => {
+    api.getLibraryFolders.mockResolvedValue([folder(FOLDER_A, 'Autumn')]);
+    api.deleteLibraryFolder.mockRejectedValue(new Error('Delete failed'));
+
+    const wrapper = mountView();
+    await flushPromises();
+    await wrapper.get('[aria-label="Delete Autumn"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('.folder-error').text()).toBe('Delete failed');
+    expect(wrapper.get('.folder-list').text()).toContain('Autumn');
+  });
+
   it('opens the add book modal and shows a manually added book on the shelf', async () => {
     api.addBook.mockResolvedValue({
       id: BOOK_C,

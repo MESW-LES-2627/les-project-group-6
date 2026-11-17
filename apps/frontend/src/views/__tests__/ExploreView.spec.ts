@@ -232,6 +232,20 @@ describe('ExploreView', () => {
       expect(router.currentRoute.value.query.q).toBe('dune');
       expect(typed(wrapper)).toBe('dune ');
     });
+
+    it('searches readers 300 ms after the last keystroke, replacing the URL', async () => {
+      const { wrapper, router } = await mountView();
+      const replace = vi.spyOn(router, 'replace');
+
+      await wrapper.get('#user-search').setValue('ped');
+      await wait(299);
+      expect(api.searchUsers).not.toHaveBeenCalled();
+
+      await wait(1);
+      expect(replace).toHaveBeenCalledTimes(1);
+      expect(router.currentRoute.value.query.uq).toBe('ped');
+      expect(api.searchUsers).toHaveBeenCalledWith('ped', expect.any(AbortSignal));
+    });
   });
 
   it('adds a book no source knows and opens it from the library', async () => {
@@ -303,5 +317,69 @@ describe('ExploreView', () => {
       expect(wrapper.text()).toContain('@alice_w');
       expect(wrapper.text()).toContain('Private');
     });
+  });
+
+  it('says search is unavailable when the book search fails', async () => {
+    api.searchBooks.mockRejectedValue(new Error('down'));
+    const { wrapper } = await mountView('/explore?q=Dune');
+
+    expect(wrapper.get('.results').text()).toContain('Search is unavailable right now.');
+    expect(wrapper.findAll('.results li')).toHaveLength(0);
+  });
+
+  it('says reader search is unavailable when it fails', async () => {
+    api.searchUsers.mockRejectedValue(new Error('down'));
+    const { wrapper } = await mountView('/explore?uq=alice');
+
+    expect(wrapper.text()).toContain('Reader search is unavailable right now.');
+  });
+
+  async function openAddForm(wrapper: VueWrapper) {
+    await wrapper
+      .findAll('.link-button')
+      .find((b) => b.text() === 'Add this book')!
+      .trigger('click');
+  }
+
+  it('shows the error and stays on the page when adding a book fails', async () => {
+    api.searchBooks.mockResolvedValue([]);
+    api.addBook.mockReset().mockRejectedValue(new Error('That ISBN already exists'));
+    api.addToLibrary.mockReset();
+    const { wrapper, router } = await mountView('/explore?q=Diary');
+
+    await openAddForm(wrapper);
+    await wrapper.get('.add-book form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.get('.add-book').text()).toContain('That ISBN already exists');
+    expect(api.addToLibrary).not.toHaveBeenCalled();
+    expect(router.currentRoute.value.path).toBe('/explore');
+  });
+
+  it('falls back to a generic message when the add error has no text', async () => {
+    api.searchBooks.mockResolvedValue([]);
+    api.addBook.mockReset().mockRejectedValue(new Error(''));
+    const { wrapper } = await mountView('/explore?q=Diary');
+
+    await openAddForm(wrapper);
+    await wrapper.get('.add-book form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.get('.add-book').text()).toContain("Couldn't add the book.");
+  });
+
+  it('closes the add form on cancel', async () => {
+    api.searchBooks.mockResolvedValue([]);
+    const { wrapper } = await mountView('/explore?q=Diary');
+
+    await openAddForm(wrapper);
+    expect(wrapper.find('.add-book').exists()).toBe(true);
+
+    await wrapper
+      .findAll('.add-book button')
+      .find((b) => b.text() === 'Cancel')!
+      .trigger('click');
+
+    expect(wrapper.find('.add-book').exists()).toBe(false);
   });
 });
