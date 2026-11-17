@@ -114,10 +114,10 @@ export class User {
   readonly bio: string | null;
   private _timezone: string;
   private _profileVisibility: ProfileVisibility;
-  readonly streakType: string;
-  readonly currentStreak: number;
-  readonly longestStreak: number;
-  readonly hitStreak: boolean;
+  private _streakType: string;
+  private _currentStreak: number;
+  private _longestStreak: number;
+  private _hitStreak: boolean;
   readonly createdAt: Date;
 
   private constructor(state: UserState) {
@@ -129,10 +129,10 @@ export class User {
     this.bio = state.bio;
     this._timezone = state.timezone;
     this._profileVisibility = state.profileVisibility;
-    this.streakType = state.streakType;
-    this.currentStreak = state.currentStreak;
-    this.longestStreak = state.longestStreak;
-    this.hitStreak = state.hitStreak;
+    this._streakType = state.streakType;
+    this._currentStreak = state.currentStreak;
+    this._longestStreak = state.longestStreak;
+    this._hitStreak = state.hitStreak;
     this.createdAt = state.createdAt;
   }
 
@@ -172,6 +172,22 @@ export class User {
     return this._profileVisibility;
   }
 
+  get streakType(): string {
+    return this._streakType;
+  }
+
+  get currentStreak(): number {
+    return this._currentStreak;
+  }
+
+  get longestStreak(): number {
+    return this._longestStreak;
+  }
+
+  get hitStreak(): boolean {
+    return this._hitStreak;
+  }
+
   rename(displayName: string): void {
     this._displayName = User.validDisplayName(displayName);
   }
@@ -186,6 +202,46 @@ export class User {
 
   makeProfilePrivate(): void {
     this._profileVisibility = 'private';
+  }
+
+  /**
+   * Applies the daily reading streak roadmap when a user reads:
+   * 1. Check if hitStreak is true:
+   *    - If it is, then the streak doesn't need update (returns false).
+   * 2. Check if he read the day before:
+   *    - If not, set the hit streak and current streak to 1.
+   *    - If yes, then update hit streak and increment on the current streak.
+   *
+   * PS: When incrementing currentStreak, check against longestStreak to see if it needs updating.
+   */
+  recordReadingDay(readDayBefore: boolean): boolean {
+    if (this._hitStreak) {
+      return false;
+    }
+
+    if (readDayBefore) {
+      this._currentStreak += 1;
+    } else {
+      this._currentStreak = 1;
+    }
+
+    this._hitStreak = true;
+    if (this._currentStreak > this._longestStreak) {
+      this._longestStreak = this._currentStreak;
+    }
+
+    return true;
+  }
+
+  /** Resets hitStreak for a new day before today's reading is logged. */
+  resetDailyHitStreak(): void {
+    this._hitStreak = false;
+  }
+
+  /** Marks the streak as lapsed if a day was missed without reading. */
+  resetStreak(): void {
+    this._currentStreak = 0;
+    this._hitStreak = false;
   }
 
   private static validDisplayName(raw: string): string {
