@@ -17,6 +17,12 @@ const router = createRouter({
       component: LoginView,
       meta: { hideAppChrome: true, public: true },
     },
+    ...['forgot-password', 'reset-password'].map((name) => ({
+      path: `/${name}`,
+      name,
+      component: () => import('../views/PasswordRecoveryView.vue'),
+      meta: { hideAppChrome: true, public: true, recovery: true },
+    })),
     {
       path: '/complete-profile',
       name: 'complete-profile',
@@ -87,11 +93,13 @@ const router = createRouter({
 });
 
 /**
- * F-AUTH-01: nothing but the login page is reachable without a session, and a
- * session without a profile can only reach the complete-profile step.
+ * F-AUTH-01/02: login and recovery are public; private pages require a profile.
+ * Active recovery is resolved before ordinary authentication/profile redirects.
  */
 export function installAuthGuard(target: Router, session: Session = defaultSession): void {
   target.beforeEach(async (to) => {
+    if (to.meta.recovery) return true;
+    if (await session.isRecovering()) return { name: 'reset-password' };
     const status = await session.ensure();
     if (status === 'ready') {
       return to.name === 'login' || to.name === 'complete-profile' ? { name: 'home' } : true;

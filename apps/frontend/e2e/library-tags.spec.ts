@@ -29,14 +29,18 @@ test('a reader tags a book, filters the library by it and removes it', async ({ 
     await expect(page.getByRole('heading', { level: 1, name: book.title })).toBeVisible();
 
     // Typed in mixed case: the tag is stored and shown in lower case.
-    await page.getByRole('textbox', { name: 'New tag' }).fill(tag.toUpperCase());
+    await page.getByRole('combobox', { name: 'New tag' }).fill(tag.toUpperCase());
     await page.getByRole('button', { name: 'Add tag' }).click();
     const chips = page.getByRole('list', { name: 'Tags on this book' });
-    await expect(chips.getByText(tag, { exact: true })).toBeVisible();
+    await expect(
+      chips.getByRole('button', { name: `Remove tag ${tag}`, exact: true }),
+    ).toBeVisible();
 
     // The tag survives a reload, so it was saved on the server.
     await page.reload();
-    await expect(chips.getByText(tag, { exact: true })).toBeVisible();
+    await expect(
+      chips.getByRole('button', { name: `Remove tag ${tag}`, exact: true }),
+    ).toBeVisible();
 
     // The library sidebar lists the tag with one book, and selecting it filters the grid.
     await page.goto('/library');
@@ -71,13 +75,15 @@ test('a book can carry several tags at once', async ({ page }) => {
 
   try {
     await page.goto(`/library/${book.id}`);
-    const input = page.getByRole('textbox', { name: 'New tag' });
+    const input = page.getByRole('combobox', { name: 'New tag' });
     const chips = page.getByRole('list', { name: 'Tags on this book' });
 
     for (const name of [borrowed, reread]) {
       await input.fill(name);
       await page.getByRole('button', { name: 'Add tag' }).click();
-      await expect(chips.getByText(name, { exact: true })).toBeVisible();
+      await expect(
+        chips.getByRole('button', { name: `Remove tag ${name}`, exact: true }),
+      ).toBeVisible();
     }
 
     // Adding a tag the book already has is refused before reaching the API.

@@ -24,13 +24,13 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 │   │   └── e2e/                   # Playwright e2e tests; see apps/frontend/e2e/README.md
 │   └── backend/
 ├── docs/
-│   ├── ADRs/
-│   ├── architecture/
-│   ├── design/
-│   ├── OOP_documents/
-│   ├── product/
-│   ├── superpowers/specs/
-│   └── sprints/
+│   ├── README.md                  # documentation index
+│   ├── architecture/              # includes password-recovery.md
+│   ├── requirements/
+│   ├── iterations/                # 0–4; active iteration 2
+│   ├── oop_assets/
+│   ├── design.md
+│   └── superpowers/               # specs and implementation plans
 ├── .github/
 │   └── workflows/
 │       ├── e2e.yml                # e2e suite on main and manual dispatch
@@ -59,7 +59,7 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 The application source code. Each app is a pnpm workspace with its own `package.json`, `tsconfig.json` (extending the root base) and ESLint config. Tooling shared by every app lives in the repository root (see [Root config](#root-config)).
 
 - `apps/frontend/`: the Vue 3 web client with shared CSS tokens, a home page prototype, a profile page prototype and groups pages (list, create, challenge, book club) backed by the API with mock groups kept for the design demo, and other prototypes with mock data, router and component tests, ESLint, Prettier, vue-tsc and Vitest. See [apps/frontend/README.md](apps/frontend/README.md) for commands and production API routing.
-  Authentication uses Supabase Auth: `/login` (log in / sign up), a session store in `src/stores/`, a router guard, `/complete-profile` and sign out from the header. Every API call sends the Supabase token. See the frontend guide for the environment variables.
+  Authentication uses Supabase Auth: `/login` (log in / sign up), a session store in `src/stores/`, a router guard, `/forgot-password`, `/reset-password`, `/complete-profile` and sign out from the header. Every API call sends the Supabase token. See the frontend guide for the environment variables.
 - `apps/backend/`: the server, API and business logic (TypeScript, Node.js, Express). Every route except `/health` verifies the Supabase JWT and takes the user from it; `/me` creates and reads the reader's profile. See [apps/backend/README.md](apps/backend/README.md) for how to run it.
 
 ### Makefile
@@ -81,13 +81,11 @@ Per-app files stay in each app: `package.json`, `tsconfig.json`, ESLint config, 
 
 All project documentation. See [docs/README.md](docs/README.md) for an index that explains each folder and file.
 
-- `docs/ADRs/`: Architecture Decision Records. The technical decisions the team makes, with their context and consequences.
-- `docs/architecture/`: technical models of the system, such as the [database tables UML](docs/architecture/table_UML.md), the [API routes and chat WebSocket](docs/architecture/api_routes.md) and the [infrastructure](docs/architecture/infra.md).
-- `docs/design/`: UI design (Figma link, screen snapshots and the color palette).
-- `docs/superpowers/specs/`: feature specs, the technical design of a feature written before it is built (for example the [Explore page](docs/superpowers/specs/2026-11-11-explore-page-design.md)).
-- `docs/OOP_documents/`: deliverables for the OOP classes (domain model, component diagrams, event storming, coupling analysis, patterns used, refactored code), organized by iteration (`iteration_0` to `iteration_4`).
-- `docs/product/`: documents about the business rules and design of the product, such as the [requirements](docs/product/requirements.md) and the [feature scope](docs/product/features_priority.md) (what is Core, Extra or Optional, and the sprint plan).
-- `docs/sprints/`: deliverables for the Software Engineering Lab classes (vision, MVP, vertical prototype, claims, release notes), organized by iteration (`iteration_0` to `iteration_4`). Each iteration can also have a `log.md`: a running record of what the team did and decided (see [iteration 0](docs/sprints/iteration_0/log.md)).
+- `docs/architecture/`: API routes, infrastructure, table UML and the [password recovery guide](docs/architecture/password-recovery.md), including external Supabase setup and live verification steps.
+- `docs/requirements/`: [requirements](docs/requirements/requirements.md) and [feature priorities](docs/requirements/features_priority.md).
+- `docs/iterations/`: iteration deliverables and running project/AI logs (active iteration 2).
+- `docs/oop_assets/` and `docs/design.md`: diagrams, analysis and design references.
+- `docs/superpowers/`: feature specifications and implementation plans.
 
 ### `.github/`
 

@@ -549,3 +549,29 @@ I merged the tag changes, why I can't add tags in frontend in my ui?
 #### Explanation of Changes
 Found that PR #153 was backend only. Added the tag API client, the add/remove tag editor on the book page, real tags with counts in the library sidebar, unit tests and two Playwright e2e tests for F-LIB-04.
 
+
+
+### 2026-11-17: Frontend password recovery
+
+- **Date:** 2026-11-17
+- **Author:** Segun Adesanya
+- **Model:** GPT-6 (Codex)
+- **Tool:** Codex
+- **Domain:** frontend, authentication, testing, docs
+
+#### Prompt
+```text
+Implement the frontend-only password recovery flow for Bookmarked, requirement F-AUTH-02 / issue #8.
+Inspect the current implementation and repository instructions before editing. Preserve unrelated changes.
+Work on feat/8-password-reset; do not commit, push, open a PR or modify GitHub issues.
+Use the existing Vue 3, TypeScript, Vue Router, styling tokens and Supabase authentication adapter.
+Implement forgot/reset screens, validation, generic confirmation, recovery context/session cleanup,
+route handling, automated tests and frontend regression checks. Document required external
+Supabase configuration, one-hour expiry and live verification gaps. Update the active iteration logs and docs index.
+```
+
+#### Explanation of Changes
+Implemented the two recovery routes and adapter operations using Supabase's existing implicit recovery flow, session-bound tab metadata, account-neutral errors and local cleanup. Added accessible responsive forms based on the supplied image and existing tokens, adapter/component/router tests, and a separate deterministic desktop/mobile Playwright configuration without backend/database fixtures. Documented Supabase setup and manual live verification, created the missing docs index and updated the real iteration 2 log. Full issue criteria were inaccessible. Live delivery and hosted configuration remain unverified; no GitHub changes or commits were made.
+
+
+Validation: 234 unit/component/router tests and 20 deterministic desktop/mobile browser scenarios pass; production build/typecheck and scoped lint/format checks pass. Full frontend lint/format checks retain the existing config/API-file failures, and the global coverage check reports 86% lines against a 95% gate. Recovery ownership was separated from update permission so expired/consumed sessions cannot bypass cleanup by navigating to private pages. The [recovery guide](../../architecture/password-recovery.md) records exact commands, external setup and live verification gaps.

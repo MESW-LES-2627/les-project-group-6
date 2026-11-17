@@ -9,7 +9,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Area | State |
 |---|---|
 | Releases | One GitHub Release per sprint (`iter-0` to `iter-4`), made by hand with `iteration-release.yml`; `vX.Y.Z` stay as tags only. `iter-0` and `iter-1` released |
-| Auth (F-AUTH-01) | Login is email and password only; username login removed from the form |
+| Auth (F-AUTH-01, F-AUTH-02) | Login/signup plus frontend password recovery on `feat/8-password-reset`; automated checks recorded below. Supabase dashboard configuration and live recovery email verification remain outstanding |
 | Friends (F-SOC-01) | Friend request API (send, list incoming, accept, decline, remove) behind the auth middleware (PR #114) |
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
 | Library folders (#125, F-LIB-03) | Folder create/rename/delete and book membership behind the auth middleware, reusing `lists`/`list_books` (migration 0011); frontend sidebar CRUD and a book-page picker. Branch `feat/125-organize-library` |
@@ -18,6 +18,10 @@ A running record of what the team did and decided in iteration 2. The [release n
 | E2E tests (#127) | 13 Playwright tests and the `e2e.yml` workflow written, not run yet (fixtures and secrets missing) |
 | Reviews (#122, F-LIB-02) | Rate 1–5 with an optional comment, edit and delete, only for In progress, Finished or DNF books. Book page shows my, friends' and public reviews and the public average; profile lists my reviews. Migration 0010. Draft PR #150 |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
+
+## Next steps
+
+- Verify the [password recovery Supabase setup and live email flow](../../architecture/password-recovery.md) with an approved disposable non-production account.
 
 ## Log
 
@@ -284,3 +288,12 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Frontend.** [`api.ts`](../../../apps/frontend/src/services/api.ts) gets `getLibraryTags`, `tagBook` and `untagBook`, and maps `tagIds` from `GET /me/library`. The [book panel](../../../apps/frontend/src/components/library/BookReadingPanel.vue) shows the book's tags as chips with a remove button and an "Add tag" field that suggests the reader's existing tags. [`LibraryView.vue`](../../../apps/frontend/src/views/LibraryView.vue) loads the tags from the API, counts them from the loaded books and hides tags on no book; the filter already existed.
 - **Decision: the panel normalises names like the API (trim, single spaces, lower case)** and refuses a tag the book already has before calling the API. *Rejected:* a separate tag manager, since the backend creates tags on first use and deletes them when empty.
 - **Tests.** 13 new unit tests ([`BookReadingPanel.spec.ts`](../../../apps/frontend/src/components/library/__tests__/BookReadingPanel.spec.ts), `LibraryView.api.spec.ts`, `BookDetailView.spec.ts`); frontend 201 unit tests pass. New e2e [`library-tags.spec.ts`](../../../apps/frontend/e2e/library-tags.spec.ts): tag the fixture book, filter the library by it, remove it, and several tags on one book. They use unique names and remove the tags in teardown.
+
+
+### 2026-11-17: Frontend password recovery (#8, F-AUTH-02)
+
+- Added `/forgot-password` and `/reset-password`, login navigation, accessible validated forms, account-neutral confirmation/errors and session-bound recovery operations in the existing [auth adapter](../../../apps/frontend/src/services/auth.ts). Recovery routes precede profile redirects; other private routes retain protection. **Decision:** use the installed SDK's implicit flow and recovery event with tab-local context; rejected treating an ordinary stored session as recovery proof or creating a second Supabase client. Cleanup signs out only the matching recovery session locally.
+- Added adapter/component/router tests and a [frontend-only desktop/mobile Playwright suite](../../../apps/frontend/e2e/recovery.spec.ts). The [recovery guide](../../architecture/password-recovery.md) documents exact redirect destinations, the required 3600-second email-link expiry, delivery prerequisites and manual verification. Created the missing [docs index](../../README.md) and corrected the root repository layout to the actual `iterations/` paths.
+- Full issue acceptance criteria were inaccessible; implementation follows the supplied task and repository F-AUTH-02 rules. Issue status was not changed. No commits, pushes, PRs, backend/database changes or hosted setting changes were made. Live email/link expiry verification remains outstanding.
+
+- **Validation:** 234 Vitest tests pass; 20 mocked desktop/mobile Playwright scenarios pass, including recovery refresh, reused/malformed links, expired recovery ownership, existing login/signup/logout, remember-me and profile redirects. Production build/typecheck and scoped ESLint/Prettier pass. Full lint has two existing `@ts-nocheck` errors, formatting fails only on unchanged `src/services/api.ts`, and the global coverage gate fails at 86% lines versus 95%. Exact commands and live gaps are in the [check record](../../architecture/password-recovery.md#automated-check-record--2026-11-17). No database-clearing tests were run.
