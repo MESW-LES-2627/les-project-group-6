@@ -355,3 +355,8 @@ A running record of what the team did and decided in iteration 2. The [release n
 - Two problems already on `main` also failed Frontend CI and are fixed in the same PR: `@ts-nocheck` in `vitest.config.ts` and `stryker.config.mjs` (rejected by ESLint), and an unformatted type in `api.ts` (Prettier).
 - **Tests.** New and extended unit tests for `api.ts` (every endpoint's URL, method, body and error mapping), the group views and components, `chat-socket.ts`, the library and book views, `App.vue` and the session store. Frontend: 446 tests pass, line coverage 99.81%. Only test files changed.
 - **Next:** backend has little margin (95.56%); `book-club-routes.ts`, `reading-session-routes.ts` and `group-invite-routes.ts` are under 20%.
+
+### 2026-11-17: E2E fixtures set up and login helper fixed
+
+- The six `E2E_*` repository secrets are set: a dedicated `e2e@` test user (Emma on its shelf as reading, the challenge group renamed to "E2E fixture group") and a profileless user. The seeded demo user could not be used, since it has no Supabase Auth account.
+- The first [E2E run](https://github.com/MESW-LES-2627/les-project-group-6/actions/runs/44075957718) failed at login: [`login-form.ts`](../../../apps/frontend/e2e/login-form.ts) clicked `form button[type="submit"]`, which now matches both the login and the hidden sign-up form. It now clicks "Log in" inside the "Welcome back" form.
