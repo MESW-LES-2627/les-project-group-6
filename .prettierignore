@@ -6,3 +6,4 @@ pnpm-lock.yaml
 .github/
 docs/
 **/dist-ssr/
+**/e2e/.auth/
