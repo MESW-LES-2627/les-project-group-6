@@ -9,10 +9,6 @@ interface Tag {
   count: number;
 }
 
-// A chip's text also holds its remove button's "×", so find a chip by that button's exact name.
-const chip = (chips: Locator, name: string) =>
-  chips.getByRole('button', { name: `Remove tag ${name}`, exact: true });
-
 // A unique name so a failed earlier run, or a real tag of the test user, never collides.
 const uniqueTag = (label: string) => `e2e ${label} ${Date.now()}`;
 
