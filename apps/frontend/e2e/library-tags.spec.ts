@@ -1,5 +1,5 @@
 // @req F-LIB-04
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { apiDelete, apiGet } from './api';
 import { fixtureBook } from './env';
 
@@ -8,6 +8,10 @@ interface Tag {
   name: string;
   count: number;
 }
+
+// A chip's text also holds its remove button's "×", so find a chip by that button's exact name.
+const chip = (chips: Locator, name: string) =>
+  chips.getByRole('button', { name: `Remove tag ${name}`, exact: true });
 
 // A unique name so a failed earlier run, or a real tag of the test user, never collides.
 const uniqueTag = (label: string) => `e2e ${label} ${Date.now()}`;
@@ -33,11 +37,11 @@ test('a reader tags a book, filters the library by it and removes it', async ({ 
     await page.getByRole('combobox', { name: 'New tag' }).fill(tag.toUpperCase());
     await page.getByRole('button', { name: 'Add tag' }).click();
     const chips = page.getByRole('list', { name: 'Tags on this book' });
-    await expect(chips.getByText(tag, { exact: true })).toBeVisible();
+    await expect(chip(chips, tag)).toBeVisible();
 
     // The tag survives a reload, so it was saved on the server.
     await page.reload();
-    await expect(chips.getByText(tag, { exact: true })).toBeVisible();
+    await expect(chip(chips, tag)).toBeVisible();
 
     // The library sidebar lists the tag with one book, and selecting it filters the grid.
     await page.goto('/library');
@@ -78,7 +82,7 @@ test('a book can carry several tags at once', async ({ page }) => {
     for (const name of [borrowed, reread]) {
       await input.fill(name);
       await page.getByRole('button', { name: 'Add tag' }).click();
-      await expect(chips.getByText(name, { exact: true })).toBeVisible();
+      await expect(chip(chips, name)).toBeVisible();
     }
 
     // Adding a tag the book already has is refused before reaching the API.
