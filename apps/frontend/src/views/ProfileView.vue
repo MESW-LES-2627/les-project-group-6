@@ -17,44 +17,107 @@ import { mockNewUserProfile, mockProfile } from '@/mocks/profile';
 import {
   getMe,
   getReadingStats,
+  getStreak,
   getUserReviews,
+  type ApiMe,
   type ApiProfileReview,
   type ApiReadingStats,
+  type ApiStreak,
 } from '@/services/api';
+import type { ProfileUser, ReadingTimeStats, Streak } from '@/types/profile';
+import { initialsOf } from '@/utils/groups';
 
-// Mock data until the profile API exists. `/profile?state=new` shows the empty states.
-// Reading time already comes from the server-timed sessions.
+// Profile data for the signed-in reader. `/profile?state=new` shows the empty states.
 const route = useRoute();
+const me = ref<ApiMe | null>(null);
+const streakData = ref<ApiStreak | null>(null);
 const readingStats = ref<ApiReadingStats | null>(null);
+const reviews = ref<ApiProfileReview[] | null>(null);
+
+const profileUser = computed<ProfileUser>(() => {
+  const base = route.query.state === 'new' ? mockNewUserProfile.user : mockProfile.user;
+  if (!me.value) return base;
+  const name = me.value.displayName || me.value.username || base.name;
+  return {
+    ...base,
+    name,
+    initials: initialsOf(name) || base.initials,
+    handle: me.value.username || base.handle,
+    memberSince: me.value.createdAt ? me.value.createdAt.slice(0, 10) : base.memberSince,
+    bio: me.value.bio ?? base.bio,
+    privacy:
+      me.value.profileVisibility === 'public' || me.value.profileVisibility === 'friends'
+        ? me.value.profileVisibility
+        : 'private',
+  };
+});
+
+const streak = computed<Streak>(() => {
+  const base = route.query.state === 'new' ? mockNewUserProfile.streak : mockProfile.streak;
+  if (streakData.value) {
+    return {
+      days: streakData.value.days,
+      current: streakData.value.current,
+      longest: streakData.value.longest,
+      freezesLeft: streakData.value.freezesLeft,
+    };
+  }
+  if (me.value && me.value.currentStreak !== undefined) {
+    return {
+      ...base,
+      current: me.value.currentStreak,
+      longest: me.value.longestStreak ?? me.value.currentStreak,
+    };
+  }
+  return base;
+});
+
+const readingTime = computed<ReadingTimeStats>(() => {
+  const base =
+    route.query.state === 'new' ? mockNewUserProfile.readingTime : mockProfile.readingTime;
+  if (!readingStats.value) return base;
+  const { totalMinutes, sessionsCount } = readingStats.value;
+  return { ...base, countedMinutes: totalMinutes, sessionsCount };
+});
 
 const profile = computed(() => {
   const base = route.query.state === 'new' ? mockNewUserProfile : mockProfile;
-  if (!readingStats.value) return base;
-  const { totalMinutes, sessionsCount } = readingStats.value;
   return {
     ...base,
-    readingTime: { ...base.readingTime, countedMinutes: totalMinutes, sessionsCount },
+    user: profileUser.value,
+    streak: streak.value,
+    readingTime: readingTime.value,
   };
 });
 
 // F-LIB-02: my rated books. `null` (hidden) when the API cannot be reached or refuses.
-const reviews = ref<ApiProfileReview[] | null>(null);
-
-async function loadReviews() {
+async function loadReviews(userId: string) {
   try {
-    const me = await getMe();
-    reviews.value = await getUserReviews(me.id);
+    reviews.value = await getUserReviews(userId);
   } catch {
     reviews.value = null;
   }
 }
 
 onMounted(async () => {
-  void loadReviews();
+  try {
+    const myData = await getMe();
+    me.value = myData;
+    void loadReviews(myData.id);
+  } catch {
+    // Keep mock user when API is unreachable or not authenticated
+  }
+
+  try {
+    streakData.value = await getStreak();
+  } catch {
+    // Keep mock streak when API is unreachable
+  }
+
   try {
     readingStats.value = await getReadingStats();
   } catch {
-    // Keep the mock reading time when the API is unreachable
+    // Keep mock reading time when the API is unreachable
   }
 });
 </script>

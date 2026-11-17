@@ -80,10 +80,29 @@ export interface ApiMe {
   email: string;
   username: string;
   displayName: string;
+  bio?: string | null;
   timezone: string;
   photoUrl: string | null;
   profileVisibility: string;
   createdAt: string;
+  streakType?: string;
+  currentStreak?: number;
+  longestStreak?: number;
+  hitStreak?: boolean;
+}
+
+export interface ApiStreakDay {
+  date: string;
+  read: boolean;
+}
+
+export interface ApiStreak {
+  current: number;
+  longest: number;
+  hitStreak: boolean;
+  streakType: string;
+  freezesLeft: number;
+  days: ApiStreakDay[];
 }
 
 export interface CreateProfilePayload {
@@ -96,6 +115,12 @@ export interface CreateProfilePayload {
 export async function getMe(): Promise<ApiMe> {
   const response = await ensureOk(await apiFetch('/me'), 'Failed to load your profile');
   return response.json() as Promise<ApiMe>;
+}
+
+/** The reader's live streak statistics and 28-day reading calendar grid. */
+export async function getStreak(): Promise<ApiStreak> {
+  const response = await ensureOk(await apiFetch('/me/streak'), 'Failed to load your streak');
+  return response.json() as Promise<ApiStreak>;
 }
 
 /** Creates the `users` row for the signed-in Supabase account. */

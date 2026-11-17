@@ -26,6 +26,25 @@ beforeEach(async () => {
   sdk.signInWithOAuth.mockResolvedValue({ error: null });
   sdk.signOut.mockResolvedValue({ error: null });
   sdk.getSession.mockResolvedValue({ data: { session: null } });
+  const makeStorage = () => {
+    const store = new Map<string, string>();
+    return {
+      get length() {
+        return store.size;
+      },
+      clear: () => store.clear(),
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => store.set(k, String(v)),
+      removeItem: (k: string) => store.delete(k),
+      key: (i: number) => Array.from(store.keys())[i] ?? null,
+    } as Storage;
+  };
+  if (!window.localStorage || typeof window.localStorage.clear !== 'function') {
+    Object.defineProperty(window, 'localStorage', { value: makeStorage(), configurable: true });
+  }
+  if (!window.sessionStorage || typeof window.sessionStorage.clear !== 'function') {
+    Object.defineProperty(window, 'sessionStorage', { value: makeStorage(), configurable: true });
+  }
   window.localStorage.clear();
   window.sessionStorage.clear();
   auth = await import('../auth');
