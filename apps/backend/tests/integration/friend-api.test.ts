@@ -142,10 +142,12 @@ describe('Friend API Endpoints', () => {
         id: string;
         requesterId: string;
         status: string;
+        requester: { displayName: string; username: string } | null;
       }>;
       assert.equal(pending.length, 1);
       assert.equal(pending[0]?.requesterId, aliceId.value);
       assert.equal(pending[0]?.status, 'pending');
+      assert.deepEqual(pending[0]?.requester, { displayName: 'Alice Reader', username: 'alice_r' });
 
       // Alice has no incoming requests
       const aliceRes = await call(baseUrl, aliceId, 'GET', '/me/friend-requests');

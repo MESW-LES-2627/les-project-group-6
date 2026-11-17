@@ -1,7 +1,7 @@
 import type { Clock } from '../../utils/clock.js';
 import { InvalidValueError } from '../../utils/errors.js';
 import type { IUserRepository } from '../user/user-repository.js';
-import { UserId } from '../user/user.js';
+import { UserId, type User } from '../user/user.js';
 import {
   CannotFriendSelfError,
   Friendship,
@@ -15,6 +15,12 @@ export type FriendRequestOutcome = 'ok' | 'no_changes';
 export interface FriendRequestResult {
   outcome: FriendRequestOutcome;
   friendship: Friendship;
+}
+
+/** A pending request addressed to the reader, with who sent it (null if they are gone). */
+export interface IncomingRequest {
+  friendship: Friendship;
+  requester: User | null;
 }
 
 export class FriendService {
@@ -96,6 +102,17 @@ export class FriendService {
    */
   async pendingRequestsFor(userId: unknown): Promise<Friendship[]> {
     return this.friends.pendingFor(UserId.of(userId));
+  }
+
+  /** The pending requests addressed to this user, each with its requester's profile. */
+  async incomingRequestsFor(userId: unknown): Promise<IncomingRequest[]> {
+    const pending = await this.pendingRequestsFor(userId);
+    return Promise.all(
+      pending.map(async (friendship) => ({
+        friendship,
+        requester: await this.users.findById(friendship.requesterId),
+      })),
+    );
   }
 
   /**
