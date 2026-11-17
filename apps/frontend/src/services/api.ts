@@ -911,11 +911,7 @@ export async function getFriends(): Promise<GroupMember[]> {
 // ---------------------------------------------------------------------------
 
 export type FriendshipStatusWithViewer =
-  | 'self'
-  | 'none'
-  | 'friends'
-  | 'pending_sent'
-  | 'pending_received';
+  'self' | 'none' | 'friends' | 'pending_sent' | 'pending_received';
 
 export interface ApiUserProfile {
   id: string;
