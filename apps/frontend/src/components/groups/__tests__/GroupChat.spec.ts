@@ -163,4 +163,37 @@ describe('GroupChat (live)', () => {
     wrapper.unmount();
     expect(socket.close).toHaveBeenCalled();
   });
+
+  it('deletes own message through the API and shows it as deleted', async () => {
+    api.deleteGroupMessage.mockResolvedValueOnce(undefined as never);
+    api.getGroupMessages.mockResolvedValue([message(1, { authorId: me.id, body: 'Oops' })]);
+    const wrapper = mountLive();
+    await flushPromises();
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Delete')!
+      .trigger('click');
+    await flushPromises();
+
+    expect(api.deleteGroupMessage).toHaveBeenCalledWith(GROUP, 'm-1');
+    expect(wrapper.text()).toContain('This message was deleted');
+    expect(wrapper.text()).not.toContain('Oops');
+  });
+
+  it('keeps the message and shows the error when deleting fails', async () => {
+    api.deleteGroupMessage.mockRejectedValueOnce(new Error('Forbidden'));
+    api.getGroupMessages.mockResolvedValue([message(1, { authorId: me.id, body: 'Oops' })]);
+    const wrapper = mountLive();
+    await flushPromises();
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Delete')!
+      .trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe('Forbidden');
+    expect(wrapper.text()).toContain('Oops');
+  });
 });
