@@ -1,5 +1,5 @@
 // @req F-LIB-04
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { apiDelete, apiGet } from './api';
 import { fixtureBook } from './env';
 
@@ -8,6 +8,10 @@ interface Tag {
   name: string;
   count: number;
 }
+
+// A chip's text also holds its remove button's "×", so find a chip by that button's exact name.
+const chip = (chips: Locator, name: string) =>
+  chips.getByRole('button', { name: `Remove tag ${name}`, exact: true });
 
 // A unique name so a failed earlier run, or a real tag of the test user, never collides.
 const uniqueTag = (label: string) => `e2e ${label} ${Date.now()}`;

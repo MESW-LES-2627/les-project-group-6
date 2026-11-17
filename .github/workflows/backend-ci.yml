@@ -75,6 +75,7 @@ jobs:
         run: pnpm --filter @bookmarked/backend db:migrate
 
       # Fails when line coverage drops below 95% (threshold in the app's coverage config)
+      # (Coverage gate checked on a test PR.)
       - name: Test with coverage
         env:
           DATABASE_URL: postgresql://postgres:password123@localhost:5432/bookmarked_dev

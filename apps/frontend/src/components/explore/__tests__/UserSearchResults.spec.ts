@@ -66,4 +66,10 @@ describe('UserSearchResults', () => {
     );
     expect(mountResults({ loading: true }).text()).toContain('Searching readers…');
   });
+
+  it('uses the first letter of a one-word name as the avatar', () => {
+    const wrapper = mountResults({ users: [{ ...sampleUser, displayName: 'pedro' }] });
+
+    expect(wrapper.get('.avatar-initials').text()).toBe('P');
+  });
 });

@@ -260,4 +260,170 @@ describe('UserView', () => {
     expect(wrapper.find('.streak').exists()).toBe(false);
     expect(wrapper.find('.profile-reviews').exists()).toBe(false);
   });
+
+  it('shows the error and retries when the profile fails to load', async () => {
+    api.getUserProfile.mockRejectedValueOnce(new Error('Server unavailable'));
+    api.getUserProfile.mockResolvedValueOnce({ ...mockProfile });
+
+    const wrapper = await mountView('alice_reads');
+    await flushPromises();
+
+    expect(wrapper.get('.state-title').text()).toBe('Unable to load profile');
+    expect(wrapper.get('.error-text').text()).toBe('Server unavailable');
+
+    await wrapper.get('.retry-button').trigger('click');
+    await flushPromises();
+
+    expect(api.getUserProfile).toHaveBeenCalledTimes(2);
+    expect(wrapper.get('.name').text()).toBe('Alice Wonderland');
+  });
+
+  it('uses a generic message for a non-Error failure', async () => {
+    api.getUserProfile.mockRejectedValueOnce('boom');
+
+    const wrapper = await mountView('alice_reads');
+    await flushPromises();
+
+    expect(wrapper.get('.error-text').text()).toBe('Failed to load user profile');
+  });
+
+  it('shows the profile without reviews when the reviews fail to load', async () => {
+    api.getUserProfile.mockResolvedValueOnce({ ...mockProfile });
+    api.getUserReviews.mockRejectedValueOnce(new Error('offline'));
+
+    const wrapper = await mountView('alice_reads');
+    await flushPromises();
+
+    expect(wrapper.get('.name').text()).toBe('Alice Wonderland');
+    expect(wrapper.text()).not.toContain('Pride and Prejudice');
+  });
+
+  it('uses the first two letters of a one-word name as initials', async () => {
+    api.getUserProfile.mockResolvedValueOnce({ ...mockProfile, displayName: 'alice' });
+
+    const wrapper = await mountView('alice_reads');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('AL');
+  });
+
+  it('loads the new profile when the username changes', async () => {
+    api.getUserProfile.mockResolvedValueOnce({ ...mockProfile });
+    api.getUserProfile.mockResolvedValueOnce({
+      ...mockProfile,
+      id: 'u-456',
+      username: 'bob',
+      displayName: 'Bob Builder',
+    });
+
+    const wrapper = await mountView('alice_reads');
+    await flushPromises();
+    await wrapper.setProps({ username: 'bob' });
+    await flushPromises();
+
+    expect(api.getUserProfile).toHaveBeenLastCalledWith('bob');
+    expect(wrapper.get('.name').text()).toBe('Bob Builder');
+  });
+
+  it.each([
+    ['sendFriendRequest', 'none', null, '.action-button.primary'],
+    ['acceptFriendRequest', 'pending_received', 'freq-2', '.action-button.primary'],
+    ['declineFriendRequest', 'pending_received', 'freq-2', '.action-button.secondary'],
+    ['removeFriend', 'friends', null, '.remove-friend-button'],
+  ] as const)('shows the error when %s fails', async (method, status, requestId, selector) => {
+    api.getUserProfile.mockResolvedValueOnce({
+      ...mockProfile,
+      friendshipStatus: status,
+      friendRequestId: requestId,
+    });
+    api[method].mockRejectedValueOnce(new Error(`${method} failed`));
+
+    const wrapper = await mountView('alice_reads');
+    await flushPromises();
+    await wrapper.get(selector).trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('.action-error').text()).toBe(`${method} failed`);
+  });
+
+  it.each([
+    ['sendFriendRequest', 'none', null, '.action-button.primary', 'Failed to send friend request'],
+    [
+      'acceptFriendRequest',
+      'pending_received',
+      'freq-2',
+      '.action-button.primary',
+      'Failed to accept friend request',
+    ],
+    [
+      'declineFriendRequest',
+      'pending_received',
+      'freq-2',
+      '.action-button.secondary',
+      'Failed to decline friend request',
+    ],
+    ['removeFriend', 'friends', null, '.remove-friend-button', 'Failed to remove friend'],
+  ] as const)(
+    'shows a generic message when %s fails without an Error',
+    async (method, status, requestId, selector, message) => {
+      api.getUserProfile.mockResolvedValueOnce({
+        ...mockProfile,
+        friendshipStatus: status,
+        friendRequestId: requestId,
+      });
+      api[method].mockRejectedValueOnce('nope');
+
+      const wrapper = await mountView('alice_reads');
+      await flushPromises();
+      await wrapper.get(selector).trigger('click');
+      await flushPromises();
+
+      expect(wrapper.get('.action-error').text()).toBe(message);
+    },
+  );
+
+  it('still becomes friends when the reviews fail to load after accepting', async () => {
+    api.getUserProfile.mockResolvedValueOnce({
+      ...mockProfile,
+      isVisible: false,
+      friendshipStatus: 'pending_received',
+      friendRequestId: 'freq-2',
+    });
+    api.acceptFriendRequest.mockResolvedValueOnce({
+      id: 'freq-2',
+      requesterId: 'u-123',
+      addresseeId: 'viewer-1',
+      status: 'accepted',
+      createdAt: '2026-11-14T00:00:00.000Z',
+      respondedAt: '2026-11-14T00:01:00.000Z',
+    });
+    api.getUserReviews.mockRejectedValueOnce(new Error('offline'));
+
+    const wrapper = await mountView('alice_reads');
+    await flushPromises();
+    await wrapper.get('.action-button.primary').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('.remove-friend-button').exists()).toBe(true);
+    expect(wrapper.find('.private-card').exists()).toBe(false);
+  });
+
+  it('hides a private profile again after removing the friend', async () => {
+    api.getUserProfile.mockResolvedValueOnce({
+      ...mockProfile,
+      profileVisibility: 'private',
+      friendshipStatus: 'friends',
+    });
+    api.removeFriend.mockResolvedValueOnce();
+
+    const wrapper = await mountView('alice_reads');
+    await flushPromises();
+    expect(wrapper.find('.private-card').exists()).toBe(false);
+
+    await wrapper.get('.remove-friend-button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('.private-card').exists()).toBe(true);
+    expect(wrapper.find('.profile-reviews').exists()).toBe(false);
+  });
 });

@@ -76,4 +76,42 @@ describe('LibrarySidebar', () => {
 
     expect(wrapper.get('.folder-error').text()).toBe('You already have a folder with this name');
   });
+
+  it('closes the create form on cancel without emitting', async () => {
+    const wrapper = mountSidebar();
+
+    await wrapper.get('.add-folder').trigger('click');
+    await wrapper.get('.create-form .folder-input').setValue('Winter');
+    await wrapper.get('.create-form button[type="button"]').trigger('click');
+
+    expect(wrapper.find('.create-form').exists()).toBe(false);
+    expect(wrapper.find('.add-folder').exists()).toBe(true);
+    expect(wrapper.emitted('createFolder')).toBeUndefined();
+  });
+
+  it('does not emit a blank folder name', async () => {
+    const wrapper = mountSidebar();
+
+    await wrapper.get('.add-folder').trigger('click');
+    await wrapper.get('.create-form .folder-input').setValue('   ');
+    await wrapper.get('.create-form').trigger('submit');
+
+    expect(wrapper.emitted('createFolder')).toBeUndefined();
+    expect(wrapper.find('.create-form').exists()).toBe(true);
+  });
+
+  it('cancels a rename and ignores a blank one', async () => {
+    const wrapper = mountSidebar();
+
+    await wrapper.get('[aria-label="Rename Autumn reading"]').trigger('click');
+    await wrapper.get('[aria-label="Rename Autumn reading"]').setValue('  ');
+    await wrapper.get('.folder-form').trigger('submit');
+    expect(wrapper.emitted('renameFolder')).toBeUndefined();
+
+    await wrapper.get('.folder-form button[type="button"]').trigger('click');
+
+    expect(wrapper.find('.folder-form').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Autumn reading');
+    expect(wrapper.emitted('renameFolder')).toBeUndefined();
+  });
 });

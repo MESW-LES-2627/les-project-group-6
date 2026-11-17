@@ -297,3 +297,20 @@ A running record of what the team did and decided in iteration 2. The [release n
 - Full issue acceptance criteria were inaccessible; implementation follows the supplied task and repository F-AUTH-02 rules. Issue status was not changed. No commits, pushes, PRs, backend/database changes or hosted setting changes were made. Live email/link expiry verification remains outstanding.
 
 - **Validation:** 234 Vitest tests pass; 20 mocked desktop/mobile Playwright scenarios pass, including recovery refresh, reused/malformed links, expired recovery ownership, existing login/signup/logout, remember-me and profile redirects. Production build/typecheck and scoped ESLint/Prettier pass. Full lint has two existing `@ts-nocheck` errors, formatting fails only on unchanged `src/services/api.ts`, and the global coverage gate fails at 86% lines versus 95%. Exact commands and live gaps are in the [check record](../../architecture/password-recovery.md#automated-check-record--2026-11-17). No database-clearing tests were run.
+### 2026-11-17: Frontend coverage raised to pass the 95% gate
+
+- Test PR [#161](https://github.com/MESW-LES-2627/les-project-group-6/pull/161) ran the new "Test with coverage" step. Backend passed at 95.56% of lines; frontend failed at 85.26%.
+- Two problems already on `main` also failed Frontend CI and are fixed in the same PR: `@ts-nocheck` in `vitest.config.ts` and `stryker.config.mjs` (rejected by ESLint), and an unformatted type in `api.ts` (Prettier).
+- **Tests.** New and extended unit tests for `api.ts` (every endpoint's URL, method, body and error mapping), the group views and components, `chat-socket.ts`, the library and book views, `App.vue` and the session store. Frontend: 446 tests pass, line coverage 99.81%. Only test files changed.
+- **Next:** backend has little margin (95.56%); `book-club-routes.ts`, `reading-session-routes.ts` and `group-invite-routes.ts` are under 20%.
+
+### 2026-11-17: E2E fixtures set up and login helper fixed
+
+- The six `E2E_*` repository secrets are set: a dedicated `e2e@` test user (Emma on its shelf as reading, the challenge group renamed to "E2E fixture group") and a profileless user. The seeded demo user could not be used, since it has no Supabase Auth account.
+- The first [E2E run](https://github.com/MESW-LES-2627/les-project-group-6/actions/runs/44075957718) failed at login: [`login-form.ts`](../../../apps/frontend/e2e/login-form.ts) clicked `form button[type="submit"]`, which now matches both the login and the hidden sign-up form. It now clicks "Log in" inside the "Welcome back" form.
+- With login fixed, [the next run](https://github.com/MESW-LES-2627/les-project-group-6/actions/runs/44076566352) passed 10 of 15. [`group-create.spec.ts`](../../../apps/frontend/e2e/group-create.spec.ts) expected an empty name, but the form starts with "November Pages"; it now clears the field first. The fixture book had the status `reading`, which is not valid (`in-progress` is), and broke the session and tag tests.
+- After setting the book to `in-progress`, [13 of 15 passed](https://github.com/MESW-LES-2627/les-project-group-6/actions/runs/44078428251). The two [tag tests](../../../apps/frontend/e2e/library-tags.spec.ts) looked for the "New tag" field as a textbox, but its suggestion list makes it a combobox, and they matched the chip text exactly although it also holds the remove button's "×"; they now find a chip by its remove button.
+
+### 2026-11-17: README rewritten as a project overview
+
+- [README.md](../../../README.md) now has the project description, links to each iteration's `CLAIM.md`, an architecture diagram (Vue frontend, Express backend, PostgreSQL, Supabase Auth, Open Library API), the repository tree with comments inside it, and a table of every `make` command. The long per-folder explanations were dropped; [docs/architecture/](../../architecture/) and each app's README hold the details.

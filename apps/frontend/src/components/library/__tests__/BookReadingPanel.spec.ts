@@ -4,12 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import router from '@/router';
 import { getBookDetail } from '@/mocks/library';
-import type { LibraryBook, TagSummary } from '@/types/library';
+import type { FolderSummary, LibraryBook, TagSummary } from '@/types/library';
 import BookReadingPanel from '../BookReadingPanel.vue';
 
 const api = vi.hoisted(() => ({
   tagBook: vi.fn<(bookId: string, name: string) => Promise<TagSummary>>(),
   untagBook: vi.fn<(bookId: string, tagId: string) => Promise<void>>(),
+  updateReadingStatus: vi.fn<(payload: unknown) => Promise<void>>(),
+  addBookToFolder: vi.fn<(folderId: string, bookId: string) => Promise<void>>(),
+  removeBookFromFolder: vi.fn<(folderId: string, bookId: string) => Promise<void>>(),
 }));
 vi.mock('@/services/api', async (original) => ({
   ...(await original<typeof import('@/services/api')>()),
@@ -40,10 +43,16 @@ const makeBook = (id: string, tagIds: string[]): LibraryBook => ({
   updatedAt: '2026-11-16T00:00:00Z',
 });
 
-function mountPanel(tagIds: string[] = [], tags: TagSummary[] = [AUDIO, REREAD], id = BOOK_ID) {
-  const book = makeBook(id, tagIds);
+function mountPanel(
+  tagIds: string[] = [],
+  tags: TagSummary[] = [AUDIO, REREAD],
+  id = BOOK_ID,
+  overrides: Partial<LibraryBook> = {},
+  folders: FolderSummary[] = [],
+) {
+  const book = { ...makeBook(id, tagIds), ...overrides };
   return mount(BookReadingPanel, {
-    props: { book, detail: getBookDetail(book), folders: [], tags },
+    props: { book, detail: getBookDetail(book), folders, tags },
     global: { plugins: [router] },
   });
 }
@@ -150,5 +159,190 @@ describe('BookReadingPanel tags', () => {
     const added = wrapper.emitted<[TagSummary]>('tagAdded')!.map(([tag]) => tag.name);
     expect(added).toEqual(['audiobook', 'borrowed']);
     expect(wrapper.emitted('tagRemoved')).toEqual([[AUDIO.id]]);
+  });
+});
+
+const FAV: FolderSummary = {
+  id: '77777777-7777-4777-8777-777777777777',
+  name: 'Favourites',
+  count: 1,
+};
+const SUMMER: FolderSummary = {
+  id: '88888888-8888-4888-8888-888888888888',
+  name: 'Summer',
+  count: 0,
+};
+
+describe('BookReadingPanel status editor', () => {
+  it('opens the editor with "in progress" preselected for a not-started book', async () => {
+    const wrapper = mountPanel([], [], BOOK_ID, { status: 'not-started', currentPage: 0 });
+
+    await wrapper.get('.update-status').trigger('click');
+
+    expect(wrapper.get('.update-status').text()).toContain('Close');
+    expect((wrapper.get('.editor-select').element as HTMLSelectElement).value).toBe('in-progress');
+    expect((wrapper.get('.editor-input').element as HTMLInputElement).value).toBe('10');
+  });
+
+  it('opens with the current status and page, and closes on cancel', async () => {
+    const wrapper = mountPanel([], [], BOOK_ID, { status: 'finished', currentPage: 400 });
+
+    await wrapper.get('.update-status').trigger('click');
+    expect((wrapper.get('.editor-select').element as HTMLSelectElement).value).toBe('finished');
+    expect((wrapper.get('.editor-input').element as HTMLInputElement).value).toBe('400');
+
+    await wrapper.get('.button-cancel').trigger('click');
+    expect(wrapper.find('.status-editor').exists()).toBe(false);
+  });
+
+  it('saves the status through the API, emits it and closes after a delay', async () => {
+    vi.useFakeTimers();
+    api.updateReadingStatus.mockResolvedValue();
+    const wrapper = mountPanel();
+
+    await wrapper.get('.update-status').trigger('click');
+    await wrapper.get('.editor-select').setValue('finished');
+    await wrapper.get('.editor-input').setValue('400');
+    await wrapper.get('.status-editor').trigger('submit');
+    await flushPromises();
+
+    expect(api.updateReadingStatus).toHaveBeenCalledWith({
+      bookId: BOOK_ID,
+      status: 'finished',
+      currentPage: 400,
+    });
+    expect(wrapper.emitted('updated')).toEqual([[{ status: 'finished', currentPage: 400 }]]);
+    expect(wrapper.get('.editor-message').text()).toBe('Status saved to backend!');
+
+    vi.advanceTimersByTime(1500);
+    await flushPromises();
+    expect(wrapper.find('.status-editor').exists()).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('shows the API error when saving fails', async () => {
+    api.updateReadingStatus.mockRejectedValue(new Error('Server down'));
+    const wrapper = mountPanel();
+
+    await wrapper.get('.update-status').trigger('click');
+    await wrapper.get('.status-editor').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.get('.editor-message').text()).toBe('Server down');
+    expect(wrapper.emitted('updated')).toBeUndefined();
+    expect(wrapper.get('.button-save').attributes('disabled')).toBeUndefined();
+  });
+
+  it('falls back to a generic message for a non-Error failure', async () => {
+    api.updateReadingStatus.mockRejectedValue('nope');
+    const wrapper = mountPanel();
+
+    await wrapper.get('.update-status').trigger('click');
+    await wrapper.get('.status-editor').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.get('.editor-message').text()).toBe('Failed to update');
+  });
+});
+
+describe('BookReadingPanel folders', () => {
+  const openFolders = async (wrapper: ReturnType<typeof mountPanel>) => {
+    await wrapper.get('.folder-toggle').trigger('click');
+  };
+
+  it('adds the book to a folder through the API and emits the new ids', async () => {
+    api.addBookToFolder.mockResolvedValue();
+    const wrapper = mountPanel([], [], BOOK_ID, {}, [FAV, SUMMER]);
+
+    expect(wrapper.get('.folder-toggle').text()).toBe('No folder yet');
+    await openFolders(wrapper);
+    await wrapper.findAll('.folder-option input')[1]!.trigger('change');
+    await flushPromises();
+
+    expect(api.addBookToFolder).toHaveBeenCalledWith(SUMMER.id, BOOK_ID);
+    expect(wrapper.emitted('foldersUpdated')).toEqual([[[SUMMER.id]]]);
+    expect(wrapper.get('.folder-toggle').text()).toBe('Summer');
+  });
+
+  it('removes the book from a folder it is already in', async () => {
+    api.removeBookFromFolder.mockResolvedValue();
+    const wrapper = mountPanel([], [], BOOK_ID, { folderIds: [FAV.id] }, [FAV, SUMMER]);
+
+    await openFolders(wrapper);
+    await wrapper.findAll('.folder-option input')[0]!.trigger('change');
+    await flushPromises();
+
+    expect(api.removeBookFromFolder).toHaveBeenCalledWith(FAV.id, BOOK_ID);
+    expect(wrapper.emitted('foldersUpdated')).toEqual([[[]]]);
+  });
+
+  it('rolls back the selection and shows the error when the API fails', async () => {
+    api.addBookToFolder.mockRejectedValue(new Error('Folder is full'));
+    const wrapper = mountPanel([], [], BOOK_ID, { folderIds: [FAV.id] }, [FAV, SUMMER]);
+
+    await openFolders(wrapper);
+    await wrapper.findAll('.folder-option input')[1]!.trigger('change');
+    await flushPromises();
+
+    expect(wrapper.get('.folder-message').text()).toBe('Folder is full');
+    expect(wrapper.get('.folder-toggle').text()).toBe('Favourites');
+    expect(wrapper.emitted('foldersUpdated')).toBeUndefined();
+  });
+
+  it('uses a generic message for a non-Error failure', async () => {
+    api.removeBookFromFolder.mockRejectedValue('nope');
+    const wrapper = mountPanel([], [], BOOK_ID, { folderIds: [FAV.id] }, [FAV]);
+
+    await openFolders(wrapper);
+    await wrapper.get('.folder-option input').trigger('change');
+    await flushPromises();
+
+    expect(wrapper.get('.folder-message').text()).toBe('Failed to update folders');
+  });
+
+  it('ignores a second toggle while the first is still saving', async () => {
+    let resolve!: () => void;
+    api.addBookToFolder.mockReturnValue(new Promise<void>((r) => (resolve = r)));
+    const wrapper = mountPanel([], [], BOOK_ID, {}, [FAV, SUMMER]);
+
+    await openFolders(wrapper);
+    const inputs = wrapper.findAll('.folder-option input');
+    await inputs[0]!.trigger('change');
+    await inputs[1]!.trigger('change');
+    resolve();
+    await flushPromises();
+
+    expect(api.addBookToFolder).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells the reader to create a folder when there are none', async () => {
+    const wrapper = mountPanel();
+
+    await openFolders(wrapper);
+
+    expect(wrapper.get('.folder-empty').text()).toContain('No folders yet');
+  });
+
+  it('resyncs the selection when the book prop changes', async () => {
+    const wrapper = mountPanel([], [], BOOK_ID, {}, [FAV, SUMMER]);
+
+    await wrapper.setProps({ book: { ...makeBook(BOOK_ID, []), folderIds: [SUMMER.id] } });
+
+    expect(wrapper.get('.folder-toggle').text()).toBe('Summer');
+  });
+});
+
+describe('BookReadingPanel tag removal guard', () => {
+  it('ignores a second removal while the first is still saving', async () => {
+    let resolve!: () => void;
+    api.untagBook.mockReturnValue(new Promise<void>((r) => (resolve = r)));
+    const wrapper = mountPanel([AUDIO.id, REREAD.id]);
+
+    await wrapper.get('[aria-label="Remove tag audiobook"]').trigger('click');
+    await wrapper.get('[aria-label="Remove tag reread"]').trigger('click');
+    resolve();
+    await flushPromises();
+
+    expect(api.untagBook).toHaveBeenCalledTimes(1);
   });
 });

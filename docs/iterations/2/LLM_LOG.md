@@ -575,3 +575,40 @@ Implemented the two recovery routes and adapter operations using Supabase's exis
 
 
 Validation: 234 unit/component/router tests and 20 deterministic desktop/mobile browser scenarios pass; production build/typecheck and scoped lint/format checks pass. Full frontend lint/format checks retain the existing config/API-file failures, and the global coverage check reports 86% lines against a 95% gate. Recovery ownership was separated from update permission so expired/consumed sessions cannot bypass cleanup by navigating to private pages. The [recovery guide](../../architecture/password-recovery.md) records exact commands, external setup and live verification gaps.
+---
+
+### 2026-11-17: Frontend test coverage and CI fixes
+
+- **Date:** 2026-11-17
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** testing, ci, frontend
+
+#### Prompt
+```text
+ok, so, in this case, Ii want you to create a pr just to test the coverage step in CI
+-> the frontend lint failed
+-> ok, so, the coverage of frontend is 85%, can you look at ci, see what files and lines we are missing and update the tests?
+```
+
+#### Explanation of Changes
+Opened test PR #161, fixed the frontend lint (`@ts-nocheck`) and Prettier failures that were already on `main`, then read the CI coverage report and added unit tests for the uncovered files (mainly `api.ts`, group and library views). Frontend line coverage went from 85.26% to 99.81%.
+
+### 2026-11-17: README rewrite
+
+- **Date:** 2026-11-17
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs
+
+#### Prompt
+
+```text
+Now, I want you to create a PR to update the readme. Add the description of what is the project. the links of claim.md of each iteration. How the architecture works (book open api, db, server, front), repo structure in tree without explaning outisde the tree and add all make file commands
+```
+
+#### Explanation of Changes
+
+Rewrote `README.md`: project description, iteration CLAIM links, architecture diagram and summary, commented repository tree, short getting-started block and a table of all Makefile targets.

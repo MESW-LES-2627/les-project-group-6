@@ -147,4 +147,18 @@ describe('ActiveSessionView with a server session', () => {
     expect(wrapper.get('.session-error').text()).toContain('Only one reading session');
     wrapper.unmount();
   });
+
+  it('shows the error and stays on the page when finishing fails', async () => {
+    api.finishReadingSession.mockRejectedValue(new Error('Could not save the session'));
+    await router.push('/library');
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper.get('.timer-button--stop').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('.session-error').text()).toContain('Could not save the session');
+    expect(router.currentRoute.value.name).toBe('library');
+    wrapper.unmount();
+  });
 });
