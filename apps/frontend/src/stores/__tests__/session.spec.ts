@@ -1,7 +1,7 @@
 // @req F-READ-01
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/services/api';
-import { browserTimezone, createSession, USERNAME_TAKEN } from '../session';
+import { browserTimezone, createSession, currentUserId, USERNAME_TAKEN } from '../session';
 import { fakeAuth, fakeProfileApi, TEST_ACCOUNT, TEST_ME } from './fake-session';
 
 const NO_METADATA = { ...TEST_ACCOUNT, username: null, displayName: null };
@@ -134,5 +134,63 @@ describe('session store', () => {
     fake.setAccount(null);
 
     expect(session.state.status).toBe('signed-out');
+  });
+
+  it('rethrows any other error while creating the profile', async () => {
+    const api = fakeProfileApi(null);
+    api.createMe = async () => {
+      throw new ApiError('Internal server error', 500);
+    };
+    const session = createSession(fakeAuth(NO_METADATA).auth, api);
+    await session.ensure();
+
+    await expect(
+      session.createProfile({ username: 'ana_reads', displayName: 'Ana' }),
+    ).rejects.toThrow('Internal server error');
+    expect(session.state.status).toBe('profile-required');
+  });
+
+  it('drops the local session when the token expires, but only once', async () => {
+    const { auth } = fakeAuth();
+    const signOut = vi.spyOn(auth, 'signOut');
+    const session = createSession(auth, fakeProfileApi());
+    await session.ensure();
+
+    session.expire();
+    expect(session.state.status).toBe('signed-out');
+    expect(session.state.me).toBeNull();
+    expect(signOut).toHaveBeenCalledTimes(1);
+
+    session.expire();
+    expect(signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a failing Supabase sign-out when the token expires', async () => {
+    const { auth } = fakeAuth();
+    auth.signOut = async () => {
+      throw new Error('offline');
+    };
+    const session = createSession(auth, fakeProfileApi());
+    await session.ensure();
+
+    expect(() => session.expire()).not.toThrow();
+    expect(session.state.status).toBe('signed-out');
+  });
+});
+
+describe('browserTimezone', () => {
+  it('falls back to Lisbon when the browser cannot tell its time zone', () => {
+    const spy = vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(() => {
+      throw new Error('unsupported');
+    });
+
+    expect(browserTimezone()).toBe('Europe/Lisbon');
+    spy.mockRestore();
+  });
+});
+
+describe('currentUserId', () => {
+  it('throws without a signed-in reader', () => {
+    expect(() => currentUserId()).toThrow('No signed-in reader');
   });
 });

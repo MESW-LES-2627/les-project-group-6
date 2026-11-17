@@ -193,4 +193,51 @@ describe('CreateGroupView', () => {
     });
     expect(inviteToGroup.mock.calls.map((c) => c[1]).sort()).toEqual([MAYA.id, JONAH.id].sort());
   });
+
+  it('updates the preview from the challenge period, metric shortcut and fair-play rules', async () => {
+    const wrapper = mountView();
+    const preview = wrapper.get('.glance');
+
+    // Back and forth between the two kinds keeps the challenge fields.
+    await wrapper.findAll('.segment')[1]!.trigger('click');
+    await wrapper.findAll('.segment')[0]!.trigger('click');
+    expect(wrapper.get('#shape-title').text()).toBe('2. Shape the challenge');
+
+    await wrapper.get('#start-date').setValue('2026-12-01');
+    await wrapper.get('#duration').setValue('7');
+    expect(preview.text()).toContain('1–7 December 2026');
+
+    const streak = wrapper.findAll('.chip').find((b) => b.text() === 'Streak')!;
+    await streak.trigger('click');
+    expect(streak.attributes('aria-pressed')).toBe('true');
+    expect(preview.text()).toContain('Winner: longest daily streak');
+
+    const toggle = (label: string) => wrapper.get(`[role="switch"][aria-label="${label}"]`);
+    await toggle('Simple timer').trigger('click');
+    await toggle('Still-reading checks').trigger('click');
+    await toggle('Pause for inactivity').trigger('click');
+    await toggle('Require an end page').trigger('click');
+    await wrapper.get('#daily-cap').setValue('45');
+
+    expect(toggle('Simple timer').attributes('aria-checked')).toBe('false');
+    expect(preview.text()).toContain('No timer · 45 min/day cap');
+    expect(preview.text()).not.toContain('end page required');
+    expect(preview.text()).toContain('Still-reading checks and inactivity pause on');
+  });
+
+  it('deselects an invited friend and shows the chosen picture name', async () => {
+    const wrapper = mountView();
+
+    await wrapper.findAll('.friend')[0]!.trigger('click');
+    expect(wrapper.findAll('.friend')[0]!.attributes('aria-pressed')).toBe('false');
+    expect(wrapper.get('button[type="submit"]').text()).toBe('Create group & send 1 invite');
+
+    const input = wrapper.get('#group-picture');
+    Object.defineProperty(input.element, 'files', {
+      value: [new File(['x'], 'shelf.png', { type: 'image/png' })],
+    });
+    await input.trigger('change');
+
+    expect(wrapper.text()).toContain('shelf.png');
+  });
 });

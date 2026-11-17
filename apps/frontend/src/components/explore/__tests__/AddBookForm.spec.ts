@@ -41,4 +41,28 @@ describe('AddBookForm', () => {
       [{ title: 'Diary', authors: ['Rosa'], pageCount: 120 }],
     ]);
   });
+
+  it('sends the ISBN and description when filled in', async () => {
+    const wrapper = mountForm('Diary');
+    await wrapper.get('#add-book-isbn').setValue(' 9780000000001 ');
+    await wrapper.get('#add-book-description').setValue('  Family notes  ');
+    await wrapper.get('form').trigger('submit');
+
+    expect(wrapper.emitted('submit')).toEqual([
+      [{ title: 'Diary', isbn13: '9780000000001', description: 'Family notes' }],
+    ]);
+  });
+
+  it('shows the error from the parent and emits cancel', async () => {
+    const wrapper = mount(AddBookForm, {
+      props: { initialTitle: 'Diary', saving: true, error: 'Server down' },
+    });
+
+    expect(wrapper.get('[role="alert"]').text()).toBe('Server down');
+    expect(wrapper.get('button[type="submit"]').text()).toBe('Adding…');
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined();
+
+    await wrapper.get('button[type="button"]').trigger('click');
+    expect(wrapper.emitted('cancel')).toHaveLength(1);
+  });
 });

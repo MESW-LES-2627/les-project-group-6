@@ -86,4 +86,26 @@ describe('complete-profile step', () => {
     expect(holder.session.state.status).toBe('signed-out');
     expect(router.currentRoute.value.path).toBe('/login');
   });
+
+  it('sends the edited display name once, even when submitted twice', async () => {
+    let resolve!: () => void;
+    const createMe = vi.spyOn(api, 'createMe').mockImplementation(async (payload) => {
+      await new Promise<void>((r) => (resolve = r));
+      return { ...(await fakeProfileApi().createMe(payload)) };
+    });
+    const { wrapper, router } = await render();
+
+    await wrapper.get('#profile-name').setValue('Eleanor Whitmore');
+    await wrapper.get('#profile-username').setValue('eleanorreads');
+    await wrapper.get('form').trigger('submit');
+    await wrapper.get('form').trigger('submit');
+    resolve();
+    await flushPromises();
+
+    expect(createMe).toHaveBeenCalledTimes(1);
+    expect(createMe).toHaveBeenCalledWith(
+      expect.objectContaining({ username: 'eleanorreads', displayName: 'Eleanor Whitmore' }),
+    );
+    expect(router.currentRoute.value.path).toBe('/home');
+  });
 });
