@@ -6,6 +6,7 @@ import {
 import type { AuthIdentity } from '../auth/auth-provider.js';
 import type { IFriendRepository } from '../friend/friend-repository.js';
 import type { IReadingSessionRepository } from '../reading-session/reading-session-repository.js';
+import type { StreakService } from './streak-service.js';
 import type { IUserRepository } from './user-repository.js';
 import { User, UserId, Username, UsernameTakenError } from './user.js';
 
@@ -62,6 +63,7 @@ export class UserService {
     private readonly users: IUserRepository,
     private readonly friends?: IFriendRepository,
     private readonly sessions?: IReadingSessionRepository,
+    private readonly streaks?: StreakService,
   ) {}
 
   /** Creates the `users` row the first time a Supabase account is used. */
@@ -147,10 +149,23 @@ export class UserService {
 
     let totalMinutes = 0;
     let sessionsCount = 0;
-    if (isVisible && this.sessions) {
-      const stats = await this.sessions.statsForUser(target.id);
-      totalMinutes = stats.totalMinutes;
-      sessionsCount = stats.sessionsCount;
+    let currentStreak = 0;
+    let longestStreak = 0;
+
+    if (isVisible) {
+      if (this.sessions) {
+        const stats = await this.sessions.statsForUser(target.id);
+        totalMinutes = stats.totalMinutes;
+        sessionsCount = stats.sessionsCount;
+      }
+      if (this.streaks) {
+        const streakStatus = await this.streaks.calculateStreakStatus(target.id);
+        currentStreak = streakStatus.currentStreak;
+        longestStreak = streakStatus.longestStreak;
+      } else {
+        currentStreak = target.currentStreak;
+        longestStreak = target.longestStreak;
+      }
     }
 
     return {
@@ -166,8 +181,8 @@ export class UserService {
       isVisible,
       friendshipStatus,
       friendRequestId,
-      currentStreak: isVisible ? target.currentStreak : 0,
-      longestStreak: isVisible ? target.longestStreak : 0,
+      currentStreak,
+      longestStreak,
       totalMinutes,
       sessionsCount,
     };

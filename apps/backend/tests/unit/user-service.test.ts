@@ -2,6 +2,7 @@ import { beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { AuthIdentity } from '../../src/features/auth/auth-provider.js';
 import { Friendship } from '../../src/features/friend/friend.js';
+import type { StreakService } from '../../src/features/user/streak-service.js';
 import { UserService } from '../../src/features/user/user-service.js';
 import {
   Email,
@@ -266,6 +267,24 @@ describe('UserService', () => {
       const profile = await service.getProfileByUsername('target_user', viewer.id.value);
       assert.equal(profile.friendshipStatus, 'friends');
       assert.equal(profile.isVisible, true);
+    });
+
+    test('returns live streak stats when streakService is provided and profile is visible', async () => {
+      const target = await seed('target_user', 'public');
+      const fakeStreakService = {
+        calculateStreakStatus: async () => ({
+          currentStreak: 7,
+          longestStreak: 14,
+          hitStreak: true,
+          streakType: 'daily',
+        }),
+      } as unknown as StreakService;
+
+      const serviceWithStreak = new UserService(users, friends, sessions, fakeStreakService);
+      const profile = await serviceWithStreak.getProfileByUsername('target_user', target.id.value);
+
+      assert.equal(profile.currentStreak, 7);
+      assert.equal(profile.longestStreak, 14);
     });
 
     test('ignores @ prefix and handles case-insensitivity', async () => {

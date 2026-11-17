@@ -8,6 +8,7 @@ import {
 } from '../../src/features/reading-status/reading-state.js';
 import { ProgressNotAllowedError } from '../../src/features/reading-status/reading-status.js';
 import { UserId } from '../../src/features/user/user.js';
+import type { StreakService } from '../../src/features/user/streak-service.js';
 import { NotFoundError } from '../../src/utils/errors.js';
 import {
   InMemoryBookRepository,
@@ -211,5 +212,99 @@ describe('ReadingStatusService', () => {
       NotFoundError,
     );
     assert.strictEqual((await statuses.findById(entry.id))?.status, 'in-progress');
+  });
+
+  describe('streak triggering on page progress', () => {
+    let recordedUsers: string[];
+    let streakService: StreakService;
+    let serviceWithStreak: ReadingStatusService;
+
+    beforeEach(() => {
+      recordedUsers = [];
+      streakService = {
+        recordReadToday: async (userId: UserId) => {
+          recordedUsers.push(userId.value);
+          return { updated: true, currentStreak: 1, longestStreak: 1, hitStreak: true };
+        },
+      } as unknown as StreakService;
+      serviceWithStreak = new ReadingStatusService(statuses, books, streakService);
+    });
+
+    test('triggers streak when setting in-progress with page progress', async () => {
+      await serviceWithStreak.set({
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'in-progress',
+        currentPage: 25,
+      });
+      assert.deepStrictEqual(recordedUsers, [USER_ID]);
+    });
+
+    test('does not trigger streak when setting status other than in-progress', async () => {
+      await serviceWithStreak.set({
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'finished',
+      });
+      assert.deepStrictEqual(recordedUsers, []);
+    });
+
+    test('triggers streak on update when currentPage is higher than previous page', async () => {
+      const entry = await serviceWithStreak.set({
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'in-progress',
+        currentPage: 10,
+      });
+      recordedUsers = [];
+
+      await serviceWithStreak.update({
+        id: entry.id.value,
+        userId: USER_ID,
+        currentPage: 20,
+      });
+      assert.deepStrictEqual(recordedUsers, [USER_ID]);
+    });
+
+    test('does not trigger streak on update when currentPage is same or lower', async () => {
+      const entry = await serviceWithStreak.set({
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'in-progress',
+        currentPage: 50,
+      });
+      recordedUsers = [];
+
+      await serviceWithStreak.update({
+        id: entry.id.value,
+        userId: USER_ID,
+        currentPage: 50,
+      });
+      assert.deepStrictEqual(recordedUsers, []);
+
+      await serviceWithStreak.update({
+        id: entry.id.value,
+        userId: USER_ID,
+        currentPage: 30,
+      });
+      assert.deepStrictEqual(recordedUsers, []);
+    });
+
+    test('does not trigger streak when update does not provide currentPage', async () => {
+      const entry = await serviceWithStreak.set({
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'in-progress',
+        currentPage: 10,
+      });
+      recordedUsers = [];
+
+      await serviceWithStreak.update({
+        id: entry.id.value,
+        userId: USER_ID,
+        startedOn: '2026-11-01',
+      });
+      assert.deepStrictEqual(recordedUsers, []);
+    });
   });
 });

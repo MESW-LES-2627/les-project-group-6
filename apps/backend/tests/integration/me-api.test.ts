@@ -120,7 +120,34 @@ describe('/me API', () => {
 
       const afterSignUp = await send(url, 'GET', '/me', ANA);
       assert.equal(afterSignUp.status, 200);
-      assert.equal(((await afterSignUp.json()) as MeDto).username, 'ana_reads');
+      const me = (await afterSignUp.json()) as MeDto;
+      assert.equal(me.username, 'ana_reads');
+      assert.equal(me.streakType, 'daily');
+      assert.equal(me.currentStreak, 0);
+      assert.equal(me.longestStreak, 0);
+      assert.equal(me.hitStreak, false);
+    });
+  });
+
+  test('GET /me/streak returns 200 with the live streak and calendar', async () => {
+    await withApp(app, async (url) => {
+      await signUpAna(url);
+      const res = await send(url, 'GET', '/me/streak', ANA);
+      assert.equal(res.status, 200);
+      const streak = (await res.json()) as {
+        current: number;
+        longest: number;
+        hitStreak: boolean;
+        streakType: string;
+        freezesLeft: number;
+        days: Array<{ date: string; read: boolean }>;
+      };
+      assert.equal(streak.current, 0);
+      assert.equal(streak.longest, 0);
+      assert.equal(streak.hitStreak, false);
+      assert.equal(streak.streakType, 'daily');
+      assert.equal(streak.freezesLeft, 0);
+      assert.equal(streak.days.length, 28);
     });
   });
 

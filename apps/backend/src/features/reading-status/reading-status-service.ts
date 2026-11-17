@@ -2,6 +2,7 @@ import { InvalidValueError, NotFoundError } from '../../utils/errors.js';
 import { BookId } from '../book/book.js';
 import type { IBookRepository } from '../book/book-repository.js';
 import { UserId } from '../user/user.js';
+import type { StreakService } from '../user/streak-service.js';
 import { ReadingState } from './reading-state.js';
 import { ReadingStatus, ReadingStatusId } from './reading-status.js';
 import type { IReadingStatusRepository } from './reading-status-repository.js';
@@ -31,6 +32,7 @@ export class ReadingStatusService {
   constructor(
     private readonly readingStatuses: IReadingStatusRepository,
     private readonly books: IBookRepository,
+    private readonly streakService?: StreakService,
   ) {}
 
   /** Sets the reader's status for a book, adding the book to their library if needed. */
@@ -46,6 +48,8 @@ export class ReadingStatusService {
       (await this.readingStatuses.findByUserAndBook(userId, bookId)) ??
       ReadingStatus.create(userId, bookId);
 
+    const oldPage = status.progress.page;
+
     status.changeStatus(target, book.pageCount);
     // The whole entry is replaced: the page only applies while the status tracks progress.
     if (command.currentPage !== undefined && status.tracksProgress) {
@@ -56,6 +60,15 @@ export class ReadingStatusService {
     }
 
     await this.readingStatuses.save(status);
+
+    if (
+      status.status === 'in-progress' &&
+      command.currentPage !== undefined &&
+      status.progress.page > oldPage
+    ) {
+      await this.streakService?.recordReadToday(userId);
+    }
+
     return status;
   }
 
@@ -70,6 +83,8 @@ export class ReadingStatusService {
     const book = await this.books.findById(status.bookId);
     if (!book) throw new NotFoundError('Book');
 
+    const oldPage = status.progress.page;
+
     if (command.status !== undefined) {
       status.changeStatus(ReadingState.of(command.status).type, book.pageCount);
     }
@@ -81,6 +96,15 @@ export class ReadingStatusService {
     }
 
     await this.readingStatuses.save(status);
+
+    if (
+      status.status === 'in-progress' &&
+      command.currentPage !== undefined &&
+      status.progress.page > oldPage
+    ) {
+      await this.streakService?.recordReadToday(status.userId);
+    }
+
     return status;
   }
 

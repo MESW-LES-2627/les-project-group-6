@@ -4,6 +4,7 @@ import { Book, type BookId } from '../../src/features/book/book.js';
 import { ReadingStatus } from '../../src/features/reading-status/reading-status.js';
 import type { ReadingStatusService } from '../../src/features/reading-status/reading-status-service.js';
 import type { UserId } from '../../src/features/user/user.js';
+import type { StreakService } from '../../src/features/user/streak-service.js';
 import {
   AnotherSessionActiveError,
   ReadingSessionService,
@@ -178,6 +179,58 @@ describe('ReadingSessionService', () => {
         service.cancel({ id: 'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380a99', userId: USER_ID }),
         NotFoundError,
       );
+    });
+  });
+
+  describe('streak triggering on session finish', () => {
+    test('finishing a reading session records read today on streak service', async () => {
+      let recordedUser: string | null = null;
+      const streakService = {
+        recordReadToday: async (userId: UserId) => {
+          recordedUser = userId.value;
+          return { updated: true, currentStreak: 1, longestStreak: 1, hitStreak: true };
+        },
+      } as unknown as StreakService;
+
+      const sessions = new InMemoryReadingSessionRepository();
+      const serviceWithStreak = new ReadingSessionService(
+        sessions,
+        books,
+        () => now,
+        undefined,
+        streakService,
+      );
+
+      const session = await serviceWithStreak.start({ userId: USER_ID, bookId: book.id.value });
+      advance(15 * 60);
+      await serviceWithStreak.finish({ id: session.id.value, userId: USER_ID });
+
+      assert.strictEqual(recordedUser, USER_ID);
+    });
+
+    test('cancelling a reading session does not record read today', async () => {
+      let recordedUser: string | null = null;
+      const streakService = {
+        recordReadToday: async (userId: UserId) => {
+          recordedUser = userId.value;
+          return { updated: true, currentStreak: 1, longestStreak: 1, hitStreak: true };
+        },
+      } as unknown as StreakService;
+
+      const sessions = new InMemoryReadingSessionRepository();
+      const serviceWithStreak = new ReadingSessionService(
+        sessions,
+        books,
+        () => now,
+        undefined,
+        streakService,
+      );
+
+      const session = await serviceWithStreak.start({ userId: USER_ID, bookId: book.id.value });
+      advance(15 * 60);
+      await serviceWithStreak.cancel({ id: session.id.value, userId: USER_ID });
+
+      assert.strictEqual(recordedUser, null);
     });
   });
 });
