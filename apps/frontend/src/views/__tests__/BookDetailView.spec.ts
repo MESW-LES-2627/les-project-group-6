@@ -1,3 +1,4 @@
+// @req F-BOOK-01 F-EXP-02 F-LIB-03 F-LIB-04
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -125,5 +126,22 @@ describe('BookDetailView', () => {
 
     expect(wrapper.get('.folder-toggle').text()).not.toContain('Autumn reading');
     expect(wrapper.get('.folder-toggle').text()).toContain('All-time favorites • Classics club');
+  });
+
+  it('adds and removes a tag on the book page', async () => {
+    api.getBookReviews.mockResolvedValueOnce(noReviews);
+    const wrapper = await mountView();
+    const chips = () =>
+      wrapper.findAll('.tag-chip').map((chip) => chip.text().replace('×', '').trim());
+    const before = chips();
+
+    await wrapper.get('.tag-input').setValue('Book Club Pick');
+    await wrapper.get('.tag-form').trigger('submit');
+    await flushPromises();
+    expect(chips()).toEqual([...before, 'book club pick']);
+
+    await wrapper.get('[aria-label="Remove tag book club pick"]').trigger('click');
+    await flushPromises();
+    expect(chips()).toEqual(before);
   });
 });

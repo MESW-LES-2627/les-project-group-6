@@ -1,3 +1,4 @@
+// @req F-EXP-01
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import ExploreSearchBar from '../ExploreSearchBar.vue';

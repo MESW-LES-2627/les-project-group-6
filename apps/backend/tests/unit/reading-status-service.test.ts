@@ -1,3 +1,4 @@
+// @req F-LIB-01 F-READ-02
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { ReadingStatusService } from '../../src/features/reading-status/reading-status-service.js';

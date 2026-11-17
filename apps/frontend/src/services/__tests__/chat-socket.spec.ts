@@ -1,3 +1,4 @@
+// @req F-GRP-02
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Listener = (...args: unknown[]) => void;

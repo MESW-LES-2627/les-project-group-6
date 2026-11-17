@@ -1,3 +1,4 @@
+// @req F-AUTH-01
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type SdkResult = { data: { session: object | null }; error: { message: string } | null };

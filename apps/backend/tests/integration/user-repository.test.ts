@@ -1,3 +1,4 @@
+// @req F-AUTH-01
 import { test, describe, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createDb } from '../../src/database/pool.js';

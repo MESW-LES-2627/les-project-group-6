@@ -579,3 +579,59 @@ Implemented live user profile and streak retrieval for the authenticated user on
 3. In `apps/frontend/src/views/__tests__/ProfileView.spec.ts`:
    - Added unit tests for rendering the authenticated user profile and live streak calendar, bringing the total passing frontend unit tests to 191 across 33 test files.
 
+
+### 2026-11-16: Mutation testing and requirement traceability
+
+- **Date:** 2026-11-16
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** testing
+
+#### Prompt
+```text
+ok, so, what other metric we can have other than coverage to have a good grade on tests
+-> do the mutation tests and the traceability
+-> create a pr
+```
+
+#### Explanation of Changes
+Set up Stryker in both apps (`make mutation`), limited to domain, service and store logic. Tagged every test file with the requirement IDs it checks and wrote `scripts/traceability.mjs` (`make traceability`), which reports tests per requirement and layer and lists untested requirements. Added the tagging rule to AGENTS.md.
+
+---
+
+### 2026-11-16: Mutation testing workflow
+
+- **Date:** 2026-11-16
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** testing, ci
+
+#### Prompt
+```text
+ok, so mutation tests apparently takes a lot of time to run, maybe we can can add to a github workflow instead of the ci. The ci will took a lot of time this way
+```
+
+#### Explanation of Changes
+Added `.github/workflows/mutation.yml`: Stryker for backend and frontend on a weekly schedule and manual dispatch, with the incremental file cached, the score per file in the job summary and the report uploaded as an artifact. PR CI is unchanged.
+
+---
+
+### 2026-11-16: Library tags frontend
+
+- **Date:** 2026-11-16
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, testing
+
+#### Prompt
+```text
+I merged the tag changes, why I can't add tags in frontend in my ui?
+-> yes, create a pr for me. be sure to add e2e tests
+```
+
+#### Explanation of Changes
+Found that PR #153 was backend only. Added the tag API client, the add/remove tag editor on the book page, real tags with counts in the library sidebar, unit tests and two Playwright e2e tests for F-LIB-04.
+

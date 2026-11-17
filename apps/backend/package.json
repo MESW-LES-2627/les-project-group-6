@@ -10,6 +10,7 @@
     "start": "node --env-file-if-exists=.env dist/server.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test:mutation": "stryker run",
     "test:coverage": "mkdir -p coverage && tsx --test --test-concurrency=1 --experimental-test-coverage --test-coverage-lines=95 --test-coverage-exclude='tests/**' --test-coverage-exclude='src/database/**' --test-coverage-exclude='src/**/*-dto.ts' --test-coverage-exclude='src/server.ts' --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \"tests/**/*.test.ts\"",
     "test": "tsx --test --test-concurrency=1 \"tests/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@stryker-mutator/core": "^10.1.1",
     "@types/express": "^5.0.6",
     "@types/node": "^24.19.2",
     "@types/pg": "^8.23.1",

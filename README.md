@@ -32,12 +32,16 @@ See the [product vision](docs/sprints/iteration_0/vision.md) and the full [requi
 │   ├── superpowers/specs/
 │   └── sprints/
 ├── .github/
-│   └── workflows/e2e.yml          # e2e suite on main and manual dispatch
+│   └── workflows/
+│       ├── e2e.yml                # e2e suite on main and manual dispatch
+│       └── mutation.yml           # Stryker mutation testing, weekly and manual
 ├── .agents/
 ├── .claude/skills/            # project skills for Claude Code (e.g. oop-ddd-review)
 ├── AGENTS.md
 ├── Makefile
-├── scripts/test-history.sh     # tests vs source files per merged PR (make test-history)
+├── scripts/
+│   ├── test-history.sh        # tests vs source files per merged PR (make test-history)
+│   └── traceability.mjs       # tests per requirement from @req tags (make traceability)
 ├── package.json
 ├── pnpm-workspace.yaml
 ├── pnpm-lock.yaml
@@ -60,7 +64,7 @@ The application source code. Each app is a pnpm workspace with its own `package.
 
 ### Makefile
 
-Shortcuts for the pnpm workspace. `install` and `format` run once at the root; the other targets run each app's own pnpm scripts. Run `make help` to list the targets: `install`, `dev`, `build`, `lint`, `typecheck`, `format`, `format-check`, `test`, `coverage`, `test-history`, `check` (everything CI should run) and `clean`. Add `APP=backend` to limit a target to one app. New folders in `apps/` are picked up automatically, and apps without a given script are skipped.
+Shortcuts for the pnpm workspace. `install` and `format` run once at the root; the other targets run each app's own pnpm scripts. Run `make help` to list the targets: `install`, `dev`, `build`, `lint`, `typecheck`, `format`, `format-check`, `test`, `coverage`, `mutation`, `traceability`, `test-history`, `check` (everything CI should run) and `clean`. Add `APP=backend` to limit a target to one app. New folders in `apps/` are picked up automatically, and apps without a given script are skipped.
 
 ### Root config
 
@@ -203,6 +207,8 @@ To use another port, set `PORT` (for example `PORT=3977 make dev`) or change it 
 | Tests (passes while there are no test files) | `make test` | `pnpm test` |
 | Tests with coverage; fails below 95% of lines, like CI (reports in `apps/<name>/coverage/`; backend integration tests need Postgres) | `make coverage` | `pnpm -r --if-present test:coverage` |
 | Tests vs source files per merged PR | `make test-history` | `./scripts/test-history.sh` |
+| Mutation testing (slow, so not in PR CI: the Mutation workflow runs it weekly; reports in `apps/<name>/reports/mutation/`) | `make mutation` | `pnpm -r --if-present test:mutation` |
+| Tests per requirement | `make traceability` | `node scripts/traceability.mjs` |
 | Remove build output and dependencies | `make clean` | `rm -rf node_modules apps/*/node_modules apps/*/dist` |
 
 Run `make help` to list every target. Add `APP=<name>` to limit a target to one app, for example `make build APP=backend`. The pnpm equivalent is `pnpm --filter @bookmarked/backend <script>`, or `pnpm <script>` from inside `apps/backend`.

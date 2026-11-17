@@ -1,3 +1,4 @@
+// @req F-EXP-04
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { Book } from '../../src/features/book/book.js';

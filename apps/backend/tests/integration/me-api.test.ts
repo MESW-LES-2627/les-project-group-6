@@ -1,3 +1,4 @@
+// @req F-AUTH-01 F-PROF-01
 import { after, beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from '../../src/app.js';

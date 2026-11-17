@@ -1,3 +1,4 @@
+// @req F-GRP-07 F-BOOK-02
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

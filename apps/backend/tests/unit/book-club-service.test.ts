@@ -1,3 +1,4 @@
+// @req F-GRP-07
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { Book } from '../../src/features/book/book.js';
