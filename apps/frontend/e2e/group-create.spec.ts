@@ -7,7 +7,10 @@ test('the new-group form previews the name without creating a group', async ({ p
     page.getByRole('heading', { level: 1, name: 'Start something worth reading for.' }),
   ).toBeVisible();
 
+  // The form starts with a suggested name; an empty name previews as "Untitled group".
   const preview = page.getByRole('complementary', { name: 'Preview' });
+  await expect(preview.getByText('November Pages')).toBeVisible();
+  await page.locator('#group-name').fill('');
   await expect(preview.getByText('Untitled group')).toBeVisible();
 
   await page.locator('#group-name').fill('E2E preview only');
