@@ -1,6 +1,7 @@
 import { eq, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { books, users } from '../../database/schema.js';
+import { authorNamesByBook } from '../book/book-authors-query.js';
 import {
   DrizzleReadingActivityQuery,
   type ReadingActivityQuery,
@@ -30,6 +31,7 @@ export interface ClubStandingView {
 export interface ClubBookView {
   id: string;
   title: string;
+  authors: string[];
   pageCount: number | null;
   coverUrl: string | null;
 }
@@ -89,7 +91,7 @@ export class ClubProgressQuery {
 
   async books(ids: string[]): Promise<ClubBookView[]> {
     if (ids.length === 0) return [];
-    return this.db
+    const rows = await this.db
       .select({
         id: books.id,
         title: books.title,
@@ -98,6 +100,11 @@ export class ClubProgressQuery {
       })
       .from(books)
       .where(inArray(books.id, [...new Set(ids)]));
+    const authorsByBook = await authorNamesByBook(
+      this.db,
+      rows.map((row) => row.id),
+    );
+    return rows.map((row) => ({ ...row, authors: authorsByBook.get(row.id) ?? [] }));
   }
 
   /** Display names by user id. */

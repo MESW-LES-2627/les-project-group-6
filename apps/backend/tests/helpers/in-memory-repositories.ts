@@ -71,7 +71,7 @@ export class InMemoryBookRepository implements IBookRepository {
     return this.books.get(id.value) ?? null;
   }
 
-  // Not fuzzy and title-only (Book has no authors): the integration tests cover real matching.
+  // Not fuzzy and title-only: the integration tests cover real (author) matching.
   async search(query: string, limit: number): Promise<Book[]> {
     const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
     const text = fold(query.trim());
@@ -107,7 +107,7 @@ export class InMemoryBookRepository implements IBookRepository {
     );
   }
 
-  // Authors are ignored: Book has none, and search here is title-only.
+  // The book already carries its authors; search here stays title-only.
   async saveWithAuthors(book: Book): Promise<Book> {
     const existing = book.isbn13 ? await this.findByIsbn(book.isbn13) : null;
     if (existing) return existing;
