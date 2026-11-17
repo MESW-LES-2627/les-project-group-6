@@ -266,3 +266,35 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Tests.** 7 unit tests pass; the integration suite needs Postgres and runs in CI.
 - **Next:** frontend (tag a book on the book page, real tags in the library sidebar filter).
 
+### 2026-11-16: Streak calculation service and backend API triggers (#121, #31, #34, F-READ-04)
+
+- Branch `feat/streak-and-minutes`. Began User Story [#121](https://github.com/MESW-LES-2627/les-project-group-6/issues/121) ("Reading streak and total minutes on my profile").
+- **Backend streak calculation:**
+  - Added [`streak-service.ts`](../../../apps/backend/src/features/user/streak-service.ts) inside `features/user/` encapsulating all streak calculations and database persistence updates.
+  - Implemented the streak roadmap:
+    1. If `hitStreak` is true: streak does not need update.
+    2. If `hitStreak` is false: check if read the day before. If not, sets `hitStreak = true` and `currentStreak = 1`. If yes, sets `hitStreak = true` and increments `currentStreak`.
+    3. Checks `currentStreak` against `longestStreak` and updates `longestStreak = Math.max(longestStreak, currentStreak)`.
+  - Added live status calculation (`calculateStreakStatus`) and 28-day history calculation (`getStreakCalendar`) for `StreakCalendar.vue`.
+  - Added domain methods to [`User`](../../../apps/backend/src/features/user/user.ts): `recordReadingDay(readDayBefore)`, `resetDailyHitStreak()`, and `resetStreak()`.
+  - Extended [`IReadingSessionRepository`](../../../apps/backend/src/features/reading-session/reading-session-repository.ts) with `findCompletedSessions(userId, since)` and implemented in `DrizzleReadingSessionRepository` and `InMemoryReadingSessionRepository`.
+  - Added timezone-aware ISO date utilities in [`calendar.ts`](../../../apps/backend/src/utils/calendar.ts) (`isoDayInTimezone`, `previousIsoDay`, `nextIsoDay`).
+- **Reading triggers & API endpoints:**
+  - In [`reading-status-service.ts`](../../../apps/backend/src/features/reading-status/reading-status-service.ts), triggered `streakService.recordReadToday(userId)` when a book in `in-progress` status has its `currentPage` updated to a higher page.
+  - In [`reading-session-service.ts`](../../../apps/backend/src/features/reading-session/reading-session-service.ts), triggered `streakService.recordReadToday(session.userId)` upon finishing a reading session.
+  - In [`me-routes.ts`](../../../apps/backend/src/features/user/me-routes.ts), exposed dedicated `GET /me/streak` returning live streak metrics and 28-day calendar grid; enhanced `GET /me` and `PATCH /me` with live-evaluated streak fields (`currentStreak`, `longestStreak`, `hitStreak`, `streakType`).
+  - In [`user-service.ts`](../../../apps/backend/src/features/user/user-service.ts), included live `currentStreak` and `longestStreak` on visible user profiles fetched via `GET /users/:username`.
+  - Wired all components together in [`router.ts`](../../../apps/backend/src/api/router.ts) and documented endpoints in [`api_routes.md`](../../architecture/api_routes.md).
+- **Tests:** 23 new unit tests across [`streak-service.test.ts`](../../../apps/backend/tests/unit/streak-service.test.ts), [`reading-status-service.test.ts`](../../../apps/backend/tests/unit/reading-status-service.test.ts), [`reading-session-service.test.ts`](../../../apps/backend/tests/unit/reading-session-service.test.ts), [`user-service.test.ts`](../../../apps/backend/tests/unit/user-service.test.ts), and [`me-routes.test.ts`](../../../apps/backend/tests/unit/me-routes.test.ts). All 278 backend unit tests pass.
+
+### 2026-11-16: Frontend user profile and streaks integration (#121, #54, #60, F-READ-04)
+
+- **Frontend profile & streak integration:**
+  - In [`services/api.ts`](../../../apps/frontend/src/services/api.ts), added `getStreak()` calling `GET /me/streak` with Supabase JWT `Authorization: Bearer` token validation, and updated `ApiMe` with `streakType`, `currentStreak`, `longestStreak`, and `hitStreak`.
+  - In [`views/ProfileView.vue`](../../../apps/frontend/src/views/ProfileView.vue), replaced mock user and streak data with live calls to `getMe()` and `getStreak()`. The profile bookplate displays the authenticated user's name, `@username`, member since date, initials, and bio, while `StreakCalendar.vue` renders the user's 28-day history calendar and live streak numbers.
+  - In [`views/__tests__/ProfileView.spec.ts`](../../../apps/frontend/src/views/__tests__/ProfileView.spec.ts), added unit tests verifying that the logged-in user profile and live streak calendar are displayed from the API responses, and that graceful fallbacks remain intact when offline.
+- **Tests:** All 191 frontend unit tests pass (33 test files).
+
+
+
+
