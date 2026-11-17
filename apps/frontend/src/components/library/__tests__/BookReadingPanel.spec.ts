@@ -3,7 +3,6 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import router from '@/router';
-import { getBookDetail } from '@/mocks/library';
 import type { FolderSummary, LibraryBook, TagSummary } from '@/types/library';
 import BookReadingPanel from '../BookReadingPanel.vue';
 
@@ -35,7 +34,6 @@ const makeBook = (id: string, tagIds: string[]): LibraryBook => ({
   status: 'in-progress',
   pages: 400,
   currentPage: 40,
-  genre: 'Sci-fi',
   summary: '',
   folderIds: [],
   tagIds,
@@ -52,7 +50,7 @@ function mountPanel(
 ) {
   const book = { ...makeBook(id, tagIds), ...overrides };
   return mount(BookReadingPanel, {
-    props: { book, detail: getBookDetail(book), folders, tags },
+    props: { book, folders, tags },
     global: { plugins: [router] },
   });
 }

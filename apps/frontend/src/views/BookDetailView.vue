@@ -7,49 +7,48 @@ import BookReadingPanel from '@/components/library/BookReadingPanel.vue';
 import BookThoughtsPanel from '@/components/library/BookThoughtsPanel.vue';
 import ReadingClubPanel from '@/components/library/ReadingClubPanel.vue';
 import ReviewItem from '@/components/library/ReviewItem.vue';
-import { getBookDetail, mockLibrary } from '@/mocks/library';
 import {
   getBook,
   getBookReviews,
   getLibraryFolders,
   getLibraryTags,
+  getUserBookClubs,
   getUserLibrary,
+  mapApiBookToDetail,
   mapApiBookToLibraryBook,
   mapApiLibraryItemToBook,
   type ApiBookReviews,
   type ApiReview,
 } from '@/services/api';
-import { isSignedIn } from '@/stores/session';
-import type { FolderSummary, LibraryBook, ReadingStatus, TagSummary } from '@/types/library';
+import type {
+  BookDetail,
+  FolderSummary,
+  LibraryBook,
+  ReadingStatus,
+  TagSummary,
+} from '@/types/library';
 
 const props = defineProps<{ bookId: string }>();
 
-const apiBook = ref<LibraryBook | null>(null);
-const folders = ref<FolderSummary[]>(isSignedIn.value ? [] : mockLibrary.folders);
-const tags = ref<TagSummary[]>(isSignedIn.value ? [] : [...mockLibrary.tags]);
-
-const book = computed(() => {
-  if (apiBook.value) return apiBook.value;
-  return mockLibrary.books.find((item) => item.id === props.bookId) ?? null;
-});
-
-const detail = computed(() => (book.value ? getBookDetail(book.value) : null));
+// Everything comes from the API; an unknown book or a failed request shows "Book not found".
+const book = ref<LibraryBook | null>(null);
+const detail = ref<BookDetail | null>(null);
+const folders = ref<FolderSummary[]>([]);
+const tags = ref<TagSummary[]>([]);
 
 async function fetchBookData() {
   try {
-    const libraryItems = await getUserLibrary();
+    const [libraryItems, clubs] = await Promise.all([
+      getUserLibrary(),
+      getUserBookClubs().catch(() => []),
+    ]);
     const item = libraryItems.find((i) => i.book.id === props.bookId);
-    if (item) {
-      apiBook.value = mapApiLibraryItemToBook(item);
-      return;
-    }
-
-    const fetched = await getBook(props.bookId);
-    if (fetched) {
-      apiBook.value = mapApiBookToLibraryBook(fetched);
-    }
+    const source = item?.book ?? (await getBook(props.bookId));
+    book.value = item ? mapApiLibraryItemToBook(item) : mapApiBookToLibraryBook(source);
+    detail.value = mapApiBookToDetail(source, clubs);
   } catch {
-    // Keep mock fallback
+    book.value = null;
+    detail.value = null;
   }
 }
 
@@ -60,14 +59,12 @@ async function loadReviews() {
   try {
     reviews.value = await getBookReviews(props.bookId);
   } catch {
-    // Mock or unknown books have no reviews on the server; show the empty states.
+    // An unknown book has no reviews; show the empty states.
     reviews.value = null;
   }
 }
 
 async function fetchFolders() {
-  if (!isSignedIn.value) return;
-
   try {
     folders.value = await getLibraryFolders();
   } catch {
@@ -76,8 +73,6 @@ async function fetchFolders() {
 }
 
 async function fetchTags() {
-  if (!isSignedIn.value) return;
-
   try {
     tags.value = await getLibraryTags();
   } catch {
@@ -101,29 +96,16 @@ watch(
 );
 
 function onStatusUpdated(updated: { status: ReadingStatus; currentPage: number }) {
-  if (apiBook.value) {
-    apiBook.value = {
-      ...apiBook.value,
-      status: updated.status,
-      currentPage: updated.currentPage,
-    };
-  } else if (book.value) {
-    book.value.status = updated.status;
-    book.value.currentPage = updated.currentPage;
-  }
+  if (!book.value) return;
+  book.value = { ...book.value, status: updated.status, currentPage: updated.currentPage };
 }
 
 function onFoldersUpdated(folderIds: string[]) {
-  if (apiBook.value) {
-    apiBook.value = { ...apiBook.value, folderIds: [...folderIds] };
-  } else if (book.value) {
-    book.value.folderIds = [...folderIds];
-  }
+  if (book.value) book.value = { ...book.value, folderIds: [...folderIds] };
 }
 
-// The mock books are not reactive, so a copy goes into apiBook to re-render.
 function setTagIds(tagIds: string[]) {
-  if (book.value) apiBook.value = { ...book.value, tagIds };
+  if (book.value) book.value = { ...book.value, tagIds };
 }
 
 function onTagAdded(tag: TagSummary) {
@@ -165,7 +147,8 @@ const reviewDate = (review: ApiReview) =>
 const mailtoHref = computed(() => {
   if (!book.value) return '';
   const subject = `A book recommendation: ${book.value.title}`;
-  const body = `I thought you might like ${book.value.title} by ${book.value.author}.`;
+  const by = book.value.author ? ` by ${book.value.author}` : '';
+  const body = `I thought you might like ${book.value.title}${by}.`;
   return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 });
 </script>
@@ -182,7 +165,7 @@ const mailtoHref = computed(() => {
               Book details
             </p>
             <h1 class="hero-title">{{ book.title }}</h1>
-            <p class="subtitle">{{ detail.tagline }}</p>
+            <p v-if="detail.tagline" class="subtitle">{{ detail.tagline }}</p>
           </div>
 
           <a class="send-link" :href="mailtoHref">
@@ -210,7 +193,6 @@ const mailtoHref = computed(() => {
           <div class="main-column">
             <BookReadingPanel
               :book="book"
-              :detail="detail"
               :folders="folders"
               :tags="tags"
               @updated="onStatusUpdated"
@@ -221,7 +203,8 @@ const mailtoHref = computed(() => {
 
             <section class="about-section" aria-labelledby="about-title">
               <h2 id="about-title" class="section-title">About this book</h2>
-              <p class="synopsis">{{ detail.synopsis }}</p>
+              <p v-if="detail.synopsis" class="synopsis">{{ detail.synopsis }}</p>
+              <p v-else class="empty-copy">No description yet.</p>
             </section>
 
             <section class="friends-panel" aria-labelledby="friends-title">

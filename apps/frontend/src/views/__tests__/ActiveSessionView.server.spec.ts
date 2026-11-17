@@ -18,6 +18,9 @@ const server = vi.hoisted(() => ({
 }));
 
 const api = vi.hoisted(() => ({
+  getUserLibrary: vi.fn<() => Promise<unknown[]>>(),
+  getUserGroups: vi.fn<() => Promise<unknown[]>>(),
+  getUserBookClubs: vi.fn<() => Promise<unknown[]>>(),
   getBook: vi.fn<(bookId: string) => Promise<ApiBook>>(),
   startReadingSession: vi.fn<(bookId: string) => Promise<ApiReadingSession>>(),
   finishReadingSession: vi.fn<(sessionId: string) => Promise<ApiReadingSession>>(),
@@ -32,6 +35,7 @@ vi.mock('@/services/api', async (importOriginal) => ({
 const book: ApiBook = {
   id: BOOK_ID,
   title: 'Emma',
+  authors: [],
   description: null,
   isbn13: null,
   pageCount: 474,
@@ -61,6 +65,10 @@ describe('ActiveSessionView with a server session', () => {
   beforeEach(() => {
     server.session = null;
     server.elapsedSeconds = 0;
+    // Not in the library yet: the book comes from the catalogue.
+    api.getUserLibrary.mockResolvedValue([]);
+    api.getUserGroups.mockResolvedValue([]);
+    api.getUserBookClubs.mockResolvedValue([]);
     api.getBook.mockResolvedValue(book);
     api.startReadingSession.mockImplementation(async (bookId: string) => {
       server.session ??= {

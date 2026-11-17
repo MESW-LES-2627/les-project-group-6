@@ -2,53 +2,77 @@
 import { computed, onMounted, ref, watchEffect } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 
+import BookCoverImage from '@/components/library/BookCoverImage.vue';
 import ReadingTimer from '@/components/session/ReadingTimer.vue';
-import { mockLibrary } from '@/mocks/library';
-import { getActiveSession } from '@/mocks/session';
 import {
   cancelReadingSession,
   finishReadingSession,
   getBook,
+  getUserBookClubs,
+  getUserGroups,
+  getUserLibrary,
   mapApiBookToLibraryBook,
+  mapApiLibraryItemToBook,
+  sessionGroupsFor,
   startReadingSession,
   type ApiReadingSession,
 } from '@/services/api';
 import type { LibraryBook } from '@/types/library';
+import type { SessionGroup } from '@/types/session';
 
 const props = defineProps<{ bookId: string }>();
 
-const router = useRouter();
-const apiBook = ref<LibraryBook | null>(null);
-const book = computed(
-  () => apiBook.value ?? mockLibrary.books.find((item) => item.id === props.bookId) ?? null,
-);
+// Fair reading rules the server enforces today (F-READ-01).
+const RULES = [
+  'The server keeps the clock; the time cannot be typed in',
+  'Only finished sessions count towards streaks and groups',
+  'One active session at a time',
+  'Cancelling a session discards its time',
+];
 
-// Mock books keep the design data; real books get a session timed by the server.
+const router = useRouter();
+const book = ref<LibraryBook | null>(null);
 const serverSession = ref<ApiReadingSession | null>(null);
+const groups = ref<SessionGroup[]>([]);
 const sessionError = ref<string | null>(null);
 const busy = ref(false);
+const loading = ref(true);
 
 const session = computed(() => {
-  if (!book.value) return null;
-  const base = getActiveSession(book.value);
-  if (!serverSession.value) return base;
-  const startedAt = new Date(serverSession.value.startedAt);
-  const time = startedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (!book.value || !serverSession.value) return null;
+  const time = new Date(serverSession.value.startedAt).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
   return {
-    ...base,
+    bookId: book.value.id,
     startedAtLabel: `Started at ${time}`,
     startTimeLabel: time,
+    startPage: book.value.currentPage,
     elapsedSeconds: serverSession.value.elapsedSeconds,
+    groups: groups.value,
   };
 });
 
+// The book and the session come from the API; starting resumes a session already
+// running on this book. Groups only add context, so a failure there is ignored.
 onMounted(async () => {
-  if (mockLibrary.books.some((item) => item.id === props.bookId)) return;
   try {
-    apiBook.value = mapApiBookToLibraryBook(await getBook(props.bookId));
+    const item = (await getUserLibrary()).find((entry) => entry.book.id === props.bookId);
+    book.value = item
+      ? mapApiLibraryItemToBook(item)
+      : mapApiBookToLibraryBook(await getBook(props.bookId));
     serverSession.value = await startReadingSession(props.bookId);
   } catch (error) {
-    if (apiBook.value) sessionError.value = (error as Error).message;
+    if (book.value) sessionError.value = (error as Error).message;
+  } finally {
+    loading.value = false;
+  }
+  try {
+    const [challenges, clubs] = await Promise.all([getUserGroups(), getUserBookClubs()]);
+    groups.value = sessionGroupsFor(props.bookId, challenges, clubs);
+  } catch {
+    groups.value = [];
   }
 });
 
@@ -57,15 +81,18 @@ const percentage = ref(0);
 
 watchEffect(() => {
   if (!book.value || !session.value) return;
-  currentPage.value = session.value.currentPage;
-  percentage.value = Math.round((session.value.currentPage / book.value.pages) * 100);
+  currentPage.value = session.value.startPage;
+  percentage.value = Math.round((session.value.startPage / book.value.pages) * 100);
 });
 
 const pagesSinceStart = computed(() =>
   Math.max(0, currentPage.value - (session.value?.startPage ?? 0)),
 );
 
-const eligibleGroupsLabel = computed(() => `${session.value?.groups.length ?? 0} eligible groups`);
+const eligibleGroupsLabel = computed(() => {
+  const count = session.value?.groups.length ?? 0;
+  return `${count} eligible ${count === 1 ? 'group' : 'groups'}`;
+});
 
 function updateFromPage() {
   if (!book.value) return;
@@ -82,11 +109,7 @@ function updateFromPercentage() {
 }
 
 async function stopSession() {
-  if (!book.value) return;
-  if (!serverSession.value) {
-    void router.push({ name: 'book-detail', params: { bookId: book.value.id } });
-    return;
-  }
+  if (!serverSession.value) return;
 
   await whileBusy(async () => {
     await finishReadingSession(serverSession.value!.id);
@@ -96,12 +119,8 @@ async function stopSession() {
 
 /** Discards a session started by mistake; nothing is saved to the profile. */
 async function cancelSession() {
-  if (!book.value) return;
+  if (!book.value || !serverSession.value) return;
   const bookRoute = { name: 'book-detail', params: { bookId: book.value.id } };
-  if (!serverSession.value) {
-    void router.push(bookRoute);
-    return;
-  }
   if (!window.confirm('Cancel this session? The time will not be saved.')) return;
 
   await whileBusy(async () => {
@@ -150,17 +169,15 @@ async function whileBusy(action: () => Promise<void>) {
           <div class="main-stack">
             <section class="session-card" :aria-labelledby="`session-book-${book.id}`">
               <div class="book-row">
-                <img
-                  class="session-cover"
-                  :src="book.detailCover ?? book.cover"
-                  :alt="`Cover of ${book.title}`"
-                />
+                <div class="session-cover">
+                  <BookCoverImage :src="book.detailCover ?? book.cover" :title="book.title" />
+                </div>
 
                 <div class="book-copy">
                   <h2 :id="`session-book-${book.id}`" class="session-book-title">
                     {{ book.title }}
                   </h2>
-                  <p class="session-book-author">{{ book.author }}</p>
+                  <p v-if="book.author" class="session-book-author">{{ book.author }}</p>
                   <span class="one-session">Only one active session at a time</span>
                   <p class="session-meta">
                     {{ session.startedAtLabel }} <span aria-hidden="true">•</span> Start page
@@ -172,7 +189,7 @@ async function whileBusy(action: () => Promise<void>) {
               <p v-if="sessionError" class="session-error" role="alert">{{ sessionError }}</p>
 
               <ReadingTimer
-                :key="serverSession?.id ?? 'mock'"
+                :key="serverSession?.id"
                 :initial-seconds="session.elapsedSeconds"
                 :busy="busy"
                 @stop="stopSession"
@@ -265,34 +282,12 @@ async function whileBusy(action: () => Promise<void>) {
                 </article>
               </div>
               <p v-else class="empty-copy">No active group counts this session.</p>
-
-              <div v-if="session.groups.length > 0" class="profile-note">
-                <span class="profile-icon" aria-hidden="true">
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <circle cx="12" cy="8" r="3.2" />
-                    <path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
-                  </svg>
-                </span>
-                <div>
-                  <p class="profile-title">{{ session.profileTitle }}</p>
-                  <p class="profile-copy">{{ session.profileCopy }}</p>
-                </div>
-              </div>
             </section>
 
             <section class="rules-card" aria-labelledby="rules-title">
               <h2 id="rules-title" class="card-title">Fair reading rules</h2>
               <ul class="rules-list">
-                <li v-for="rule in session.rules" :key="rule">
+                <li v-for="rule in RULES" :key="rule">
                   <svg
                     width="14"
                     height="14"
@@ -309,20 +304,21 @@ async function whileBusy(action: () => Promise<void>) {
                   <span>{{ rule }}</span>
                 </li>
               </ul>
-              <p class="rules-note">{{ session.rulesNote }}</p>
-              <button type="button" class="rules-link">
-                View group rules <span aria-hidden="true">→</span>
-              </button>
             </section>
           </aside>
         </div>
       </template>
 
+      <p v-else-if="loading" class="missing-copy" role="status">Starting your session…</p>
+
       <section v-else class="missing" aria-labelledby="missing-session-title">
         <p class="eyebrow">Reading room <span aria-hidden="true">/</span> Session</p>
-        <h1 id="missing-session-title" class="missing-title">Session not found</h1>
-        <p class="missing-copy">
-          This book isn't on your shelf yet. Go back to the library to start a session.
+        <h1 id="missing-session-title" class="missing-title">
+          {{ book ? 'Session could not start' : 'Session not found' }}
+        </h1>
+        <p v-if="sessionError" class="session-error" role="alert">{{ sessionError }}</p>
+        <p v-else class="missing-copy">
+          This book could not be found. Go back to the library to start a session.
         </p>
         <RouterLink class="button missing-link" :to="{ name: 'library' }">
           Back to library
@@ -444,9 +440,6 @@ async function whileBusy(action: () => Promise<void>) {
   display: block;
   flex: none;
   width: 85px;
-  aspect-ratio: 85 / 126;
-  border-radius: 4px;
-  object-fit: cover;
   box-shadow: var(--shadow-cover);
 }
 
@@ -690,37 +683,6 @@ async function whileBusy(action: () => Promise<void>) {
   line-height: 1.4;
 }
 
-.profile-note {
-  display: grid;
-  grid-template-columns: 14px minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
-  margin-top: 24px;
-  padding: 10px 16px;
-  border-radius: var(--radius-control);
-  background: var(--color-surface-muted);
-}
-
-.profile-icon {
-  display: block;
-  margin-top: 2px;
-  color: var(--color-copper);
-}
-
-.profile-title {
-  margin: 0;
-  font-size: 0.75rem;
-  font-weight: var(--font-weight-semibold);
-  line-height: 1.25;
-}
-
-.profile-copy {
-  margin: 3px 0 0;
-  color: var(--color-text-muted);
-  font-size: 0.6875rem;
-  line-height: 1.45;
-}
-
 .empty-copy {
   margin: 20px 0 0;
   color: var(--color-text-muted);
@@ -748,30 +710,6 @@ async function whileBusy(action: () => Promise<void>) {
 .rules-list svg {
   margin-top: 2px;
   color: var(--color-copper);
-}
-
-.rules-note {
-  margin: 16px 0 0;
-  color: var(--color-text-muted);
-  font-size: 0.625rem;
-  line-height: 1.45;
-}
-
-.rules-link {
-  margin-top: 15px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-copper);
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-}
-
-.rules-link:hover {
-  color: var(--color-primary);
-  text-decoration: underline;
 }
 
 .missing {

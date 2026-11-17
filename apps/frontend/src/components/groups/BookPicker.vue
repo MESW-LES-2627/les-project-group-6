@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 
-import { addBook, authorOf, searchBooks, type ApiBook } from '@/services/api';
+import { addBook, authorLine, searchBooks, type ApiBook } from '@/services/api';
 
 export interface PickedBook {
   id: string;
@@ -96,7 +96,7 @@ function hasExact(): boolean {
             <span class="result-title">{{ book.title }}</span>
             <span class="result-meta">
               {{
-                [authorOf(book.id), book.pageCount ? `${book.pageCount} pages` : '']
+                [authorLine(book.authors), book.pageCount ? `${book.pageCount} pages` : '']
                   .filter(Boolean)
                   .join(' · ')
               }}

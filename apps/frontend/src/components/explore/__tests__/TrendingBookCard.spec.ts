@@ -16,6 +16,7 @@ const router = createRouter({
 const emma = mapApiBookToLibraryBook({
   id: 'b2',
   title: 'Emma',
+  authors: [],
   description: null,
   isbn13: null,
   pageCount: 474,

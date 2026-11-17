@@ -2,14 +2,14 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 
-import { mockLibrary } from '@/mocks/library';
+import { libraryFolders, libraryTags } from '@/__tests__/library-fixtures';
 import LibrarySidebar from '../LibrarySidebar.vue';
 
 function mountSidebar(error: string | null = null) {
   return mount(LibrarySidebar, {
     props: {
-      folders: mockLibrary.folders,
-      tags: mockLibrary.tags,
+      folders: libraryFolders,
+      tags: libraryTags,
       activeFolder: 'autumn',
       activeTag: null,
       error,
