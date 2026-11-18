@@ -138,7 +138,7 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
   if (userRepository) {
     router.use(
       meRoutes(
-        new UserService(userRepository, friendRepository, readingSessionRepository, streakService),
+        new UserService(userRepository, friendRepository, readingSessionRepository),
         authenticated,
         withUser,
         streakService,

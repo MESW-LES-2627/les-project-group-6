@@ -1,4 +1,4 @@
-// @req F-PROF-01
+// @req F-PROF-01 F-READ-04
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -15,7 +15,16 @@ import ProfileView from '../ProfileView.vue';
 const getReadingStats = vi.hoisted(() => vi.fn<() => Promise<ApiReadingStats>>());
 const getStreak = vi.hoisted(() => vi.fn<() => Promise<ApiStreak>>());
 const api = vi.hoisted(() => ({
-  getMe: vi.fn<() => Promise<ApiMe>>(async () => ({ id: 'me-id' }) as ApiMe),
+  getMe: vi.fn<() => Promise<ApiMe>>(async () => ({
+    id: 'me-id',
+    email: 'me@example.com',
+    username: 'me_reads',
+    displayName: 'Me Reads',
+    timezone: 'Europe/Lisbon',
+    photoUrl: null,
+    profileVisibility: 'private',
+    createdAt: '2026-10-01T00:00:00Z',
+  })),
   getUserReviews: vi.fn<(userId: string) => Promise<ApiProfileReview[]>>(async () => []),
 }));
 
@@ -57,13 +66,14 @@ describe('ProfileView reading time', () => {
     expect(readingTime.text()).toContain('Start a reading session');
   });
 
-  it('keeps the mock reading time when the API is unreachable', async () => {
+  it('shows an empty reading time and an error, not mock data, when the API is unreachable', async () => {
     getReadingStats.mockRejectedValueOnce(new Error('offline'));
     const wrapper = mountView();
     await flushPromises();
 
-    expect(wrapper.get('.reading-time .number').text()).toBe('4260');
-    expect(wrapper.get('.reading-time .sessions').text()).toBe('across 96 sessions');
+    expect(wrapper.get('.reading-time .number').text()).toBe('0');
+    expect(wrapper.find('.reading-time .sessions').exists()).toBe(false);
+    expect(wrapper.get('[role="alert"]').text()).toContain('reading stats could not be loaded');
   });
 });
 
@@ -138,7 +148,8 @@ describe('ProfileView logged-in user and streak', () => {
     getStreak.mockResolvedValueOnce({
       current: 8,
       longest: 15,
-      hitStreak: true,
+      readToday: true,
+      lastReadDate: '2026-11-28',
       streakType: 'daily',
       freezesLeft: 0,
       days,
@@ -154,15 +165,36 @@ describe('ProfileView logged-in user and streak', () => {
     expect(readDays.length).toBe(8);
   });
 
-  it('falls back to mock profile and streak when API fails', async () => {
+  it('shows an error and empty streak, not mock data, when the API fails', async () => {
     api.getMe.mockRejectedValueOnce(new Error('Network error'));
     getStreak.mockRejectedValueOnce(new Error('Network error'));
 
     const wrapper = mountView();
     await flushPromises();
 
-    // Eleanor Whitmore is the mock user
-    expect(wrapper.get('.plate .name').text()).toBe('Eleanor Whitmore');
-    expect(wrapper.get('.streak .summary').text()).toContain('12 days, longest 21');
+    // The mock user (Eleanor Whitmore) and mock streak must never be shown as real data.
+    expect(wrapper.find('.plate').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('Eleanor Whitmore');
+    expect(wrapper.get('[role="alert"]').text()).toContain('could not load your profile');
+    expect(wrapper.get('.streak .summary').text()).toContain('No streak yet');
+    expect(wrapper.findAll('.streak .day.read').length).toBe(0);
+  });
+
+  it('shows no error when everything loads', async () => {
+    getReadingStats.mockResolvedValueOnce({ totalMinutes: 0, sessionsCount: 0 });
+    getStreak.mockResolvedValueOnce({
+      current: 0,
+      longest: 0,
+      readToday: false,
+      lastReadDate: null,
+      streakType: 'daily',
+      freezesLeft: 0,
+      days: [],
+    });
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(wrapper.get('.plate .name').text()).toBe('Me Reads');
   });
 });

@@ -1,6 +1,7 @@
 import type { Clock } from '../../utils/clock.js';
+import { DAY_MS, isoDayInTimezone, previousIsoDay } from '../../utils/calendar.js';
 import { NotFoundError } from '../../utils/errors.js';
-import { isoDayInTimezone, previousIsoDay } from '../../utils/calendar.js';
+import { sessionCountsForStreak } from './streak-rules.js';
 import { UserId, type User } from './user.js';
 import type { IUserRepository } from './user-repository.js';
 
@@ -12,7 +13,9 @@ export interface StreakRoadmapResult {
 export interface StreakStatusDto {
   currentStreak: number;
   longestStreak: number;
-  hitStreak: boolean;
+  /** Today already counts for the streak. */
+  readToday: boolean;
+  lastReadDate: string | null;
   streakType: string;
 }
 
@@ -28,6 +31,12 @@ export interface IStreakSessionReader {
   ): Promise<{ endedAt: Date; countedMinutes: number }[]>;
 }
 
+const asUserId = (userId: UserId | string): UserId =>
+  typeof userId === 'string' ? UserId.of(userId) : userId;
+
+// Application service for the daily reading streak (F-READ-04). The streak lives on the
+// user as `currentStreak`, `longestStreak` and `lastReadDate`; callers decide what counts
+// as reading (see streak-rules.ts) and then call `recordReadToday`.
 export class StreakService {
   constructor(
     private readonly users: IUserRepository,
@@ -35,147 +44,84 @@ export class StreakService {
     private readonly now: Clock = () => new Date(),
   ) {}
 
-  /**
-   * Evaluates and updates the streak when a user reads today, following the roadmap:
-   * 1. Check if hitStreak is true
-   *    - If it is, then the streak doesn't need update
-   *    - If it is not, continue to 2
-   * 2. Check if he read the day before
-   *    - If not, set the hit streak and current streak to 1
-   *    - If yes, then update hit streak and increment on the current streak
-   *
-   * PS: When incrementing currentStreak, checks against longestStreak to see if it needs updating.
-   */
+  /** Counts today, in the reader's timezone, as a reading day and saves the streak if it changed. */
   async recordReadToday(
     userId: UserId | string,
-    options?: { readDayBefore?: boolean; referenceDate?: Date },
+    referenceDate?: Date,
   ): Promise<StreakRoadmapResult> {
-    const id = typeof userId === 'string' ? UserId.of(userId) : userId;
-    const user = await this.users.findById(id);
-    if (!user) throw new NotFoundError('User');
+    const user = await this.findUser(asUserId(userId));
+    const today = isoDayInTimezone(referenceDate ?? this.now(), user.timezone);
 
-    const currentTime = options?.referenceDate ?? this.now();
-    const todayStr = isoDayInTimezone(currentTime, user.timezone);
-    const yesterdayStr = previousIsoDay(todayStr);
-
-    let alreadyHitToday = user.hitStreak;
-    let readDayBefore = options?.readDayBefore;
-
-    if (this.sessions) {
-      // Look back 3 days to safely capture sessions across timezone boundaries
-      const windowStart = new Date(currentTime.getTime() - 3 * 24 * 60 * 60 * 1000);
-      const recentSessions = await this.sessions.findCompletedSessions(user.id, windowStart);
-      const datesRead = new Set(
-        recentSessions.map((s) => isoDayInTimezone(s.endedAt, user.timezone)),
-      );
-
-      // Check if user already completed a session today in their timezone
-      alreadyHitToday = alreadyHitToday || datesRead.has(todayStr);
-
-      if (readDayBefore === undefined) {
-        readDayBefore = datesRead.has(yesterdayStr);
-      }
-    }
-
-    // 1. Check if hitStreak is true
-    if (alreadyHitToday) {
-      return { updated: false, user };
-    }
-
-    // 2. Check if he read the day before
-    const didReadDayBefore = Boolean(readDayBefore);
-
-    // Domain update (increments or resets to 1, sets hitStreak, and updates longestStreak)
-    user.recordReadingDay(didReadDayBefore);
-
-    // Database update
-    await this.users.save(user);
-
-    return { updated: true, user };
+    const updated = user.recordReadingDay(today);
+    if (updated) await this.users.save(user);
+    return { updated, user };
   }
 
-  /**
-   * Calculates the current live streak status for a user.
-   * If today has not been read yet, checks if yesterday was read to determine if the streak is still alive.
-   */
+  /** The live streak: 0 once a whole day has passed without reading. */
   async calculateStreakStatus(
     userId: UserId | string,
     referenceDate?: Date,
   ): Promise<StreakStatusDto> {
-    const id = typeof userId === 'string' ? UserId.of(userId) : userId;
-    const user = await this.users.findById(id);
-    if (!user) throw new NotFoundError('User');
+    const user = await this.findUser(asUserId(userId));
+    return StreakService.statusOf(user, referenceDate ?? this.now());
+  }
 
-    const currentTime = referenceDate ?? this.now();
-    const todayStr = isoDayInTimezone(currentTime, user.timezone);
-    const yesterdayStr = previousIsoDay(todayStr);
-
-    let hitToday = user.hitStreak;
-    let readYesterday = false;
-
-    if (this.sessions) {
-      const windowStart = new Date(currentTime.getTime() - 3 * 24 * 60 * 60 * 1000);
-      const recentSessions = await this.sessions.findCompletedSessions(user.id, windowStart);
-      const datesRead = new Set(
-        recentSessions.map((s) => isoDayInTimezone(s.endedAt, user.timezone)),
-      );
-
-      hitToday = hitToday || datesRead.has(todayStr);
-      readYesterday = datesRead.has(yesterdayStr);
-    } else {
-      readYesterday = user.currentStreak > 0;
-    }
-
-    let activeStreak = user.currentStreak;
-    if (!hitToday && !readYesterday) {
-      // Both today and yesterday were missed: streak has lapsed
-      activeStreak = 0;
-    }
-
+  /** The live streak of a user already loaded, without another lookup. */
+  static statusOf(user: User, at: Date): StreakStatusDto {
+    const snapshot = user.streakOn(isoDayInTimezone(at, user.timezone));
     return {
-      currentStreak: activeStreak,
-      longestStreak: user.longestStreak,
-      hitStreak: hitToday,
+      currentStreak: snapshot.currentStreak,
+      longestStreak: snapshot.longestStreak,
+      readToday: snapshot.readToday,
+      lastReadDate: user.lastReadDate,
       streakType: user.streakType,
     };
   }
 
   /**
-   * Calculates the 28-day reading activity calendar grid for StreakCalendar.vue.
+   * The last `daysCount` days (oldest first) for StreakCalendar.vue. A day is read when it
+   * had a session of 5+ minutes or belongs to the current run of the streak, which also
+   * covers days counted from page progress or finishing a book.
    */
   async getStreakCalendar(
     userId: UserId | string,
     daysCount = 28,
     referenceDate?: Date,
   ): Promise<StreakDayDto[]> {
-    const id = typeof userId === 'string' ? UserId.of(userId) : userId;
+    const user = await this.findUser(asUserId(userId));
+    const currentTime = referenceDate ?? this.now();
+    const today = isoDayInTimezone(currentTime, user.timezone);
+
+    const dates: string[] = [];
+    for (let day = today, i = 0; i < daysCount; i++, day = previousIsoDay(day)) {
+      dates.unshift(day);
+    }
+
+    const readDates = new Set<string>();
+    if (this.sessions) {
+      // One extra day on each side absorbs the reader's UTC offset.
+      const since = new Date(currentTime.getTime() - (daysCount + 1) * DAY_MS);
+      for (const session of await this.sessions.findCompletedSessions(user.id, since)) {
+        if (sessionCountsForStreak(session.countedMinutes)) {
+          readDates.add(isoDayInTimezone(session.endedAt, user.timezone));
+        }
+      }
+    }
+    // The current run: `currentStreak` consecutive days ending on `lastReadDate`.
+    for (
+      let day = user.lastReadDate, i = 0;
+      day !== null && i < Math.min(user.currentStreak, daysCount);
+      i++, day = previousIsoDay(day)
+    ) {
+      readDates.add(day);
+    }
+
+    return dates.map((date) => ({ date, read: readDates.has(date) }));
+  }
+
+  private async findUser(id: UserId): Promise<User> {
     const user = await this.users.findById(id);
     if (!user) throw new NotFoundError('User');
-
-    const currentTime = referenceDate ?? this.now();
-    const todayStr = isoDayInTimezone(currentTime, user.timezone);
-
-    // Collect all dates from (today - (daysCount - 1)) to today
-    const dates: string[] = [];
-    let curr = todayStr;
-    for (let i = 0; i < daysCount; i++) {
-      dates.unshift(curr);
-      curr = previousIsoDay(curr);
-    }
-
-    let readDates = new Set<string>();
-    if (this.sessions) {
-      const windowStart = new Date(currentTime.getTime() - (daysCount + 3) * 24 * 60 * 60 * 1000);
-      const completedSessions = await this.sessions.findCompletedSessions(user.id, windowStart);
-      readDates = new Set(completedSessions.map((s) => isoDayInTimezone(s.endedAt, user.timezone)));
-    }
-    if (user.hitStreak) {
-      readDates.add(todayStr);
-    }
-
-    return dates.map((date) => ({
-      date,
-      read: readDates.has(date),
-    }));
+    return user;
   }
 }

@@ -1,9 +1,8 @@
-// @req F-AUTH-01
+// @req F-AUTH-01 F-READ-04
 import { beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { AuthIdentity } from '../../src/features/auth/auth-provider.js';
 import { Friendship } from '../../src/features/friend/friend.js';
-import type { StreakService } from '../../src/features/user/streak-service.js';
 import { UserService } from '../../src/features/user/user-service.js';
 import {
   Email,
@@ -270,22 +269,22 @@ describe('UserService', () => {
       assert.equal(profile.isVisible, true);
     });
 
-    test('returns live streak stats when streakService is provided and profile is visible', async () => {
+    test('returns the live streak of a visible profile', async () => {
       const target = await seed('target_user', 'public');
-      const fakeStreakService = {
-        calculateStreakStatus: async () => ({
-          currentStreak: 7,
-          longestStreak: 14,
-          hitStreak: true,
-          streakType: 'daily',
-        }),
-      } as unknown as StreakService;
+      target.recordReadingDay('2026-11-15');
+      target.recordReadingDay('2026-11-16');
+      await users.save(target);
 
-      const serviceWithStreak = new UserService(users, friends, sessions, fakeStreakService);
-      const profile = await serviceWithStreak.getProfileByUsername('target_user', target.id.value);
+      const onDay = (day: string) =>
+        new UserService(users, friends, sessions, () => new Date(`${day}T12:00:00Z`));
 
-      assert.equal(profile.currentStreak, 7);
-      assert.equal(profile.longestStreak, 14);
+      const alive = await onDay('2026-11-17').getProfileByUsername('target_user', target.id.value);
+      assert.equal(alive.currentStreak, 2);
+      assert.equal(alive.longestStreak, 2);
+
+      const broken = await onDay('2026-11-18').getProfileByUsername('target_user', target.id.value);
+      assert.equal(broken.currentStreak, 0);
+      assert.equal(broken.longestStreak, 2);
     });
 
     test('ignores @ prefix and handles case-insensitivity', async () => {

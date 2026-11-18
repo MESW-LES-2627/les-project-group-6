@@ -6,7 +6,8 @@ import {
 import type { AuthIdentity } from '../auth/auth-provider.js';
 import type { IFriendRepository } from '../friend/friend-repository.js';
 import type { IReadingSessionRepository } from '../reading-session/reading-session-repository.js';
-import type { StreakService } from './streak-service.js';
+import type { Clock } from '../../utils/clock.js';
+import { StreakService } from './streak-service.js';
 import type { IUserRepository } from './user-repository.js';
 import { User, UserId, Username, UsernameTakenError } from './user.js';
 
@@ -63,7 +64,7 @@ export class UserService {
     private readonly users: IUserRepository,
     private readonly friends?: IFriendRepository,
     private readonly sessions?: IReadingSessionRepository,
-    private readonly streaks?: StreakService,
+    private readonly now: Clock = () => new Date(),
   ) {}
 
   /** Creates the `users` row the first time a Supabase account is used. */
@@ -158,14 +159,9 @@ export class UserService {
         totalMinutes = stats.totalMinutes;
         sessionsCount = stats.sessionsCount;
       }
-      if (this.streaks) {
-        const streakStatus = await this.streaks.calculateStreakStatus(target.id);
-        currentStreak = streakStatus.currentStreak;
-        longestStreak = streakStatus.longestStreak;
-      } else {
-        currentStreak = target.currentStreak;
-        longestStreak = target.longestStreak;
-      }
+      const streak = StreakService.statusOf(target, this.now());
+      currentStreak = streak.currentStreak;
+      longestStreak = streak.longestStreak;
     }
 
     return {

@@ -635,3 +635,31 @@ I merged the tag changes, why I can't add tags in frontend in my ui?
 #### Explanation of Changes
 Found that PR #153 was backend only. Added the tag API client, the add/remove tag editor on the book page, real tags with counts in the library sidebar, unit tests and two Playwright e2e tests for F-LIB-04.
 
+### 2026-11-18: Streak rework after the PR #160 review
+
+- **Date:** 2026-11-18
+- **Author:** Vasco
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database, frontend, testing, docs
+
+#### Prompt
+```text
+Hey there, this is PR 160 to close issue 121, can you check the comments left on the PR regarding some issues and check them out for context, dont alter anything yet
+
+Yes, reform it to a last day read, need to alter both the populate seed but also the database in itself. Also, make sure to count the reading minutes, the only ones that should trigger the streak to be updated is a session of 5 minutes or more or changing the reading status:
+
+1. Book is selected as reading and pages read updated increasing 5 or more.
+2. Book is selected as reading and it is then set as completed.
+
+This is to avoid users not getting streak counted even though they read and just didnt have the app opened. Update on the documents that reference this and make sure everything in the PR nad the comment are corrected.
+```
+
+#### Explanation of Changes
+Fixed the two blocking bugs from the PR #160 review (streak stuck at 1) and the minor points:
+1. Replaced the `hit_streak` flag with `last_read_date` on `User` (`recordReadingDay(today)`, `streakOn(today)`), with migration `0013_streak_last_read_date` (add, backfill, drop) and updated `schema.ts`, `schema.sql` and the seed.
+2. Added `streak-rules.ts`: a session counts from 5 counted minutes; a status change counts when a book in progress moves forward 5+ pages or goes to finished. Applied in `ReadingSessionService.finish` and `ReadingStatusService.set/update`.
+3. Simplified `StreakService` (no session lookup to decide the update) and made `GET /me`, `PATCH /me` and `GET /users/:username` use the same live streak. `hitStreak` became `readToday`.
+4. `ProfileView.vue` shows an empty state and an error instead of mock data when the API fails.
+5. Tests: multi-day regression, `finish` saving before the streak check, the 5-minute and 5-page limits, `@req F-READ-04` tags, and an e2e test. Docs: `infra.md`, `api_routes.md`, `requirements.md`, `features_priority.md`, the e2e README and the iteration log.
+

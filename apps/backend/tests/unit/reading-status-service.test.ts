@@ -1,4 +1,4 @@
-// @req F-LIB-01 F-READ-02
+// @req F-LIB-01 F-READ-02 F-READ-04
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { ReadingStatusService } from '../../src/features/reading-status/reading-status-service.js';
@@ -215,91 +215,88 @@ describe('ReadingStatusService', () => {
     assert.strictEqual((await statuses.findById(entry.id))?.status, 'in-progress');
   });
 
-  describe('streak triggering on page progress', () => {
+  describe('streak triggering on reading progress (F-READ-04)', () => {
     let recordedUsers: string[];
-    let streakService: StreakService;
     let serviceWithStreak: ReadingStatusService;
 
     beforeEach(() => {
       recordedUsers = [];
-      streakService = {
+      const streakService = {
         recordReadToday: async (userId: UserId) => {
           recordedUsers.push(userId.value);
-          return { updated: true, currentStreak: 1, longestStreak: 1, hitStreak: true };
         },
       } as unknown as StreakService;
       serviceWithStreak = new ReadingStatusService(statuses, books, streakService);
     });
 
-    test('triggers streak when setting in-progress with page progress', async () => {
+    const startReading = async (currentPage: number) => {
+      const entry = await serviceWithStreak.set({
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'in-progress',
+        currentPage,
+      });
+      recordedUsers = [];
+      return entry;
+    };
+
+    test('starting a book, even at a later page, does not count', async () => {
       await serviceWithStreak.set({
         userId: USER_ID,
         bookId: book.id.value,
         status: 'in-progress',
         currentPage: 25,
       });
+      assert.deepStrictEqual(recordedUsers, []);
+    });
+
+    test('marking a book finished that was never being read does not count', async () => {
+      await serviceWithStreak.set({ userId: USER_ID, bookId: book.id.value, status: 'finished' });
+      assert.deepStrictEqual(recordedUsers, []);
+    });
+
+    test('update counts when the page moves forward by 5 or more', async () => {
+      const entry = await startReading(10);
+      await serviceWithStreak.update({ id: entry.id.value, userId: USER_ID, currentPage: 15 });
       assert.deepStrictEqual(recordedUsers, [USER_ID]);
     });
 
-    test('does not trigger streak when setting status other than in-progress', async () => {
+    test('set counts when the page moves forward by 5 or more', async () => {
+      await startReading(10);
       await serviceWithStreak.set({
         userId: USER_ID,
         bookId: book.id.value,
-        status: 'finished',
-      });
-      assert.deepStrictEqual(recordedUsers, []);
-    });
-
-    test('triggers streak on update when currentPage is higher than previous page', async () => {
-      const entry = await serviceWithStreak.set({
-        userId: USER_ID,
-        bookId: book.id.value,
         status: 'in-progress',
-        currentPage: 10,
-      });
-      recordedUsers = [];
-
-      await serviceWithStreak.update({
-        id: entry.id.value,
-        userId: USER_ID,
-        currentPage: 20,
+        currentPage: 40,
       });
       assert.deepStrictEqual(recordedUsers, [USER_ID]);
     });
 
-    test('does not trigger streak on update when currentPage is same or lower', async () => {
-      const entry = await serviceWithStreak.set({
-        userId: USER_ID,
-        bookId: book.id.value,
-        status: 'in-progress',
-        currentPage: 50,
-      });
-      recordedUsers = [];
-
-      await serviceWithStreak.update({
-        id: entry.id.value,
-        userId: USER_ID,
-        currentPage: 50,
-      });
+    test('moving forward by less than 5 pages, or backwards, does not count', async () => {
+      const entry = await startReading(50);
+      await serviceWithStreak.update({ id: entry.id.value, userId: USER_ID, currentPage: 54 });
+      await serviceWithStreak.update({ id: entry.id.value, userId: USER_ID, currentPage: 30 });
       assert.deepStrictEqual(recordedUsers, []);
+    });
 
+    test('finishing a book that was being read counts', async () => {
+      const entry = await startReading(600);
+      await serviceWithStreak.update({ id: entry.id.value, userId: USER_ID, status: 'finished' });
+      assert.deepStrictEqual(recordedUsers, [USER_ID]);
+    });
+
+    test('abandoning a book does not count', async () => {
+      const entry = await startReading(100);
       await serviceWithStreak.update({
         id: entry.id.value,
         userId: USER_ID,
-        currentPage: 30,
+        status: 'did-not-finish',
       });
       assert.deepStrictEqual(recordedUsers, []);
     });
 
-    test('does not trigger streak when update does not provide currentPage', async () => {
-      const entry = await serviceWithStreak.set({
-        userId: USER_ID,
-        bookId: book.id.value,
-        status: 'in-progress',
-        currentPage: 10,
-      });
-      recordedUsers = [];
-
+    test('changing only the dates does not count', async () => {
+      const entry = await startReading(10);
       await serviceWithStreak.update({
         id: entry.id.value,
         userId: USER_ID,

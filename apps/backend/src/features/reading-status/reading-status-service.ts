@@ -3,6 +3,7 @@ import { BookId } from '../book/book.js';
 import type { IBookRepository } from '../book/book-repository.js';
 import { UserId } from '../user/user.js';
 import type { StreakService } from '../user/streak-service.js';
+import { progressCountsForStreak, type ReadingSnapshot } from '../user/streak-rules.js';
 import { ReadingState } from './reading-state.js';
 import { ReadingStatus, ReadingStatusId } from './reading-status.js';
 import type { IReadingStatusRepository } from './reading-status-repository.js';
@@ -27,6 +28,11 @@ export interface UpdateReadingStatusCommand {
   finishedOn?: string | null;
 }
 
+const snapshotOf = (status: ReadingStatus): ReadingSnapshot => ({
+  status: status.status,
+  page: status.progress.page,
+});
+
 // Application service: one method per use case on the reader's library.
 export class ReadingStatusService {
   constructor(
@@ -48,7 +54,7 @@ export class ReadingStatusService {
       (await this.readingStatuses.findByUserAndBook(userId, bookId)) ??
       ReadingStatus.create(userId, bookId);
 
-    const oldPage = status.progress.page;
+    const before = snapshotOf(status);
 
     status.changeStatus(target, book.pageCount);
     // The whole entry is replaced: the page only applies while the status tracks progress.
@@ -60,15 +66,7 @@ export class ReadingStatusService {
     }
 
     await this.readingStatuses.save(status);
-
-    if (
-      status.status === 'in-progress' &&
-      command.currentPage !== undefined &&
-      status.progress.page > oldPage
-    ) {
-      await this.streakService?.recordReadToday(userId);
-    }
-
+    await this.recordStreak(before, status);
     return status;
   }
 
@@ -83,7 +81,7 @@ export class ReadingStatusService {
     const book = await this.books.findById(status.bookId);
     if (!book) throw new NotFoundError('Book');
 
-    const oldPage = status.progress.page;
+    const before = snapshotOf(status);
 
     if (command.status !== undefined) {
       status.changeStatus(ReadingState.of(command.status).type, book.pageCount);
@@ -96,15 +94,7 @@ export class ReadingStatusService {
     }
 
     await this.readingStatuses.save(status);
-
-    if (
-      status.status === 'in-progress' &&
-      command.currentPage !== undefined &&
-      status.progress.page > oldPage
-    ) {
-      await this.streakService?.recordReadToday(status.userId);
-    }
-
+    await this.recordStreak(before, status);
     return status;
   }
 
@@ -142,6 +132,13 @@ export class ReadingStatusService {
     }
 
     return status;
+  }
+
+  /** Reading away from the app still counts: see `progressCountsForStreak` (F-READ-04). */
+  private async recordStreak(before: ReadingSnapshot, status: ReadingStatus): Promise<void> {
+    if (progressCountsForStreak(before, snapshotOf(status))) {
+      await this.streakService?.recordReadToday(status.userId);
+    }
   }
 
   private findEntry(command: UpdateReadingStatusCommand): Promise<ReadingStatus | null> {

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { parseIsoDay, previousIsoDay } from '../../utils/calendar.js';
 import { BusinessRuleViolationError, InvalidValueError } from '../../utils/errors.js';
 import { Uuid } from '../../utils/uuid.js';
 
@@ -101,8 +102,16 @@ export interface UserState {
   streakType: string;
   currentStreak: number;
   longestStreak: number;
-  hitStreak: boolean;
+  /** Last calendar day (`YYYY-MM-DD`, in the reader's timezone) that counted for the streak. */
+  lastReadDate: string | null;
   createdAt: Date;
+}
+
+/** The streak as seen on a given day: a streak is alive while the reader read today or yesterday. */
+export interface StreakSnapshot {
+  currentStreak: number;
+  longestStreak: number;
+  readToday: boolean;
 }
 
 export class User {
@@ -117,7 +126,7 @@ export class User {
   private _streakType: string;
   private _currentStreak: number;
   private _longestStreak: number;
-  private _hitStreak: boolean;
+  private _lastReadDate: string | null;
   readonly createdAt: Date;
 
   private constructor(state: UserState) {
@@ -132,7 +141,7 @@ export class User {
     this._streakType = state.streakType;
     this._currentStreak = state.currentStreak;
     this._longestStreak = state.longestStreak;
-    this._hitStreak = state.hitStreak;
+    this._lastReadDate = state.lastReadDate;
     this.createdAt = state.createdAt;
   }
 
@@ -150,7 +159,7 @@ export class User {
       streakType: 'daily',
       currentStreak: 0,
       longestStreak: 0,
-      hitStreak: false,
+      lastReadDate: null,
       createdAt: new Date(),
     });
   }
@@ -184,8 +193,8 @@ export class User {
     return this._longestStreak;
   }
 
-  get hitStreak(): boolean {
-    return this._hitStreak;
+  get lastReadDate(): string | null {
+    return this._lastReadDate;
   }
 
   rename(displayName: string): void {
@@ -205,43 +214,35 @@ export class User {
   }
 
   /**
-   * Applies the daily reading streak roadmap when a user reads:
-   * 1. Check if hitStreak is true:
-   *    - If it is, then the streak doesn't need update (returns false).
-   * 2. Check if he read the day before:
-   *    - If not, set the hit streak and current streak to 1.
-   *    - If yes, then update hit streak and increment on the current streak.
-   *
-   * PS: When incrementing currentStreak, check against longestStreak to see if it needs updating.
+   * Counts `today` (`YYYY-MM-DD` in the reader's timezone) as a reading day (F-READ-04):
+   * - already counted today: nothing changes;
+   * - last counted yesterday: the streak grows by one;
+   * - otherwise (first read, or a day was missed): the streak restarts at 1.
+   * The longest streak keeps its best value. Returns whether anything changed.
    */
-  recordReadingDay(readDayBefore: boolean): boolean {
-    if (this._hitStreak) {
-      return false;
-    }
+  recordReadingDay(today: string): boolean {
+    if (!parseIsoDay(today)) throw new InvalidValueError(`Invalid reading day: ${today}`);
+    if (this._lastReadDate === today) return false;
 
-    if (readDayBefore) {
-      this._currentStreak += 1;
-    } else {
-      this._currentStreak = 1;
-    }
-
-    this._hitStreak = true;
-    if (this._currentStreak > this._longestStreak) {
-      this._longestStreak = this._currentStreak;
-    }
-
+    this._currentStreak =
+      this._lastReadDate === previousIsoDay(today) ? this._currentStreak + 1 : 1;
+    this._longestStreak = Math.max(this._longestStreak, this._currentStreak);
+    this._lastReadDate = today;
     return true;
   }
 
-  /** Resets hitStreak for a new day before today's reading is logged. */
-  resetDailyHitStreak(): void {
-    this._hitStreak = false;
-  }
-
-  /** Marks the streak as lapsed if a day was missed without reading. */
-  resetStreak(): void {
-    this._currentStreak = 0;
-    this._hitStreak = false;
+  /**
+   * The streak as it stands on `today`: the stored streak is still alive when the last
+   * reading day is today or yesterday, and is 0 once a whole day has been missed.
+   */
+  streakOn(today: string): StreakSnapshot {
+    const readToday = this._lastReadDate === today;
+    const alive = readToday || this._lastReadDate === previousIsoDay(today);
+    return {
+      currentStreak: alive ? this._currentStreak : 0,
+      longestStreak: this._longestStreak,
+      readToday,
+    };
   }
 
   private static validDisplayName(raw: string): string {

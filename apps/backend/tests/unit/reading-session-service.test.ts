@@ -1,4 +1,4 @@
-// @req F-READ-01
+// @req F-READ-01 F-READ-04
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { Book, type BookId } from '../../src/features/book/book.js';
@@ -183,55 +183,49 @@ describe('ReadingSessionService', () => {
     });
   });
 
-  describe('streak triggering on session finish', () => {
-    test('finishing a reading session records read today on streak service', async () => {
-      let recordedUser: string | null = null;
+  describe('streak triggering on session finish (F-READ-04)', () => {
+    let recorded: { userId: string; at: Date | undefined }[];
+    let serviceWithStreak: ReadingSessionService;
+
+    beforeEach(() => {
+      recorded = [];
       const streakService = {
-        recordReadToday: async (userId: UserId) => {
-          recordedUser = userId.value;
-          return { updated: true, currentStreak: 1, longestStreak: 1, hitStreak: true };
+        recordReadToday: async (userId: UserId, at?: Date) => {
+          recorded.push({ userId: userId.value, at });
         },
       } as unknown as StreakService;
-
-      const sessions = new InMemoryReadingSessionRepository();
-      const serviceWithStreak = new ReadingSessionService(
-        sessions,
+      serviceWithStreak = new ReadingSessionService(
+        new InMemoryReadingSessionRepository(),
         books,
         () => now,
         undefined,
         streakService,
       );
-
-      const session = await serviceWithStreak.start({ userId: USER_ID, bookId: book.id.value });
-      advance(15 * 60);
-      await serviceWithStreak.finish({ id: session.id.value, userId: USER_ID });
-
-      assert.strictEqual(recordedUser, USER_ID);
     });
 
-    test('cancelling a reading session does not record read today', async () => {
-      let recordedUser: string | null = null;
-      const streakService = {
-        recordReadToday: async (userId: UserId) => {
-          recordedUser = userId.value;
-          return { updated: true, currentStreak: 1, longestStreak: 1, hitStreak: true };
-        },
-      } as unknown as StreakService;
-
-      const sessions = new InMemoryReadingSessionRepository();
-      const serviceWithStreak = new ReadingSessionService(
-        sessions,
-        books,
-        () => now,
-        undefined,
-        streakService,
-      );
-
+    const readFor = async (minutes: number) => {
       const session = await serviceWithStreak.start({ userId: USER_ID, bookId: book.id.value });
-      advance(15 * 60);
-      await serviceWithStreak.cancel({ id: session.id.value, userId: USER_ID });
+      advance(minutes * 60);
+      return session;
+    };
 
-      assert.strictEqual(recordedUser, null);
+    test('a session of 5 minutes or more counts on the day it ended', async () => {
+      const session = await readFor(5);
+      await serviceWithStreak.finish({ id: session.id.value, userId: USER_ID });
+      assert.deepStrictEqual(recorded, [{ userId: USER_ID, at: now }]);
+    });
+
+    test('a session shorter than 5 minutes does not count', async () => {
+      const session = await readFor(4);
+      advance(59);
+      await serviceWithStreak.finish({ id: session.id.value, userId: USER_ID });
+      assert.deepStrictEqual(recorded, []);
+    });
+
+    test('a cancelled session does not count', async () => {
+      const session = await readFor(15);
+      await serviceWithStreak.cancel({ id: session.id.value, userId: USER_ID });
+      assert.deepStrictEqual(recorded, []);
     });
   });
 });

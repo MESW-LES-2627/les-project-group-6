@@ -86,9 +86,11 @@ export interface ApiMe {
   profileVisibility: string;
   createdAt: string;
   streakType?: string;
+  /** Live streak: 0 once a whole day was missed (F-READ-04). */
   currentStreak?: number;
   longestStreak?: number;
-  hitStreak?: boolean;
+  /** Today already counts for the streak. */
+  readToday?: boolean;
 }
 
 export interface ApiStreakDay {
@@ -99,7 +101,10 @@ export interface ApiStreakDay {
 export interface ApiStreak {
   current: number;
   longest: number;
-  hitStreak: boolean;
+  /** Today already counts for the streak. */
+  readToday: boolean;
+  /** Last day (YYYY-MM-DD, reader's timezone) that counted, or null before the first one. */
+  lastReadDate: string | null;
   streakType: string;
   freezesLeft: number;
   days: ApiStreakDay[];

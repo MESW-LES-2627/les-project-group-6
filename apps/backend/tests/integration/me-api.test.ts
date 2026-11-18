@@ -1,4 +1,4 @@
-// @req F-AUTH-01 F-PROF-01
+// @req F-AUTH-01 F-PROF-01 F-READ-04
 import { after, beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from '../../src/app.js';
@@ -126,7 +126,7 @@ describe('/me API', () => {
       assert.equal(me.streakType, 'daily');
       assert.equal(me.currentStreak, 0);
       assert.equal(me.longestStreak, 0);
-      assert.equal(me.hitStreak, false);
+      assert.equal(me.readToday, false);
     });
   });
 
@@ -138,14 +138,16 @@ describe('/me API', () => {
       const streak = (await res.json()) as {
         current: number;
         longest: number;
-        hitStreak: boolean;
+        readToday: boolean;
+        lastReadDate: string | null;
         streakType: string;
         freezesLeft: number;
         days: Array<{ date: string; read: boolean }>;
       };
       assert.equal(streak.current, 0);
       assert.equal(streak.longest, 0);
-      assert.equal(streak.hitStreak, false);
+      assert.equal(streak.readToday, false);
+      assert.equal(streak.lastReadDate, null);
       assert.equal(streak.streakType, 'daily');
       assert.equal(streak.freezesLeft, 0);
       assert.equal(streak.days.length, 28);
