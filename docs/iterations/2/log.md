@@ -14,7 +14,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115). The Library's **Add book** opens a search/manual modal and shelves the book as "Not started" |
 | Library folders (#125, F-LIB-03) | Folder create/rename/delete and book membership behind the auth middleware, reusing `lists`/`list_books` (migration 0011); frontend sidebar CRUD and a book-page picker. Branch `feat/125-organize-library` |
 | Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with search-as-you-type (fuzzy title, author and ISBN via `pg_trgm`, `GET /book?q=`) and Trending / Most read this week lists, `GET /explore`, migrations 0008–0009. Explore page merged in PR #141, fuzzy search in PR #142. Open Library fallback (#120) in PR #144; manual add of a missing book (#120, F-BOOK-02) from the search results |
-| E2E tests (#127) | 13 Playwright tests and the `e2e.yml` workflow written, not run yet (fixtures and secrets missing) |
+| E2E tests (#127) | 16 Playwright tests and the `e2e.yml` workflow written, not run yet (fixtures and secrets missing) |
 | Reviews (#122, F-LIB-02) | Rate 1–5 with an optional comment, edit and delete, only for In progress, Finished or DNF books. Book page shows my, friends' and public reviews and the public average; profile lists my reviews. Migration 0010. Draft PR #150 |
 | Home (#148, F-HOME-01) | Real reading, groups (challenges with rank, book clubs), pending friend/group invites, friends reading now and group comments on `/home`; section skeletons while each load runs; streak and goals stay from the prototype until their APIs exist |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
@@ -266,4 +266,10 @@ A running record of what the team did and decided in iteration 2. The [release n
 - The **New folder** and **Rename** forms in the [library sidebar](../../../apps/frontend/src/components/library/LibrarySidebar.vue) put the name field and both actions on one line in the 220px column, which left the controls cramped. The field now spans the row and **Create**/**Cancel** (or **Save**/**Cancel**) sit side by side below it.
 - **Polish.** Opening the create form focuses the name field, the submit button stays disabled until the name has visible characters, and **Escape** cancels either form. The buttons now match the input height and the sidebar's font size.
 - **Tests.** A new `LibrarySidebar` test covers the disabled submit and the Escape cancel. Frontend 194 passing; typecheck, lint and format clean.
+
+### 2026-11-18: Home e2e coverage (#148, #127)
+
+- Extended [`apps/frontend/e2e/home.spec.ts`](../../../apps/frontend/e2e/home.spec.ts) from the single greeting check to four tests for the real-data Home: the hero book and its session link, all sections loading without an alert, the groups matching the API, and the section skeletons while the Home requests are held.
+- **Decision: derive expectations from the API.** The tests call `GET /me/library`, `/me/reading-sessions/active`, `/me/groups` and `/me/book-clubs` with the test user's token and compare the page against the responses. That way they do not depend on the optional fixtures (friends, invites, comments) that the shared test user may not have. The skeleton test delays every `/api/me/**` response with Playwright's routing, so the loading state is deterministic.
+- **Not run.** `.env.e2e` and the permanent fixtures (test user, book, group) are still missing, so the suite was only listed (`playwright test --list`: 16 tests in 13 files); typecheck, lint and format pass. The status table now counts 16 tests.
 

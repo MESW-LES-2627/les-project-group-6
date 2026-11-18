@@ -523,3 +523,22 @@ adjust the Folders section on the library page
 - Gave the input a sensible height and matched the action buttons to it, using `--font-size-sm` for both. Submit buttons are disabled while the name is blank, pressing Escape cancels the form, and the create field receives focus when it opens.
 - Added a `LibrarySidebar` test for the disabled submit and Escape cancel; frontend suite 194 passing. Updated the iteration 2 log.
 
+### 2026-11-18: Home e2e coverage (#148)
+
+- **Date:** 2026-11-18
+- **Author:** Nimot Imran
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** testing, docs
+
+#### Prompt
+```text
+add the e2e tests for the implementation in this branch
+```
+
+#### Explanation of Changes
+- Replaced the placeholder Home e2e test in `apps/frontend/e2e/home.spec.ts` with four Playwright tests for the API-backed page: the greeting and week, the book in progress (running session wins, otherwise the most recently updated in-progress book) with its `/session/:id` link and page progress, every section loading with no `role="alert"`, and the section skeletons while the Home requests are delayed.
+- The expectations come from the API (`/me/library`, `/me/reading-sessions/active`, `/me/groups`, `/me/book-clubs`) using the existing `apiGet` helper, so they work with the shared test user regardless of optional friends, invites or comments.
+- The loading test uses `page.route('**/api/me/**')` to hold every Home request for 1.5 s, asserts `.skeleton` is visible and the empty states are not, then releases the requests and waits for the skeletons to disappear.
+- The suite lists 16 tests (`playwright test --list`); it was not executed because `.env.e2e` and the permanent fixtures are still missing. Frontend typecheck, lint and format pass. Updated the iteration 2 log and status table.
+
