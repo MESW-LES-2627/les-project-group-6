@@ -94,8 +94,6 @@ export interface MonthRecap {
 export interface UnbuiltProfileSections {
   unreadNotifications: number;
   chapter: ChapterProgress;
-  streak: Streak;
-  importedHours: number;
   challengesWon: number;
   recap: MonthRecap | null;
 }

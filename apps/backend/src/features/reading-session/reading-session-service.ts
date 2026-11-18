@@ -4,6 +4,8 @@ import { BookId } from '../book/book.js';
 import type { IBookRepository } from '../book/book-repository.js';
 import type { ReadingStatusService } from '../reading-status/reading-status-service.js';
 import { UserId } from '../user/user.js';
+import type { StreakService } from '../user/streak-service.js';
+import { sessionCountsForStreak } from '../user/streak-rules.js';
 import { ReadingSession, ReadingSessionId } from './reading-session.js';
 import type { IReadingSessionRepository, ReadingStats } from './reading-session-repository.js';
 
@@ -35,6 +37,7 @@ export class ReadingSessionService {
     private readonly books: IBookRepository,
     private readonly now: Clock = () => new Date(),
     private readonly readingStatuses?: ReadingStatusService,
+    private readonly streakService?: StreakService,
   ) {}
 
   /**
@@ -72,6 +75,10 @@ export class ReadingSessionService {
 
     session.finish(UserId.of(command.userId), this.now());
     await this.sessions.save(session);
+    // F-READ-04: only sessions of 5+ minutes count for the streak.
+    if (sessionCountsForStreak(session.countedMinutes)) {
+      await this.streakService?.recordReadToday(session.userId, session.endedAt ?? undefined);
+    }
     return session;
   }
 

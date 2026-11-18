@@ -493,7 +493,12 @@ Feature: Anti-cheat
 
 **Rules**
 
-1. A day counts toward the streak when the user has at least **one completed session** that day. **[Proposed default: minimum 5 counted minutes]**
+1. A day counts toward the streak when the user, that day (in their timezone):
+    - finishes a session of at least **5 counted minutes**; or
+    - moves a book that is **in progress** forward by at least **5 pages**; or
+    - moves a book from **in progress** to **finished**.
+
+    The last two let readers who read away from the app keep their streak. Starting a book, abandoning it, or marking a book finished that was never in progress does not count.
 2. The user can choose a **daily** or **weekly** streak. A weekly streak counts weeks with at least a target number of reading days (chosen by the user, e.g. 3 of 7).
 3. **Streak freeze:** a freeze automatically protects the streak on a missed day (or missed week, for weekly streaks).
     - The user earns freezes through milestones (e.g. 1 freeze per 7-day streak), with a maximum stock. **[Proposed default: max 2]**
@@ -509,6 +514,16 @@ Feature: Streaks
     Given my streak is 4 days
     When I complete a 10-minute session today
     Then my streak becomes 5 days
+
+  Scenario: Reading away from the app counts
+    Given my streak is 4 days and a book is in progress at page 100
+    When I update the book to page 105 today
+    Then my streak becomes 5 days
+
+  Scenario: Short sessions do not count
+    Given my streak is 4 days and I read yesterday
+    When I complete a 3-minute session today
+    Then my streak stays 4 days and today is not counted yet
 
   Scenario: Freeze protects a missed day
     Given my streak is 12 days and I have 1 freeze

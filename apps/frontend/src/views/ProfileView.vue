@@ -17,15 +17,17 @@ import {
   getLibraryFolders,
   getMe,
   getReadingStats,
+  getStreak,
   getUserLibrary,
   getUserProfile,
   getUserReviews,
   type ApiLibraryItem,
   type ApiProfileReview,
   type ApiReadingStats,
+  type ApiStreak,
 } from '@/services/api';
 import type { FolderSummary } from '@/types/library';
-import type { ProfileUser } from '@/types/profile';
+import type { ProfileUser, ReadingTimeStats, Streak } from '@/types/profile';
 import {
   currentlyReadingFrom,
   foldersFrom,
@@ -34,26 +36,55 @@ import {
   toProfileUser,
 } from '@/utils/profile';
 
-// The reader, their books, shelf, folders, reading time and reviews come from the API.
-// The chapter, streak, challenges won, imported hours and monthly recap are not built
-// yet and still come from src/mocks/profile.ts.
+// The reader, their books, shelf, folders, streak, reading time and reviews come from the
+// API. The user, streak and reading time never fall back to mock data: a failed request
+// shows an empty state and an error. The chapter, challenges won and monthly recap are not
+// built yet and still come from src/mocks/profile.ts.
 const user = ref<ProfileUser | null>(null);
-const loadError = ref('');
 const library = ref<ApiLibraryItem[]>([]);
 const folderSummaries = ref<FolderSummary[]>([]);
-const readingStats = ref<ApiReadingStats>({ totalMinutes: 0, sessionsCount: 0 });
+const streakData = ref<ApiStreak | null>(null);
+const readingStats = ref<ApiReadingStats | null>(null);
 // F-LIB-02: my rated books. `null` (hidden) when the API cannot be reached or refuses.
 const reviews = ref<ApiProfileReview[] | null>(null);
+const loadFailed = ref<{ user: boolean; streak: boolean; readingTime: boolean }>({
+  user: false,
+  streak: false,
+  readingTime: false,
+});
+
+const EMPTY_STREAK: Streak = { days: [], current: 0, longest: 0, freezesLeft: 0 };
+const EMPTY_READING_TIME: ReadingTimeStats = {
+  countedMinutes: 0,
+  sessionsCount: 0,
+  importedHours: 0,
+};
 
 const currentlyReading = computed(() => currentlyReadingFrom(library.value));
 const shelf = computed(() => shelfFrom(library.value));
 const recentlyAdded = computed(() => recentlyAddedFrom(library.value));
 const folders = computed(() => foldersFrom(folderSummaries.value, library.value));
-const readingTime = computed(() => ({
-  countedMinutes: readingStats.value.totalMinutes,
-  sessionsCount: readingStats.value.sessionsCount,
-  importedHours: mockProfile.importedHours,
-}));
+
+const streak = computed<Streak>(() => {
+  if (!streakData.value) return EMPTY_STREAK;
+  const { days, current, longest, freezesLeft } = streakData.value;
+  return { days, current, longest, freezesLeft };
+});
+
+const readingTime = computed<ReadingTimeStats>(() => {
+  if (!readingStats.value) return EMPTY_READING_TIME;
+  const { totalMinutes, sessionsCount } = readingStats.value;
+  return { ...EMPTY_READING_TIME, countedMinutes: totalMinutes, sessionsCount };
+});
+
+const loadError = computed(() => {
+  const failed = loadFailed.value;
+  if (failed.user) return 'We could not load your profile. Refresh the page to try again.';
+  if (failed.streak || failed.readingTime) {
+    return 'Some of your reading stats could not be loaded. Refresh the page to try again.';
+  }
+  return null;
+});
 
 async function loadUser() {
   try {
@@ -65,30 +96,45 @@ async function loadUser() {
     user.value = toProfileUser(me, profile?.bio ?? null);
     reviews.value = mine;
   } catch {
-    loadError.value = 'We could not load your profile. Please refresh the page.';
+    loadFailed.value.user = true;
   }
 }
 
-// Each section keeps its empty state when its request fails.
-onMounted(async () => {
-  void loadUser();
-  const [items, folderList, stats] = await Promise.all([
+async function loadStreak() {
+  try {
+    streakData.value = await getStreak();
+  } catch {
+    loadFailed.value.streak = true;
+  }
+}
+
+async function loadReadingTime() {
+  try {
+    readingStats.value = await getReadingStats();
+  } catch {
+    loadFailed.value.readingTime = true;
+  }
+}
+
+// The library and folders keep their empty states when their requests fail.
+async function loadLibrary() {
+  const [items, folderList] = await Promise.all([
     getUserLibrary().catch(() => []),
     getLibraryFolders().catch(() => []),
-    getReadingStats().catch(() => null),
   ]);
   library.value = items;
   folderSummaries.value = folderList;
-  if (stats) readingStats.value = stats;
-});
+}
+
+onMounted(() => Promise.all([loadUser(), loadStreak(), loadReadingTime(), loadLibrary()]));
 </script>
 
 <template>
   <main class="profile">
     <ProfileBookplate v-if="user" :user="user" />
-    <p v-else-if="loadError" class="page-column load-error" role="alert">{{ loadError }}</p>
 
     <div class="page-column">
+      <p v-if="loadError" class="load-error" role="alert">{{ loadError }}</p>
       <CurrentlyReading :items="currentlyReading" />
 
       <div class="columns">
@@ -98,7 +144,7 @@ onMounted(async () => {
         </div>
         <div class="column">
           <ChapterLevel class="divided" :chapter="mockProfile.chapter" />
-          <StreakCalendar class="divided" :streak="mockProfile.streak" />
+          <StreakCalendar class="divided" :streak="streak" />
           <ReadingTime class="divided" :stats="readingTime" />
           <ChallengesSummary :won="mockProfile.challengesWon" />
         </div>
@@ -115,6 +161,14 @@ onMounted(async () => {
 /* The bookplate runs edge to edge, so drop the default main padding */
 .profile {
   padding: 0;
+}
+
+.load-error {
+  margin: var(--space-4) 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-control);
+  color: var(--color-error);
 }
 
 /* The profile name and section titles use Inter; book titles (h3) keep Lora */
@@ -139,10 +193,6 @@ onMounted(async () => {
 
 .top-rule {
   border-top: 1px solid var(--color-border);
-}
-
-.load-error {
-  padding-block: var(--space-12);
 }
 
 @media (max-width: 899px) {

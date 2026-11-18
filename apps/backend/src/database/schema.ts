@@ -34,7 +34,8 @@ export const users = pgTable(
     streakType: varchar('streak_type', { length: 20 }).default('daily').notNull(),
     currentStreak: integer('current_streak').default(0).notNull(),
     longestStreak: integer('longest_streak').default(0).notNull(),
-    hitStreak: boolean('hit_streak').default(false).notNull(),
+    // Last day (in the user's timezone) that counted for the streak (F-READ-04).
+    lastReadDate: date('last_read_date', { mode: 'string' }),
   },
   (table) => [
     unique('users_email_key').on(table.email),

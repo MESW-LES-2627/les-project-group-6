@@ -6,6 +6,8 @@ import {
 import type { AuthIdentity } from '../auth/auth-provider.js';
 import type { IFriendRepository } from '../friend/friend-repository.js';
 import type { IReadingSessionRepository } from '../reading-session/reading-session-repository.js';
+import type { Clock } from '../../utils/clock.js';
+import { StreakService } from './streak-service.js';
 import type { IUserRepository } from './user-repository.js';
 import { User, UserId, Username, UsernameTakenError } from './user.js';
 
@@ -62,6 +64,7 @@ export class UserService {
     private readonly users: IUserRepository,
     private readonly friends?: IFriendRepository,
     private readonly sessions?: IReadingSessionRepository,
+    private readonly now: Clock = () => new Date(),
   ) {}
 
   /** Creates the `users` row the first time a Supabase account is used. */
@@ -147,10 +150,18 @@ export class UserService {
 
     let totalMinutes = 0;
     let sessionsCount = 0;
-    if (isVisible && this.sessions) {
-      const stats = await this.sessions.statsForUser(target.id);
-      totalMinutes = stats.totalMinutes;
-      sessionsCount = stats.sessionsCount;
+    let currentStreak = 0;
+    let longestStreak = 0;
+
+    if (isVisible) {
+      if (this.sessions) {
+        const stats = await this.sessions.statsForUser(target.id);
+        totalMinutes = stats.totalMinutes;
+        sessionsCount = stats.sessionsCount;
+      }
+      const streak = StreakService.statusOf(target, this.now());
+      currentStreak = streak.currentStreak;
+      longestStreak = streak.longestStreak;
     }
 
     return {
@@ -166,8 +177,8 @@ export class UserService {
       isVisible,
       friendshipStatus,
       friendRequestId,
-      currentStreak: isVisible ? target.currentStreak : 0,
-      longestStreak: isVisible ? target.longestStreak : 0,
+      currentStreak,
+      longestStreak,
       totalMinutes,
       sessionsCount,
     };

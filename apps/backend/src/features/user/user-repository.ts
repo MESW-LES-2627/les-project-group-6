@@ -46,7 +46,7 @@ function toDomain(row: UserRow): User {
     streakType: row.streakType,
     currentStreak: row.currentStreak,
     longestStreak: row.longestStreak,
-    hitStreak: row.hitStreak,
+    lastReadDate: row.lastReadDate,
     createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
   });
 }
@@ -64,7 +64,7 @@ function toRow(user: User): typeof users.$inferInsert {
     streakType: user.streakType,
     currentStreak: user.currentStreak,
     longestStreak: user.longestStreak,
-    hitStreak: user.hitStreak,
+    lastReadDate: user.lastReadDate,
     createdAt: user.createdAt.toISOString(),
   };
 }
@@ -136,7 +136,7 @@ export class DrizzleUserRepository implements IUserRepository {
           profileVisibility: row.profileVisibility,
           currentStreak: row.currentStreak,
           longestStreak: row.longestStreak,
-          hitStreak: row.hitStreak,
+          lastReadDate: row.lastReadDate,
         },
       });
   }
