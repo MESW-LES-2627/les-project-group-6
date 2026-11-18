@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { parseIsoDay, previousIsoDay } from '../../utils/calendar.js';
 import { BusinessRuleViolationError, InvalidValueError } from '../../utils/errors.js';
 import { Uuid } from '../../utils/uuid.js';
 
@@ -101,8 +102,16 @@ export interface UserState {
   streakType: string;
   currentStreak: number;
   longestStreak: number;
-  hitStreak: boolean;
+  /** Last calendar day (`YYYY-MM-DD`, in the reader's timezone) that counted for the streak. */
+  lastReadDate: string | null;
   createdAt: Date;
+}
+
+/** The streak as seen on a given day: a streak is alive while the reader read today or yesterday. */
+export interface StreakSnapshot {
+  currentStreak: number;
+  longestStreak: number;
+  readToday: boolean;
 }
 
 export class User {
@@ -114,10 +123,10 @@ export class User {
   readonly bio: string | null;
   private _timezone: string;
   private _profileVisibility: ProfileVisibility;
-  readonly streakType: string;
-  readonly currentStreak: number;
-  readonly longestStreak: number;
-  readonly hitStreak: boolean;
+  private _streakType: string;
+  private _currentStreak: number;
+  private _longestStreak: number;
+  private _lastReadDate: string | null;
   readonly createdAt: Date;
 
   private constructor(state: UserState) {
@@ -129,10 +138,10 @@ export class User {
     this.bio = state.bio;
     this._timezone = state.timezone;
     this._profileVisibility = state.profileVisibility;
-    this.streakType = state.streakType;
-    this.currentStreak = state.currentStreak;
-    this.longestStreak = state.longestStreak;
-    this.hitStreak = state.hitStreak;
+    this._streakType = state.streakType;
+    this._currentStreak = state.currentStreak;
+    this._longestStreak = state.longestStreak;
+    this._lastReadDate = state.lastReadDate;
     this.createdAt = state.createdAt;
   }
 
@@ -150,7 +159,7 @@ export class User {
       streakType: 'daily',
       currentStreak: 0,
       longestStreak: 0,
-      hitStreak: false,
+      lastReadDate: null,
       createdAt: new Date(),
     });
   }
@@ -172,6 +181,22 @@ export class User {
     return this._profileVisibility;
   }
 
+  get streakType(): string {
+    return this._streakType;
+  }
+
+  get currentStreak(): number {
+    return this._currentStreak;
+  }
+
+  get longestStreak(): number {
+    return this._longestStreak;
+  }
+
+  get lastReadDate(): string | null {
+    return this._lastReadDate;
+  }
+
   rename(displayName: string): void {
     this._displayName = User.validDisplayName(displayName);
   }
@@ -186,6 +211,38 @@ export class User {
 
   makeProfilePrivate(): void {
     this._profileVisibility = 'private';
+  }
+
+  /**
+   * Counts `today` (`YYYY-MM-DD` in the reader's timezone) as a reading day (F-READ-04):
+   * - already counted today: nothing changes;
+   * - last counted yesterday: the streak grows by one;
+   * - otherwise (first read, or a day was missed): the streak restarts at 1.
+   * The longest streak keeps its best value. Returns whether anything changed.
+   */
+  recordReadingDay(today: string): boolean {
+    if (!parseIsoDay(today)) throw new InvalidValueError(`Invalid reading day: ${today}`);
+    if (this._lastReadDate === today) return false;
+
+    this._currentStreak =
+      this._lastReadDate === previousIsoDay(today) ? this._currentStreak + 1 : 1;
+    this._longestStreak = Math.max(this._longestStreak, this._currentStreak);
+    this._lastReadDate = today;
+    return true;
+  }
+
+  /**
+   * The streak as it stands on `today`: the stored streak is still alive when the last
+   * reading day is today or yesterday, and is 0 once a whole day has been missed.
+   */
+  streakOn(today: string): StreakSnapshot {
+    const readToday = this._lastReadDate === today;
+    const alive = readToday || this._lastReadDate === previousIsoDay(today);
+    return {
+      currentStreak: alive ? this._currentStreak : 0,
+      longestStreak: this._longestStreak,
+      readToday,
+    };
   }
 
   private static validDisplayName(raw: string): string {

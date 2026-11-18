@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import { currentIdentity, currentUser, currentUserId } from '../../middleware/auth.js';
+import { StreakService } from './streak-service.js';
 import type { User } from './user.js';
 import type { UserService } from './user-service.js';
 
@@ -9,22 +10,37 @@ export interface MeDto {
   email: string;
   username: string;
   displayName: string;
+  bio: string | null;
   timezone: string;
   photoUrl: string | null;
   profileVisibility: string;
   createdAt: string;
+  streakType: string;
+  /** Live streak: 0 once a whole day was missed (F-READ-04). */
+  currentStreak: number;
+  longestStreak: number;
+  /** Today already counts for the streak. */
+  readToday: boolean;
 }
 
-export const toMeDto = (user: User): MeDto => ({
-  id: user.id.value,
-  email: user.email.value,
-  username: user.username.value,
-  displayName: user.displayName,
-  timezone: user.timezone,
-  photoUrl: user.photoUrl,
-  profileVisibility: user.profileVisibility,
-  createdAt: user.createdAt.toISOString(),
-});
+export const toMeDto = (user: User, at: Date = new Date()): MeDto => {
+  const streak = StreakService.statusOf(user, at);
+  return {
+    id: user.id.value,
+    email: user.email.value,
+    username: user.username.value,
+    displayName: user.displayName,
+    bio: user.bio,
+    timezone: user.timezone,
+    photoUrl: user.photoUrl,
+    profileVisibility: user.profileVisibility,
+    createdAt: user.createdAt.toISOString(),
+    streakType: user.streakType,
+    currentStreak: streak.currentStreak,
+    longestStreak: streak.longestStreak,
+    readToday: streak.readToday,
+  };
+};
 
 /**
  * The signed-in reader's own profile (F-AUTH-01). `POST /me` only needs a valid
@@ -34,6 +50,7 @@ export function meRoutes(
   users: UserService,
   authenticated: RequestHandler,
   withUser: RequestHandler,
+  streaks?: StreakService,
 ): Router {
   const router = Router();
 
@@ -63,15 +80,29 @@ export function meRoutes(
     res.status(201).json(toMeDto(user));
   });
 
-  router.get('/me', authenticated, withUser, (_req, res) => {
+  router.get('/me', authenticated, withUser, async (_req, res) => {
     res.status(200).json(toMeDto(currentUser(res)));
+  });
+
+  router.get('/me/streak', authenticated, withUser, async (_req, res) => {
+    const user = currentUser(res);
+    const status = StreakService.statusOf(user, new Date());
+    const days = streaks ? await streaks.getStreakCalendar(user.id) : [];
+    res.status(200).json({
+      current: status.currentStreak,
+      longest: status.longestStreak,
+      readToday: status.readToday,
+      lastReadDate: status.lastReadDate,
+      streakType: status.streakType,
+      freezesLeft: 0,
+      days,
+    });
   });
 
   router.patch('/me', authenticated, withUser, async (req, res) => {
     const { displayName, timezone } = req.body ?? {};
-    res
-      .status(200)
-      .json(toMeDto(await users.updateProfile(currentUser(res), { displayName, timezone })));
+    const updated = await users.updateProfile(currentUser(res), { displayName, timezone });
+    res.status(200).json(toMeDto(updated));
   });
 
   router.get('/users', authenticated, withUser, async (req, res) => {

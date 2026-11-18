@@ -1,4 +1,4 @@
-// @req F-AUTH-01
+// @req F-AUTH-01 F-READ-04
 import { beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { AuthIdentity } from '../../src/features/auth/auth-provider.js';
@@ -267,6 +267,24 @@ describe('UserService', () => {
       const profile = await service.getProfileByUsername('target_user', viewer.id.value);
       assert.equal(profile.friendshipStatus, 'friends');
       assert.equal(profile.isVisible, true);
+    });
+
+    test('returns the live streak of a visible profile', async () => {
+      const target = await seed('target_user', 'public');
+      target.recordReadingDay('2026-11-15');
+      target.recordReadingDay('2026-11-16');
+      await users.save(target);
+
+      const onDay = (day: string) =>
+        new UserService(users, friends, sessions, () => new Date(`${day}T12:00:00Z`));
+
+      const alive = await onDay('2026-11-17').getProfileByUsername('target_user', target.id.value);
+      assert.equal(alive.currentStreak, 2);
+      assert.equal(alive.longestStreak, 2);
+
+      const broken = await onDay('2026-11-18').getProfileByUsername('target_user', target.id.value);
+      assert.equal(broken.currentStreak, 0);
+      assert.equal(broken.longestStreak, 2);
     });
 
     test('ignores @ prefix and handles case-insensitivity', async () => {

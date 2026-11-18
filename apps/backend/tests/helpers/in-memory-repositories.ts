@@ -169,6 +169,18 @@ export class InMemoryReadingSessionRepository implements IReadingSessionReposito
     return [...this.sessions.values()].find((s) => s.userId.equals(userId) && s.isActive) ?? null;
   }
 
+  async findCompletedSessions(
+    userId: UserId,
+    since?: Date,
+  ): Promise<{ endedAt: Date; countedMinutes: number }[]> {
+    return [...this.sessions.values()]
+      .filter(
+        (s) => s.userId.equals(userId) && s.endedAt !== null && (!since || s.endedAt >= since),
+      )
+      .map((s) => ({ endedAt: s.endedAt!, countedMinutes: s.countedMinutes }))
+      .sort((a, b) => b.endedAt.getTime() - a.endedAt.getTime());
+  }
+
   async statsForUser(userId: UserId): Promise<ReadingStats> {
     const finished = [...this.sessions.values()].filter(
       (s) => s.userId.equals(userId) && !s.isActive,

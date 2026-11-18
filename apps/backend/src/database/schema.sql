@@ -23,7 +23,8 @@ CREATE TABLE users (
     streak_type VARCHAR(20) NOT NULL DEFAULT 'daily',
     current_streak INTEGER NOT NULL DEFAULT 0,
     longest_streak INTEGER NOT NULL DEFAULT 0,
-    hit_streak BOOLEAN NOT NULL DEFAULT FALSE
+    -- Last day (in the user's timezone) that counted for the streak (F-READ-04).
+    last_read_date DATE
 );
 
 -- Usernames are unique ignoring case (F-AUTH-01).
