@@ -25,6 +25,8 @@ import {
   users,
   userTags,
 } from '../schema.js';
+import { MIN_STREAK_SESSION_MINUTES } from '../../features/user/streak-rules.js';
+import { Email, User, UserId, Username } from '../../features/user/user.js';
 import {
   BOOKS,
   CHALLENGE_MESSAGES,
@@ -41,6 +43,7 @@ import {
   TAGS,
   type BookKey,
   type ReaderKey,
+  type SeedReader,
 } from './seed-data.js';
 
 type Db = NodePgDatabase;
@@ -64,11 +67,33 @@ function assertIsbn13(isbn: string): void {
   if (!/^\d{13}$/.test(isbn) || sum % 10 !== 0) throw new Error(`Invalid seed ISBN-13: ${isbn}`);
 }
 
-/** Days ago of the reader's most recent finished session (0 = today). */
-function lastSessionDaysAgo(reader: ReaderKey): number {
-  const days = SESSIONS.filter(([r]) => r === reader).map(([, , daysAgo]) => daysAgo);
-  if (days.length === 0) throw new Error(`Seed reader ${reader} has a streak but no sessions`);
-  return Math.min(...days);
+/**
+ * The reader's streak as the app would have counted it (F-READ-04): each day with a
+ * session of 5+ counted minutes is replayed, oldest first, through the User aggregate.
+ * The longest streak also keeps the reader's earlier best from the seed data.
+ */
+function streakFromSessions(
+  reader: SeedReader,
+  account: { id: string; email: string },
+  clock: Clock,
+): { currentStreak: number; longestStreak: number; lastReadDate: string | null } {
+  const user = User.register({
+    id: UserId.of(account.id),
+    email: Email.of(account.email),
+    username: Username.of(reader.username),
+    displayName: reader.displayName,
+  });
+  const daysAgo = SESSIONS.filter(
+    ([key, , , minutes]) => key === reader.key && minutes >= MIN_STREAK_SESSION_MINUTES,
+  ).map(([, , days]) => days);
+  for (const days of [...new Set(daysAgo)].sort((a, b) => b - a)) {
+    user.recordReadingDay(clock.date(-days));
+  }
+  return {
+    currentStreak: user.currentStreak,
+    longestStreak: Math.max(user.longestStreak, reader.longestStreak),
+    lastReadDate: user.lastReadDate,
+  };
 }
 
 /** Dates relative to `now`, in the local time zone the seed runs in. */
@@ -119,11 +144,7 @@ export async function populate(db: Db, accounts: SeedAccounts, now = new Date())
         timezone: 'Europe/Lisbon',
         profileVisibility: reader.visibility,
         createdAt: clock.iso(180 - READERS.indexOf(reader) * 10, 10),
-        currentStreak: reader.currentStreak,
-        longestStreak: reader.longestStreak,
-        // F-READ-04: a streak stays alive while its last reading day is today or
-        // yesterday, so a reader with a streak last read on their latest session's day.
-        lastReadDate: reader.currentStreak > 0 ? clock.date(-lastSessionDaysAgo(reader.key)) : null,
+        ...streakFromSessions(reader, accounts[reader.key], clock),
       })),
     );
 

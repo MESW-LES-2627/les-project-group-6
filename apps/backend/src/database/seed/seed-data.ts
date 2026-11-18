@@ -13,7 +13,10 @@ export interface SeedReader {
   visibility: 'public' | 'private';
   /** What this account is good for when testing; written to the credentials file. */
   role: string;
-  currentStreak: number;
+  /**
+   * Best streak from before the seeded sessions. The current streak and last reading day
+   * are worked out from SESSIONS (F-READ-04); the longest is the larger of the two.
+   */
   longestStreak: number;
 }
 
@@ -25,7 +28,6 @@ export const READERS: SeedReader[] = [
     bio: 'Classics in the morning, sci-fi at night.',
     visibility: 'public',
     role: 'Main account: full library, folders and tags, reviews, admin of the active challenge, member of a book club with an open vote, one pending friend request and one pending club invite',
-    currentStreak: 12,
     longestStreak: 21,
   },
   {
@@ -35,7 +37,6 @@ export const READERS: SeedReader[] = [
     bio: 'Fantasy first, questions later.',
     visibility: 'public',
     role: "Friend of Ana; finished the club's current book; admin of a completed challenge",
-    currentStreak: 3,
     longestStreak: 9,
   },
   {
@@ -45,7 +46,6 @@ export const READERS: SeedReader[] = [
     bio: null,
     visibility: 'private',
     role: 'Private profile; admin of the Sunday Classics book club (can open votes and start rounds)',
-    currentStreak: 0,
     longestStreak: 6,
   },
   {
@@ -55,7 +55,6 @@ export const READERS: SeedReader[] = [
     bio: 'Always one chapter behind.',
     visibility: 'public',
     role: 'Has a reading session running now; admin of the Sci-fi Saturdays club that invited Ana',
-    currentStreak: 5,
     longestStreak: 5,
   },
   {
@@ -65,7 +64,6 @@ export const READERS: SeedReader[] = [
     bio: 'Short books, long walks.',
     visibility: 'public',
     role: 'Admin of a challenge that has not started yet',
-    currentStreak: 1,
     longestStreak: 4,
   },
   {
@@ -75,7 +73,6 @@ export const READERS: SeedReader[] = [
     bio: null,
     visibility: 'private',
     role: 'New reader: empty library and no groups (every empty state); sent Bruno a friend request',
-    currentStreak: 0,
     longestStreak: 0,
   },
   {
@@ -85,7 +82,6 @@ export const READERS: SeedReader[] = [
     bio: 'Reviews everything.',
     visibility: 'private',
     role: 'Stranger to everyone with a private profile (its details are hidden from others)',
-    currentStreak: 2,
     longestStreak: 15,
   },
   {
@@ -95,7 +91,6 @@ export const READERS: SeedReader[] = [
     bio: null,
     visibility: 'public',
     role: 'Sent Ana a friend request that is still pending',
-    currentStreak: 0,
     longestStreak: 2,
   },
 ];
