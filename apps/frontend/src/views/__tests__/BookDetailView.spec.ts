@@ -2,6 +2,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { mockLibrary } from '@/mocks/library';
 import router from '@/router';
 import type { ApiBook, ApiBookReviews, ApiLibraryItem, ApiReview } from '@/services/api';
 import BookDetailView from '../BookDetailView.vue';
@@ -12,6 +13,7 @@ const api = vi.hoisted(() => ({
   getBook: vi.fn<(bookId: string) => Promise<ApiBook>>(async () => {
     throw new Error('offline');
   }),
+  updateReadingStatus: vi.fn<(payload: unknown) => Promise<void>>(async () => {}),
 }));
 vi.mock('@/services/api', async (original) => ({
   ...(await original<typeof import('@/services/api')>()),
@@ -143,5 +145,26 @@ describe('BookDetailView', () => {
     await wrapper.get('[aria-label="Remove tag book club pick"]').trigger('click');
     await flushPromises();
     expect(chips()).toEqual(before);
+  });
+
+  it('updates the status of a mock book after saving it', async () => {
+    api.getBookReviews.mockResolvedValueOnce(noReviews);
+    const wrapper = await mountView('circe');
+
+    await wrapper.get('.update-status').trigger('click');
+    await wrapper.get('.editor-select').setValue('did-not-finish');
+    await wrapper.get('.editor-input').setValue('12');
+    await wrapper.get('.status-editor').trigger('submit');
+    await flushPromises();
+
+    // Mock books are plain objects: the update is written onto the shared mock entry.
+    expect(api.updateReadingStatus).toHaveBeenCalledWith({
+      bookId: 'circe',
+      status: 'did-not-finish',
+      currentPage: 12,
+    });
+    const circe = mockLibrary.books.find((item) => item.id === 'circe')!;
+    expect(circe.status).toBe('did-not-finish');
+    expect(circe.currentPage).toBe(12);
   });
 });

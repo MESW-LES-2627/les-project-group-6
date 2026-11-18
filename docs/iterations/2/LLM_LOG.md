@@ -635,6 +635,47 @@ I merged the tag changes, why I can't add tags in frontend in my ui?
 #### Explanation of Changes
 Found that PR #153 was backend only. Added the tag API client, the add/remove tag editor on the book page, real tags with counts in the library sidebar, unit tests and two Playwright e2e tests for F-LIB-04.
 
+---
+
+### 2026-11-17: Frontend test coverage and CI fixes
+
+- **Date:** 2026-11-17
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** testing, ci, frontend
+
+#### Prompt
+```text
+ok, so, in this case, Ii want you to create a pr just to test the coverage step in CI
+-> the frontend lint failed
+-> ok, so, the coverage of frontend is 85%, can you look at ci, see what files and lines we are missing and update the tests?
+```
+
+#### Explanation of Changes
+Opened test PR #161, fixed the frontend lint (`@ts-nocheck`) and Prettier failures that were already on `main`, then read the CI coverage report and added unit tests for the uncovered files (mainly `api.ts`, group and library views). Frontend line coverage went from 85.26% to 99.81%.
+
+### 2026-11-17: README rewrite
+
+- **Date:** 2026-11-17
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs
+
+#### Prompt
+
+```text
+Now, I want you to create a PR to update the readme. Add the description of what is the project. the links of claim.md of each iteration. How the architecture works (book open api, db, server, front), repo structure in tree without explaning outisde the tree and add all make file commands
+```
+
+#### Explanation of Changes
+
+Rewrote `README.md`: project description, iteration CLAIM links, architecture diagram and summary, commented repository tree, short getting-started block and a table of all Makefile targets.
+
+
+---
+
 ### 2026-11-18: Streak rework after the PR #160 review
 
 - **Date:** 2026-11-18
@@ -662,4 +703,3 @@ Fixed the two blocking bugs from the PR #160 review (streak stuck at 1) and the 
 3. Simplified `StreakService` (no session lookup to decide the update) and made `GET /me`, `PATCH /me` and `GET /users/:username` use the same live streak. `hitStreak` became `readToday`.
 4. `ProfileView.vue` shows an empty state and an error instead of mock data when the API fails.
 5. Tests: multi-day regression, `finish` saving before the streak check, the 5-minute and 5-page limits, `@req F-READ-04` tags, and an e2e test. Docs: `infra.md`, `api_routes.md`, `requirements.md`, `features_priority.md`, the e2e README and the iteration log.
-

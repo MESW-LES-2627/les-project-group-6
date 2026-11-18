@@ -2,6 +2,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 
+import LibrarySidebar from '@/components/library/LibrarySidebar.vue';
 import router from '@/router';
 import LibraryView from '../LibraryView.vue';
 
@@ -84,6 +85,64 @@ describe('LibraryView', () => {
     await wrapper.get('[aria-label="Delete Classics club"]').trigger('click');
 
     expect(wrapper.get('.folder-list').text()).not.toContain('Classics club');
+    expect(wrapper.findAll('article')).toHaveLength(6);
+  });
+
+  it('filters by genre and sorts by title or author', async () => {
+    const wrapper = mountView();
+    const titles = () => wrapper.findAll('article .title').map((t) => t.text());
+    const [genre, sort] = wrapper.findAll('select.field-input');
+
+    await sort!.setValue('title');
+    expect(titles()).toEqual([...titles()].sort((a, b) => a.localeCompare(b)));
+
+    await sort!.setValue('author');
+    const authors = wrapper.findAll('article .author').map((a) => a.text());
+    expect(authors).toEqual([...authors].sort((a, b) => a.localeCompare(b)));
+
+    await genre!.setValue('Fantasy');
+    expect(wrapper.findAll('article').length).toBeGreaterThan(0);
+    expect(wrapper.findAll('article').length).toBeLessThan(6);
+    expect(titles()).toContain('Piranesi');
+  });
+
+  it('rejects renaming a folder to the name of another one', async () => {
+    const wrapper = mountView();
+
+    await wrapper.get('[aria-label="Rename Autumn reading"]').trigger('click');
+    await wrapper.get('[aria-label="Rename Autumn reading"]').setValue('classics CLUB');
+    await wrapper.get('.folder-form').trigger('submit');
+
+    expect(wrapper.get('.folder-error').text()).toBe('You already have a folder with this name');
+    expect(wrapper.get('.folder-list').text()).toContain('Autumn reading');
+  });
+
+  it('ignores blank folder names', async () => {
+    const wrapper = mountView();
+    const sidebar = wrapper.getComponent(LibrarySidebar);
+    const before = wrapper.findAll('.folder-list .folder-item').length;
+
+    sidebar.vm.$emit('createFolder', '   ');
+    sidebar.vm.$emit('renameFolder', 'autumn', '   ');
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.findAll('.folder-list .folder-item')).toHaveLength(before);
+    expect(wrapper.get('.folder-list').text()).toContain('Autumn reading');
+    expect(wrapper.find('.folder-error').exists()).toBe(false);
+  });
+
+  it('clears the folder filter when the selected folder is deleted', async () => {
+    const wrapper = mountView();
+
+    await wrapper
+      .findAll('.folder-list .row')
+      .find((r) => r.text().startsWith('Classics club'))!
+      .trigger('click');
+    expect(wrapper.get('#books-title').text()).toBe('Classics club');
+
+    await wrapper.get('[aria-label="Delete Classics club"]').trigger('click');
+
+    expect(wrapper.get('#books-title').text()).toBe('All books');
     expect(wrapper.findAll('article')).toHaveLength(6);
   });
 });

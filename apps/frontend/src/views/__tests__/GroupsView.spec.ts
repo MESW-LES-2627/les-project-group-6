@@ -56,6 +56,24 @@ const invite: ApiPendingInvite = {
   groupKind: 'book-club',
   inviterName: 'Maya Laurent',
 };
+const challenge: ApiChallengeGroup = {
+  id: 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a07',
+  name: 'Winter Minutes',
+  description: '',
+  adminId: 'me',
+  status: 'active',
+  challenge: {
+    startDate: '2026-11-01',
+    endDate: '2026-11-30',
+    winMetric: 'minutes',
+    metricGoal: 0,
+  },
+  members: [
+    { userId: 'me', role: 'admin', joinedAt: '2026-11-01T10:00:00Z' },
+    { userId: 'maya', role: 'member', joinedAt: '2026-11-01T10:00:00Z' },
+  ],
+  createdAt: '2026-11-01T10:00:00Z',
+};
 import GroupsView from '../GroupsView.vue';
 
 function mountView() {
@@ -145,5 +163,67 @@ describe('GroupsView', () => {
     expect(wrapper.get('[role="status"]').text()).toBe('You joined Sunday Classics.');
     expect(wrapper.findAll('article')).toHaveLength(7);
     expect(wrapper.text()).toContain('0 of 3 finished');
+  });
+
+  it('lists the reader challenges from the API before the mock groups', async () => {
+    getUserGroups.mockResolvedValue([challenge]);
+    getUserBookClubs.mockResolvedValue([]);
+    getPendingInvites.mockResolvedValue([]);
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.findAll('article')).toHaveLength(7);
+    expect(wrapper.findAll('article')[0]!.text()).toContain('Winter Minutes');
+    expect(wrapper.text()).toContain('3 active');
+  });
+
+  it('declines a real invite without loading the groups again', async () => {
+    getUserGroups.mockResolvedValue([]);
+    getUserBookClubs.mockResolvedValue([]);
+    getPendingInvites.mockResolvedValue([invite]);
+    answerInvite.mockResolvedValue({} as ApiGroupInvite);
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper
+      .findAll('.invite')[0]!
+      .findAll('button')
+      .find((b) => b.text() === 'Decline')!
+      .trigger('click');
+    await flushPromises();
+
+    expect(answerInvite).toHaveBeenCalledWith('i1', 'decline');
+    expect(getUserBookClubs).toHaveBeenCalledOnce();
+    expect(wrapper.text()).not.toContain('Maya Laurent invited you to a book club');
+    expect(wrapper.get('[role="status"]').text()).toBe('You declined Sunday Classics.');
+  });
+
+  it('keeps the invite and shows the error when answering fails', async () => {
+    getUserGroups.mockResolvedValue([]);
+    getUserBookClubs.mockResolvedValue([]);
+    getPendingInvites.mockResolvedValue([invite]);
+    answerInvite.mockRejectedValue(new Error('Invite expired'));
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Accept')!
+      .trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('[role="status"]').text()).toBe('Invite expired');
+    expect(wrapper.text()).toContain('Maya Laurent invited you to a book club');
+  });
+
+  it('offers to set up a rematch of a completed group', async () => {
+    const wrapper = mountView();
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Rematch')!
+      .trigger('click');
+
+    expect(wrapper.get('[role="status"]').text()).toMatch(/^A rematch of .+ is ready to set up\.$/);
   });
 });

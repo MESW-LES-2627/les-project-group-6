@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Mutation testing (make mutation). Stryker changes the code on purpose and
 // checks that a Vitest test fails. Only TypeScript with logic is mutated
 // (stores, services, utils, router guards); Vue templates are covered by the

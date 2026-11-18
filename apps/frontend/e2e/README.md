@@ -5,7 +5,7 @@ Playwright tests of the main path of every route (#127, [spec](../../../docs/sup
 ## Fixtures (once, by hand)
 
 1. A Supabase test user with a finished profile.
-2. The seeded book "Emma" on the test user's shelf with status **reading** (starting a session would otherwise change it); its id is `E2E_BOOK_ID`.
+2. The seeded book "Emma" on the test user's shelf with status **in progress** (`in-progress` in the database; starting a session would otherwise change it); its id is `E2E_BOOK_ID`.
 3. A group named `E2E fixture group` owned by the test user; its id is `E2E_GROUP_ID`.
 4. A second Supabase user that has **not** finished its profile.
 
