@@ -366,3 +366,20 @@ A running record of what the team did and decided in iteration 2. The [release n
 ### 2026-11-17: README rewritten as a project overview
 
 - [README.md](../../../README.md) now has the project description, links to each iteration's `CLAIM.md`, an architecture diagram (Vue frontend, Express backend, PostgreSQL, Supabase Auth, Open Library API), the repository tree with comments inside it, and a table of every `make` command. The long per-folder explanations were dropped; [docs/architecture/](../../architecture/) and each app's README hold the details.
+- Each Home section now shows a shimmer placeholder instead of a plain "Loading…" line while its request runs, so the page keeps its shape until the data arrives. The [home view](../../../apps/frontend/src/views/HomeView.vue) has skeletons for the bedside book, groups, circle comments, friends reading now and pending invites, all built from the design tokens with a reduced-motion fallback.
+- **Decision: one skeleton per section, not a full-page loader.** The sections load independently (reading, groups, invites, friends, circle), so a full-page loader would hide the sections that are already ready. Each skeleton keeps its section's height and heading, and the real empty/error state only shows once that request finishes.
+- **Accessibility.** Every skeleton block is `role="status"` with `aria-busy="true"` and an `.sr-only` label ("Loading your reading…", etc.); the decorative bars are `aria-hidden`.
+- **Tests.** A new `HomeView.api.spec.ts` test holds all five requests open, checks the skeletons and their screen-reader labels are shown and the empty states are not, then resolves them and checks the empty states replace the skeletons. Frontend 193 passing; typecheck, lint, format and build clean.
+
+### 2026-11-13: Library folder form layout
+
+- The **New folder** and **Rename** forms in the [library sidebar](../../../apps/frontend/src/components/library/LibrarySidebar.vue) put the name field and both actions on one line in the 220px column, which left the controls cramped. The field now spans the row and **Create**/**Cancel** (or **Save**/**Cancel**) sit side by side below it.
+- **Polish.** Opening the create form focuses the name field, the submit button stays disabled until the name has visible characters, and **Escape** cancels either form. The buttons now match the input height and the sidebar's font size.
+- **Tests.** A new `LibrarySidebar` test covers the disabled submit and the Escape cancel. Frontend 194 passing; typecheck, lint and format clean.
+
+### 2026-11-18: Home e2e coverage (#148, #127)
+
+- Extended [`apps/frontend/e2e/home.spec.ts`](../../../apps/frontend/e2e/home.spec.ts) from the single greeting check to four tests for the real-data Home: the hero book and its session link, all sections loading without an alert, the groups matching the API, and the section skeletons while the Home requests are held.
+- **Decision: derive expectations from the API.** The tests call `GET /me/library`, `/me/reading-sessions/active`, `/me/groups` and `/me/book-clubs` with the test user's token and compare the page against the responses. That way they do not depend on the optional fixtures (friends, invites, comments) that the shared test user may not have. The skeleton test delays every `/api/me/**` response with Playwright's routing, so the loading state is deterministic.
+- **Not run.** `.env.e2e` and the permanent fixtures (test user, book, group) are still missing, so the suite was only listed (`playwright test --list`: 16 tests in 13 files); typecheck, lint and format pass. The status table now counts 16 tests.
+
