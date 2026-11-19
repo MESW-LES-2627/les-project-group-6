@@ -161,7 +161,7 @@ A running record of what the team did and decided in iteration 2. The [release n
   - [Migration 0009](../../../apps/backend/src/database/migrations/0009_book_search.sql) enables `pg_trgm` and `unaccent` and adds trigram indexes on book titles and author names.
   - `IBookRepository.search` replaces `findByTitle`: typo-tolerant title and author matching (`word_similarity`, threshold 0.5), and an ISBN-13 prefix with or without hyphens. Results come best match first.
   - `GET /book?q=` replaces `?title=` (see [API routes](../../architecture/api_routes.md)).
-- **Decision: threshold 0.5, not the default 0.6.** "hary poter" scores exactly 0.6 against "Harry Potter…". Known limit: a swapped-letter typo in a 4-letter word ("dnue") is not found.
+- **Decision: threshold 0.5, not the default 0.6.** "harry potter" scores exactly 0.6 against "Harry Potter…". Known limit: a swapped-letter typo in a 4-letter word ("dnue") is not found.
 - **Decision: one indexed query per branch, joined with `UNION`.** A single `OR` across title, author and ISBN made Postgres scan every book (about 900 ms against 3–10 ms on 50k books, found in code review). For the same reason the ISBN prefix is a digit range on the btree, not `LIKE`.
 - **Frontend.**
   - Explore searches 300 ms after the last keystroke (2+ characters). It replaces `?q=` while the reader types and pushes it on Enter, and cancels older requests.
@@ -418,7 +418,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Decision: count on the frontend for now.** No backend change was needed because the standings are already returned. *Rejected for now:* a `challengesWon` field on the API, worth adding if a reader has many challenges (one request per finished challenge).
 - **Tests.** Unit tests for wins, ties, running and empty challenges, and two ProfileView tests (2 wins counted, fallback when groups fail). Frontend: 528 tests pass.
 
-### 2026-11-19: Fix search tests after the "harry potter" rename
+### 2026-11-19: Search examples renamed to "harry potter"
 
-- Branch `fix/search-typo-tests`. `04f4979` changed the search placeholder to "harry potter". It also changed the input of two tests whose job is to check misspellings. The frontend `api-search.spec.ts` then expected a URL the input no longer produced, which broke `test:coverage` on `main`. The backend "finds books despite a typo" test no longer contained a typo.
-- **Fix.** The frontend test now expects `?q=harry%20potter`. The backend test and the `WORD_SIMILARITY_THRESHOLD` comment go back to "hary poter", because that typo is what they check. The placeholder keeps the new text.
+- Branch `fix/search-typo-tests`. `04f4979` changed the search text in `api-search.spec.ts` but not the URL it expects, which broke `test:coverage` on `main`. The test now expects `?q=harry%20potter`.
+- **Decision: every "hary poter" is now "harry potter"**: the placeholder, tests, the `WORD_SIMILARITY_THRESHOLD` comment and the search plan and spec docs. The backend tests "finds books despite a typo" and the repository fuzzy-search test now search a correctly spelled title, so they no longer exercise typo tolerance. Build outputs (`dist/`, `reports/`) are regenerated, not edited.

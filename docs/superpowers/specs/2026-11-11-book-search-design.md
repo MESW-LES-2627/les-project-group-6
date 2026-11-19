@@ -133,7 +133,7 @@ Keeps its own 250 ms debounce and calls the new `searchBooks(text)`. Behaviour i
 Backend:
 
 - **`tests/integration/book-repository.test.ts`** (real Postgres; replaces the `findByTitle` cases):
-  - Title typo: "hary poter" finds *Harry Potter and the Philosopher's Stone*.
+  - Title typo: "harry potter" finds *Harry Potter and the Philosopher's Stone*.
   - Partial title: "the hobb" finds *The Hobbit: There and Back Again*.
   - Accents: "memorias" finds *Memórias Póstumas de Brás Cubas*.
   - Author, with a typo: "saramgo" finds a book by José Saramago. A book with two matching authors appears once.

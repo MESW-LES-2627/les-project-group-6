@@ -21,14 +21,14 @@
 
   | Query | Text | Score |
   | --- | --- | --- |
-  | `hary poter` | `harry potter and the philosopher's stone` | 0.600 |
+  | `harry potter` | `harry potter and the philosopher's stone` | 0.600 |
   | `the hobb` | `the hobbit: there and back again` | 0.889 |
   | `saramgo` | `jose saramago` | 0.625 |
   | `dune` | `the dunes of mars` | 0.800 |
   | `dune` | `duke` | 0.400 |
   | `dnue` | `dune` | 0.200 |
 
-  The default threshold (0.6) leaves "hary poter" exactly on the edge, so the threshold is set to **0.5** per transaction. Known limit: a swapped-letter typo in a 4-letter word ("dnue") is not found. Trigrams can't catch it, and that is accepted.
+  The default threshold (0.6) leaves "harry potter" exactly on the edge, so the threshold is set to **0.5** per transaction. Known limit: a swapped-letter typo in a 4-letter word ("dnue") is not found. Trigrams can't catch it, and that is accepted.
 - `Book` has no authors (the `authors`/`book_authors` tables exist, but the entity does not load them). The SQL search joins authors, but the in-memory repository can only search title and ISBN.
 - Commits follow conventional commits (`feat:`, `test:`, `docs:`). If the `my-skills:commit_writter` skill is available, use it for each commit.
 
@@ -251,7 +251,7 @@ In `apps/backend/tests/integration/book-repository.test.ts`:
       await repo.save(Book.create({ title: "Harry Potter and the Philosopher's Stone" }));
       await repo.save(Book.create({ title: 'Dune' }));
 
-      assert.deepEqual(titles(await repo.search('hary poter', 20)), [
+      assert.deepEqual(titles(await repo.search('harry potter', 20)), [
         "Harry Potter and the Philosopher's Stone",
       ]);
     });
@@ -377,7 +377,7 @@ import { authors, bookAuthors, books } from '../../database/schema.js';
 ```ts
 /** Below this length trigrams are unreliable, so only prefixes match. */
 const TRIGRAM_MIN_LENGTH = 3;
-/** pg_trgm's default (0.6) only just lets "hary poter" find "Harry Potter". */
+/** pg_trgm's default (0.6) only just lets "harry potter" find "Harry Potter". */
 const WORD_SIMILARITY_THRESHOLD = 0.5;
 
 /** The ISBN digits in `query` (hyphens and spaces removed), when it looks like one. */
@@ -574,7 +574,7 @@ In `apps/backend/tests/integration/book-api.test.ts`, replace the test `'GET /bo
     await bookRepository.save(Book.create({ title: 'Dune' }));
 
     await withApp(app, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/book?q=${encodeURIComponent('hary poter')}`, {
+      const response = await fetch(`${baseUrl}/book?q=${encodeURIComponent('harry potter')}`, {
         headers: auth,
       });
       assert.strictEqual(response.status, 200);
@@ -709,10 +709,10 @@ describe('searchBooks', () => {
     vi.stubGlobal('fetch', fetchMock);
     const controller = new AbortController();
 
-    await expect(searchBooks('hary poter', controller.signal)).resolves.toEqual([]);
+    await expect(searchBooks('harry potter', controller.signal)).resolves.toEqual([]);
 
     const [url, init] = fetchMock.mock.calls[0]!;
-    expect(url).toBe('/api/book?q=hary%20poter');
+    expect(url).toBe('/api/book?q=harry%20potter');
     expect(init!.signal!.aborted).toBe(false);
     controller.abort();
     expect(init!.signal!.aborted).toBe(true);
@@ -726,7 +726,7 @@ describe('searchBooks', () => {
 pnpm exec vitest run src/services/__tests__/api-search.spec.ts
 ```
 
-Expected: FAIL. The URL is `/api/book?title=hary%20poter`.
+Expected: FAIL. The URL is `/api/book?title=harry%20potter`.
 
 - [ ] **Step 3: Implement**
 
@@ -1063,7 +1063,7 @@ Expected: FAIL. The received text is `Book title`.
 
 In `ExploreSearchBar.vue`:
 - line 2 comment → `// The big search field of the Explore page (F-EXP-01): title, author or ISBN.`
-- `placeholder="Search by title"` → `placeholder="Try “hary poter” or an ISBN"`
+- `placeholder="Search by title"` → `placeholder="Try “harry potter” or an ISBN"`
 - `<p class="muted hint">Book title</p>` → `<p class="muted hint">Title, author or ISBN</p>`
 
 - [ ] **Step 4: Run all frontend checks**
@@ -1114,7 +1114,7 @@ In `docs/iterations/2/log.md`:
 
 - Following the [spec](../../superpowers/specs/2026-11-11-book-search-design.md) and the [plan](../../superpowers/plans/2026-11-11-book-search.md).
 - **Backend.** [Migration 0009](../../../apps/backend/src/database/migrations/0009_book_search.sql) enables `pg_trgm` and `unaccent` and adds trigram indexes on book titles and author names. `IBookRepository.search` replaces `findByTitle`: typo-tolerant title and author matching (`word_similarity`, threshold 0.5), ISBN by prefix with or without hyphens, best match first. `GET /book?q=` replaces `?title=` (see [API routes](../../architecture/api_routes.md)).
-- **Decision: threshold 0.5, not the default 0.6**, because "hary poter" scores exactly 0.6 against "Harry Potter…". Known limit: a swapped-letter typo in a 4-letter word ("dnue") is not found.
+- **Decision: threshold 0.5, not the default 0.6**, because "harry potter" scores exactly 0.6 against "Harry Potter…". Known limit: a swapped-letter typo in a 4-letter word ("dnue") is not found.
 - **Frontend.** Explore searches 300 ms after the last keystroke (2+ characters), replacing `?q=` while typing and pushing it on Enter, and cancels older requests. `BookPicker` uses the same search unchanged.
 ```
 
