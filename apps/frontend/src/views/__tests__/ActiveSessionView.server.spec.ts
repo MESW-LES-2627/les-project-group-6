@@ -82,7 +82,12 @@ describe('ActiveSessionView with a server session', () => {
       };
       return { ...server.session, elapsedSeconds: server.elapsedSeconds };
     });
-    api.finishReadingSession.mockResolvedValue({} as ApiReadingSession);
+    api.finishReadingSession.mockImplementation(async () => ({
+      ...server.session!,
+      endedAt: '2026-11-19T11:05:00.000Z',
+      elapsedSeconds: 65 * 60 + 12,
+      countedMinutes: 65,
+    }));
     api.cancelReadingSession.mockResolvedValue(undefined);
   });
 
@@ -115,8 +120,43 @@ describe('ActiveSessionView with a server session', () => {
     await reloaded.get('.timer-button--stop').trigger('click');
     await flushPromises();
     expect(api.finishReadingSession).toHaveBeenCalledWith(SESSION_ID);
+    await reloaded.get('.summary-done').trigger('click');
+    await flushPromises();
     expect(router.currentRoute.value.name).toBe('profile');
     reloaded.unmount();
+  });
+
+  it('shows a summary of the finished session before leaving', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper.get('.timer-button--stop').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('#summary-title').text()).toBe('Emma');
+    expect(wrapper.get('.summary-duration').text()).toBe('1 h 05 min');
+    expect(wrapper.get('.summary-counted').text()).toBe('65 minutes');
+    expect(wrapper.find('.summary-note').exists()).toBe(false);
+    expect(wrapper.find('.timer-button--stop').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('says when a session was too short to count', async () => {
+    api.finishReadingSession.mockImplementation(async () => ({
+      ...server.session!,
+      endedAt: '2026-11-19T10:00:40.000Z',
+      elapsedSeconds: 40,
+      countedMinutes: 0,
+    }));
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper.get('.timer-button--stop').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('.summary-duration').text()).toBe('Under a minute');
+    expect(wrapper.get('.summary-note').text()).toContain('counted 0 minutes');
+    wrapper.unmount();
   });
 
   it('cancels the session after confirmation and saves nothing', async () => {
