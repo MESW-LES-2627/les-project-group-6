@@ -839,3 +839,23 @@ I am missing one issue, to show the challenges won in the profile page in fronte
 
 #### Explanation of Changes
 Replaced the mock challenges-won count on the profile with a count of finished challenges the reader won (top score, ties included), computed from the existing challenge standings API. Added unit and view tests.
+
+
+#### Explanation of Changes
+Replaced the mock challenges-won count on the profile with a count of finished challenges the reader won (top score, ties included), computed from the existing challenge standings API. Added unit and view tests.
+
+### 2026-11-19: Iteration 2 class diagram, component diagram and change analysis
+
+- **Date:** 2026-11-19
+- **Author:** Nimot Imran
+- **Model:** Claude Sonnet 5.5
+- **Tool:** Claude (claude.ai)
+- **Domain:** docs, architecture
+
+#### Prompt
+```text
+Using the oop_assets iteration_1 as a guide, generate the changes as requested with this guide. Generate the change_analysis, class_diagram, and component_diagram for iteration_2 and provide files that are ready to upload to GitHub. Document two distinct, plausible future changes: the first for Iteration 1, and another for Iteration 2. For each scenario, state the date when you thought/wrote it, and cover: change scenario and design context; coupling and cohesion analysis (strength, distance, volatility); alternatives, decision and consequences.
+```
+
+#### Explanation of Changes
+Read the iteration 1 diagrams and change analysis, the iteration 2 log and the backend code, then drew the iteration 2 class and component diagrams (Mermaid rendered to PNG) and wrote `change_analysis_iteration_2.md` for a second scenario, reader badges. Added the date to the iteration 1 analysis, filled the Iteration 3 section of `design.md`, and updated the docs index and the iteration 2 log.

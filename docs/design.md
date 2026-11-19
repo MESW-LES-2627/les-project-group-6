@@ -15,6 +15,7 @@ How Bookmarked is designed, and how that design changed from one iteration to th
 - [Iteration 3](#iteration-3)
   - [Class diagram](#class-diagram-2)
   - [Component diagram](#component-diagram-2)
+  - [Change analysis](#change-analysis-1)
 
 ## Iteration 1
 
@@ -422,8 +423,447 @@ The change scenario for this iteration is **adding book clubs** next to reading 
 
 ### Class diagram
 
-_Not added yet._
+The domain model at the end of iteration 2 (`iter-2`), following the [iteration 3 component diagram](#component-diagram-2). Classes marked «planned» are part of the design but not built yet. PNG: [`class_diagram_iteration_2.png`](oop_assets/class_diagram_iteration_2.png).
+
+```mermaid
+classDiagram
+    class User {
+        +id: UUID
+        +email: Email
+        +username: Username
+        +displayName: String
+        +bio: String
+        +photoUrl: String
+        +timezone: String
+        +profileVisibility: ProfileVisibility
+        +currentStreak: Integer
+        +longestStreak: Integer
+        +lastReadDate: Date
+        +register()$ User
+        +rename(displayName: String)
+        +moveTo(timezone: String)
+        +makeProfilePublic()
+        +makeProfilePrivate()
+        +recordReadingDay(day: Date) Boolean
+        +/streakOn(day: Date) StreakSnapshot
+    }
+    class Friendship {
+        +status: FriendshipStatus
+        +createdAt: DateTime
+        +respondedAt: DateTime
+    }
+    class Book {
+        +id: UUID
+        +title: BookTitle
+        +isbn13: Isbn13
+        +pageCount: PageCount
+        +description: String
+        +coverUrl: String
+        +isCommunityAdded: Boolean
+        +progressAt(page: Integer) PageProgress
+    }
+    class Author {
+        +name: AuthorName
+    }
+    class BookCatalog {
+        <<interface>>
+        +search(query: String, limit: Integer) CatalogBook[*]
+    }
+    class OpenLibraryCatalog {
+        +timeout: 3 s
+        +cache: LRU 1 h
+    }
+    class ReadingStatus {
+        +progress: PageProgress
+        +startedOn: Date
+        +finishedOn: Date
+        +updatedAt: DateTime
+        +startReading()
+        +finish()
+        +abandon()
+        +moveBackToShelf()
+        +updateProgress(progress: PageProgress)
+        +setDates(startedOn: Date, finishedOn: Date)
+    }
+    class ReadingState {
+        <<abstract>>
+        +tracksProgress: Boolean
+        +allowsReview: Boolean
+        +start() ReadingState
+        +finish() ReadingState
+        +abandon() ReadingState
+        +moveBackToShelf() ReadingState
+    }
+    class NotStarted
+    class InProgress
+    class Finished
+    class DidNotFinish
+    class ReadingSession {
+        +startedAt: DateTime
+        +endedAt: DateTime
+        +durationSeconds: Integer
+        +countedMinutes: Integer
+        +start()$ ReadingSession
+        +finish(now: DateTime)
+        +cancel()
+        +isActive() Boolean
+    }
+    class Folder {
+        +name: FolderName
+        +createdAt: DateTime
+        +rename(name: FolderName)
+    }
+    class Tag {
+        +name: TagName
+        +createdAt: DateTime
+    }
+    class Review {
+        +rating: Rating
+        +comment: ReviewComment
+        +createdAt: DateTime
+        +updatedAt: DateTime
+    }
+    class Group {
+        <<abstract>>
+        +id: UUID
+        +name: GroupName
+        +description: String
+        +kind: GroupKind
+        +createdAt: DateTime
+        +isMember(user: User) Boolean
+        +isAdmin(user: User) Boolean
+        +requireCanLeave(user: User)
+    }
+    class Membership {
+        +role: MemberRole
+        +joinedAt: DateTime
+    }
+    class ChallengeGroup {
+        +period: ChallengePeriod
+        +winMetric: WinMetric
+        +metricGoal: Integer
+        +/standings: Standing[*]
+        +statusAt(now: DateTime) ChallengeStatus
+    }
+    class BookClub {
+        +/currentRound: Round
+        +/memberProgress: Progress[*]
+        +startNextRound(book: Book, deadline: Date)
+    }
+    class Round {
+        +number: Integer
+        +startDate: Date
+        +deadline: Date
+        +outcome() RoundOutcome
+    }
+    class BookPoll {
+        +closesAt: DateTime
+        +anonymous: Boolean
+        +propose(member: User, book: Book) Proposal
+        +vote(member: User, proposal: Proposal)
+        +close()
+    }
+    class Proposal {
+        +createdAt: DateTime
+    }
+    class Vote {
+        +castAt: DateTime
+    }
+    class GroupInvite {
+        +status: InviteStatus
+        +createdAt: DateTime
+        +respondedAt: DateTime
+        +send()$ GroupInvite
+        +accept()
+        +decline()
+    }
+    class ChatMessage {
+        +seq: Integer
+        +kind: MessageKind
+        +body: MessageBody
+        +createdAt: DateTime
+        +deletedAt: DateTime
+        +write()$ ChatMessage
+        +system()$ ChatMessage
+        +deleteBy(user: User)
+    }
+    class Attachment {
+        <<planned>>
+        +url: String
+        +type: MediaType
+    }
+    class SessionCompleted {
+        <<event>>
+        +sessionId: UUID
+        +userId: UUID
+        +bookId: UUID
+        +startedAt: DateTime
+        +endedAt: DateTime
+        +countedMinutes: Integer
+    }
+    class MemberJoined {
+        <<event>>
+        +groupId: UUID
+        +userId: UUID
+        +at: DateTime
+    }
+    class StreakExtended {
+        <<planned event>>
+        +userId: UUID
+        +day: Date
+        +currentStreak: Integer
+        +longestStreak: Integer
+    }
+    class BadgeEarned {
+        <<planned event>>
+        +userId: UUID
+        +badge: BadgeCode
+        +earnedAt: DateTime
+    }
+    class Badge {
+        <<planned>>
+        +code: BadgeCode
+        +name: String
+        +description: String
+    }
+    class BadgeAward {
+        <<planned>>
+        +earnedAt: DateTime
+    }
+    class BadgeRule {
+        <<planned>>
+        +badge: Badge
+        +earnedBy(event) Boolean
+    }
+    class ThousandMinutes {
+        <<planned>>
+    }
+    class WeekWarrior {
+        <<planned>>
+    }
+    class Marathon {
+        <<planned>>
+    }
+    class MemberRole {
+        <<enumeration>>
+        ADMIN
+        MEMBER
+    }
+    class GroupKind {
+        <<enumeration>>
+        CHALLENGE
+        BOOK_CLUB
+    }
+    class WinMetric {
+        <<enumeration>>
+        MINUTES
+        PAGES
+        BOOKS
+        STREAK
+    }
+    class InviteStatus {
+        <<enumeration>>
+        PENDING
+        ACCEPTED
+        DECLINED
+    }
+    class MessageKind {
+        <<enumeration>>
+        TEXT
+        SYSTEM
+    }
+
+    User "1" -- "0..*" Friendship : requests
+    User "1" -- "0..*" Friendship : receives
+
+    Book "0..*" -- "1..*" Author : written by
+    BookCatalog <|.. OpenLibraryCatalog
+    BookCatalog ..> Book : imports by ISBN-13
+
+    User "1" -- "0..*" ReadingStatus : library
+    ReadingStatus "0..*" --> "1" Book
+    ReadingStatus "1" --> "1" ReadingState : state
+    ReadingState <|-- NotStarted
+    ReadingState <|-- InProgress
+    ReadingState <|-- Finished
+    ReadingState <|-- DidNotFinish
+
+    User "1" -- "0..*" ReadingSession : reads
+    ReadingSession "0..*" --> "1" Book
+    ReadingSession ..> User : counts a reading day (5+ min)
+    ReadingStatus ..> User : counts a reading day (5+ pages or finished)
+
+    User "1" *-- "0..*" Folder : owns
+    Folder "0..*" --> "0..*" Book : holds (must be in library)
+    User "1" *-- "0..*" Tag : owns
+    Tag "0..*" --> "0..*" Book : labels (must be in library)
+
+    User "1" -- "0..*" Review : writes
+    Book "1" -- "0..*" Review : receives
+    Review ..> ReadingState : only if allowsReview
+
+    Group <|-- ChallengeGroup
+    Group <|-- BookClub
+    Group "1" *-- "1..*" Membership
+    Membership "0..*" --> "1" User : member
+    Membership ..> MemberRole
+    Group ..> GroupKind
+    ChallengeGroup ..> WinMetric
+    ChallengeGroup ..> ReadingSession : ranks members from
+    BookClub ..> ReadingSession : club minutes from
+
+    BookClub "1" *-- "1..*" Round
+    Round "0..*" --> "1" Book
+    BookClub "1" *-- "0..*" BookPoll
+    BookPoll "1" *-- "0..*" Proposal
+    BookPoll "1" *-- "0..*" Vote
+    Proposal "0..*" --> "1" Book
+    Proposal "0..*" --> "1" User : proposed by
+    Vote "0..*" --> "1" Proposal
+    Vote "0..*" --> "1" User : voter
+    BookClub ..> ReadingStatus : member progress from
+
+    Group "1" -- "0..*" GroupInvite
+    GroupInvite "0..*" --> "1" User : inviter
+    GroupInvite "0..*" --> "1" User : invitee
+    GroupInvite ..> InviteStatus
+    GroupInvite ..> MemberJoined : accept publishes
+
+    Group "1" *-- "0..*" ChatMessage : chat
+    ChatMessage "0..*" --> "0..1" User : author
+    ChatMessage ..> MessageKind
+    ChatMessage "1" *-- "0..*" Attachment
+    MemberJoined ..> ChatMessage : announced in chat
+
+    ReadingSession ..> SessionCompleted : finish publishes
+    User ..> StreakExtended : streak change publishes
+
+    User "1" -- "0..*" BadgeAward : earns
+    BadgeAward "0..*" --> "1" Badge
+    BadgeRule "1" --> "1" Badge : decides
+    BadgeRule <|-- ThousandMinutes
+    BadgeRule <|-- WeekWarrior
+    BadgeRule <|-- Marathon
+    BadgeRule ..> SessionCompleted : reacts to
+    BadgeRule ..> StreakExtended : reacts to
+    BadgeRule ..> MemberJoined : reacts to
+    BadgeAward ..> BadgeEarned : award publishes
+```
+
+#### What changed from iteration 2
+
+- **Library organisation (new).** A reader owns **Folder**s (private, name unique ignoring case, a book can be in several) and **Tag**s (free text, lower case, created on first use and deleted when no book has them). Both can only hold books that are already in the reader's library.
+- **Review is built.** It leaves the «planned» list: a **Rating** from 1 to 5 plus an optional **ReviewComment**, one review per reader and book, allowed only when the book's `ReadingState` has `allowsReview` (In progress, Finished, Did not finish).
+- **Book has Authors and an outside catalogue.** `Book` is linked to one or more **Author**s (unique ignoring case and accents). The **BookCatalog** interface, with the **OpenLibraryCatalog** adapter, is how books missing from our database are found and imported by ISBN-13.
+- **ReadingStatus has dates.** `startedOn` and `finishedOn` are stored, and `setDates` edits them.
+- **User has a streak.** `currentStreak`, `longestStreak` and `lastReadDate`, updated by `recordReadingDay`. A finished session of 5+ counted minutes, or 5+ pages of progress on a book in progress, or finishing a book counts as a reading day (the two dashed links from ReadingSession and ReadingStatus to User).
+- **Group can be left.** `requireCanLeave` keeps the admin from leaving while others remain. `Group` also stores its `kind` (challenge or book club).
+- **Domain events (Observer).** **SessionCompleted** is published when a session finishes and **MemberJoined** when an invite is accepted. SessionCompleted has no listener yet.
+- **Badges (planned).** **Badge**, **BadgeAward** and a **BadgeRule** per badge (ThousandMinutes, WeekWarrior and Marathon first) react to SessionCompleted, MemberJoined and the new planned event **StreakExtended**, and publish **BadgeEarned**. This is the decision of the [change analysis](#change-analysis-1).
 
 ### Component diagram
 
-_Not added yet._
+![Component diagram, iteration 3](oop_assets/component_diagram_iteration_2.png)
+
+The architecture at the end of iteration 2. The components are modules of **one Express backend** deployed together (the box in the picture); they are drawn as separate services because each one owns its rules and talks to the others through a small contract. Dashed boxes and lines are planned. **Red lines** are the links the [change analysis](#change-analysis-1) marks as unbalanced and accepted for now.
+
+<details>
+<summary>Mermaid source of the component diagram</summary>
+
+```mermaid
+---
+config:
+  layout: elk
+---
+flowchart TB
+    FE["App frontend<br/>(Vue SPA, static site)"]
+    SA["Authentication service<br/>(Supabase Auth)"]
+    OL["Open Library API<br/>(external)"]
+    DB[("Supabase DB<br/>Postgres")]
+    BK[/"Asset bucket<br/>(planned)"/]
+
+    subgraph BE["Backend API: one Express app, one module per component"]
+        direction TB
+        AM["Auth middleware<br/>(verifies JWT)"]
+        UM["Users management<br/>profile, user search,<br/>reading streak"]
+        SL["Social links<br/>friend requests, friends"]
+        BM["Books management<br/>catalogue, fuzzy search,<br/>add a missing book"]
+        LS["Library service<br/>reading status, library view"]
+        LO["Library organisation<br/>folders, tags"]
+        FS["Feedback service<br/>ratings and reviews"]
+        EX["Explore service<br/>trending, most read"]
+        RS["Reading session service<br/>timer, counted minutes"]
+        GM["Group management<br/>members, invites, leave"]
+        BC["Book club service<br/>rounds, polls"]
+        CH["Book challenge service<br/>competition rules"]
+        CS["Chat service<br/>messages, live push"]
+        BD["Badge service<br/>(planned)"]
+        NF["Notification and feed<br/>(planned)"]
+    end
+
+    FE -->|"login, signup,<br/>password recovery"| SA
+    FE -->|"HTTP + JWT"| AM
+    FE <-->|"Socket.IO"| CS
+    AM -->|"load profile"| UM
+
+    BM -->|"BookCatalog port<br/>3 s timeout, 1 h cache"| OL
+    LS -->|"find book"| BM
+    LO -->|"LibraryMembership:<br/>is the book in my library?"| LS
+    FS -->|"can I review?<br/>(reading status)"| LS
+    FS -->|"who sees it?<br/>(friends, profile)"| SL
+    FS -->|"book"| BM
+    EX -->|"topBooks()"| RS
+    EX -->|"mostAdded()"| LS
+    EX -->|"books"| BM
+
+    RS -->|"count a reading day"| UM
+    LS -->|"count a reading day"| UM
+    RS -->|"ensure in progress"| LS
+    UM -->|"streak calendar,<br/>reading stats"| RS
+
+    CH -->|"countedMinutes()"| RS
+    BC -->|"countedMinutes()"| RS
+    BC -->|"progressOf()"| LS
+    BC -->|"propose a book"| BM
+    CH -->|"reuse group logic"| GM
+    BC -->|"reuse group logic"| GM
+    CH -->|"postSystem()"| CS
+    BC -->|"postSystem()"| CS
+    GM -->|"invite only friends"| SL
+    GM -.->|"MemberJoined:<br/>announce"| CS
+    GM -.->|"MemberJoined:<br/>add book to library"| BC
+
+    RS -.->|"SessionCompleted"| BD
+    UM -.->|"StreakExtended"| BD
+    GM -.->|"MemberJoined"| BD
+    BD -.->|"BadgeEarned"| NF
+    CS -.->|"store assets"| BK
+
+    BE ==>|"all components read and write"| DB
+    SA -->|"check or create credentials"| DB
+
+    classDef planned stroke-dasharray: 5 5,fill:#f6f6f6,stroke:#888
+    class BD,NF,BK planned
+    classDef ext fill:#fff4e5,stroke:#b9770e
+    class OL,SA ext
+    linkStyle 13,14,16 stroke:#c0392b,stroke-width:2px
+    style BE fill:#fafafa,stroke:#999
+```
+
+</details>
+
+#### What changed from iteration 2
+
+- **Books management** asks the outside **Open Library API** when a search finds fewer than 5 local books, through the `BookCatalog` port (3 s timeout, in-memory cache for 1 hour). Search is typo-tolerant (Postgres `pg_trgm`), and a reader can add a missing book by hand.
+- **Library service (new).** Owns the reading status of each book and the library view. It publishes two read contracts: `LibraryMembership` (is this book in the reader's library?) and `ReadingProgressQuery` (`progressOf`, `mostAdded`).
+- **Library organisation (new).** Folders and tags. It uses `LibraryMembership` and never reads the library's tables.
+- **Feedback service** now exists: ratings and reviews, shown to the reader, their friends and (for public profiles) everyone.
+- **Explore service (new).** Trending and most-read lists, built from `topBooks()` of the Reading session service and `mostAdded()` of the Library service.
+- **Reading session service** publishes `ReadingActivityQuery` (`countedMinutes`, `topBooks`), which Book challenge, Book club and Explore use. They no longer read the sessions table. It also publishes `SessionCompleted`.
+- **Users management** now owns the **reading streak** and user search. Reading session and Library service call it to count a reading day (red lines).
+- **Group management** also handles leaving a group and publishes `MemberJoined`, which Chat (announcement) and Book club (add the round book to the library) react to.
+- **Badge service and Notification and feed (planned).** They subscribe to events only; nothing existing calls them.
+
+### Change analysis
+
+The change scenario for this iteration is **adding reader badges** (and, after them, notifications and the feed). The full analysis is in [`oop_assets/change_analysis_iteration_2.md`](oop_assets/change_analysis_iteration_2.md): the scenario and its context, the coupling and cohesion analysis with strength, distance and volatility, the options considered, and the decision. The decision is a **Badge module that subscribes to events** (`SessionCompleted`, `MemberJoined` and one new `StreakExtended`) and publishes `BadgeEarned`, while the streak stays a direct call for now. The analysis for the previous scenario (book clubs, iteration 1) is in [`oop_assets/change_analysis.md`](oop_assets/change_analysis.md).
