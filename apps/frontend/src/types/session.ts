@@ -6,19 +6,15 @@ export interface SessionGroup {
   note: string;
 }
 
-/** The active-session screen data shown after starting a reading session. */
+/** The running session as the session screen shows it; times come from the server. */
 export interface ActiveSession {
   bookId: string;
-  /** For example "Started today at 10:00". */
+  /** For example "Started at 10:00". */
   startedAtLabel: string;
   /** Short clock label used by the welcome-back note. */
   startTimeLabel: string;
+  /** The page the reader was on when the session started. */
   startPage: number;
-  currentPage: number;
   elapsedSeconds: number;
   groups: SessionGroup[];
-  profileTitle: string;
-  profileCopy: string;
-  rules: string[];
-  rulesNote: string;
 }

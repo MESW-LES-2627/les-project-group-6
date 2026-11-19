@@ -2,6 +2,7 @@ import { eq, inArray, sql, type SQL } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { authors, bookAuthors, books } from '../../database/schema.js';
+import { authorNamesByBook } from './book-authors-query.js';
 import { Book, BookId, BookTitle, Isbn13, PageCount } from './book.js';
 
 export interface IBookRepository {
@@ -30,7 +31,7 @@ export interface IBookRepository {
 type BookRow = typeof books.$inferSelect;
 
 // Data Mapper: the only place that knows both the books row and the Book entity.
-function toDomain(row: BookRow): Book {
+function toDomain(row: BookRow, authorNames: readonly string[] = []): Book {
   return Book.reconstitute({
     id: BookId.of(row.id),
     title: BookTitle.of(row.title),
@@ -40,7 +41,20 @@ function toDomain(row: BookRow): Book {
     coverUrl: row.coverUrl,
     isCommunityAdded: row.isCommunityAdded,
     createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+    authors: authorNames,
   });
+}
+
+/** The books of these rows with their authors (one extra query for all of them). */
+async function withAuthors(
+  db: Parameters<typeof authorNamesByBook>[0],
+  rows: readonly BookRow[],
+): Promise<Book[]> {
+  const names = await authorNamesByBook(
+    db,
+    rows.map((row) => row.id),
+  );
+  return rows.map((row) => toDomain(row, names.get(row.id)));
 }
 
 function toRow(book: Book): typeof books.$inferInsert {
@@ -92,8 +106,7 @@ export class DrizzleBookRepository implements IBookRepository {
 
   async findById(id: BookId): Promise<Book | null> {
     const rows = await this.db.select().from(books).where(eq(books.id, id.value)).limit(1);
-    const row = rows[0];
-    return row ? toDomain(row) : null;
+    return (await withAuthors(this.db, rows))[0] ?? null;
   }
 
   async search(query: string, limit: number): Promise<Book[]> {
@@ -149,7 +162,7 @@ export class DrizzleBookRepository implements IBookRepository {
         .where(where)
         .orderBy(...order)
         .limit(limit);
-      return rows.map(toDomain);
+      return withAuthors(tx, rows);
     });
   }
 
@@ -164,13 +177,12 @@ export class DrizzleBookRepository implements IBookRepository {
           ids.map((id) => id.value),
         ),
       );
-    return rows.map(toDomain);
+    return withAuthors(this.db, rows);
   }
 
   async findByIsbn(isbn: Isbn13): Promise<Book | null> {
     const rows = await this.db.select().from(books).where(eq(books.isbn13, isbn.value)).limit(1);
-    const row = rows[0];
-    return row ? toDomain(row) : null;
+    return (await withAuthors(this.db, rows))[0] ?? null;
   }
 
   async findByIsbns(isbns: readonly Isbn13[]): Promise<Book[]> {
@@ -184,7 +196,7 @@ export class DrizzleBookRepository implements IBookRepository {
           isbns.map((isbn) => isbn.value),
         ),
       );
-    return rows.map(toDomain);
+    return withAuthors(this.db, rows);
   }
 
   async saveWithAuthors(book: Book, authorNames: readonly string[]): Promise<Book> {
@@ -201,10 +213,11 @@ export class DrizzleBookRepository implements IBookRepository {
           .from(books)
           .where(eq(books.isbn13, book.isbn13!.value))
           .limit(1);
-        return toDomain(existing[0]!);
+        return (await withAuthors(tx, existing))[0]!;
       }
 
-      for (const name of new Set(authorNames.map((n) => n.trim()).filter(Boolean))) {
+      const names = [...new Set(authorNames.map((n) => n.trim()).filter(Boolean))];
+      for (const name of names) {
         // authors.name is not unique, so look it up first.
         const found = await tx
           .select({ id: authors.id })
@@ -219,7 +232,10 @@ export class DrizzleBookRepository implements IBookRepository {
           .values({ bookId: book.id.value, authorId })
           .onConflictDoNothing();
       }
-      return toDomain(inserted[0]!);
+      return toDomain(
+        inserted[0]!,
+        [...names].sort((a, b) => a.localeCompare(b)),
+      );
     });
   }
 
@@ -230,7 +246,7 @@ export class DrizzleBookRepository implements IBookRepository {
       .from(books)
       .orderBy(sql`random()`)
       .limit(limit);
-    return rows.map(toDomain);
+    return withAuthors(this.db, rows);
   }
 
   async save(book: Book): Promise<void> {

@@ -86,6 +86,38 @@ describe('Book API Endpoints', () => {
     });
   });
 
+  test('GET /book/:id and GET /book?q= return the authors of the book', async () => {
+    await withApp(app, async (baseUrl) => {
+      const created = await fetch(`${baseUrl}/book`, {
+        method: 'POST',
+        headers: json,
+        body: JSON.stringify({ title: 'Good Omens', authors: ['Terry Pratchett', 'Neil Gaiman'] }),
+      });
+      const { id, authors } = (await created.json()) as { id: string; authors: string[] };
+      assert.deepStrictEqual(authors, ['Neil Gaiman', 'Terry Pratchett']);
+
+      const byId = (await (await fetch(`${baseUrl}/book/${id}`, { headers: auth })).json()) as {
+        authors: string[];
+      };
+      assert.deepStrictEqual(byId.authors, ['Neil Gaiman', 'Terry Pratchett']);
+
+      const search = (await (
+        await fetch(`${baseUrl}/book?q=good%20omens`, { headers: auth })
+      ).json()) as { authors: string[] }[];
+      assert.deepStrictEqual(search[0]?.authors, ['Neil Gaiman', 'Terry Pratchett']);
+    });
+  });
+
+  test('a book saved without authors returns an empty authors list', async () => {
+    const book = Book.create({ title: 'Anonymous pamphlet' });
+    await bookRepository.save(book);
+    await withApp(app, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/book/${book.id.value}`, { headers: auth });
+      const data = (await response.json()) as { authors: string[] };
+      assert.deepStrictEqual(data.authors, []);
+    });
+  });
+
   test('POST /book returns 400 when title is missing', async () => {
     await withApp(app, async (baseUrl) => {
       const response = await fetch(`${baseUrl}/book`, {

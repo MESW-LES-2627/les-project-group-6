@@ -12,7 +12,10 @@ export interface Book {
   id: string;
   title: string;
   author: string;
+  /** Drawn when there is no cover image. */
   cover: CoverStyle;
+  /** The real cover image, when the catalogue has one. */
+  coverUrl?: string | null;
 }
 
 export interface ProfileUser {
@@ -87,16 +90,10 @@ export interface MonthRecap {
   challengesWon: number;
 }
 
-export interface Profile {
-  user: ProfileUser;
+/** The profile sections still on mock data until their features exist. */
+export interface UnbuiltProfileSections {
   unreadNotifications: number;
-  currentlyReading: ReadingProgress[];
-  shelf: Spine[];
-  recentlyAdded: Book[];
   chapter: ChapterProgress;
-  streak: Streak;
-  readingTime: ReadingTimeStats;
   challengesWon: number;
-  folders: Folder[];
   recap: MonthRecap | null;
 }

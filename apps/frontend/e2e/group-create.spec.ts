@@ -7,7 +7,7 @@ test('the new-group form previews the name without creating a group', async ({ p
     page.getByRole('heading', { level: 1, name: 'Start something worth reading for.' }),
   ).toBeVisible();
 
-  // The form starts with a suggested name; an empty name previews as "Untitled group".
+  // The form starts with no name, which previews as "Untitled group".
   const preview = page.getByRole('complementary', { name: 'Preview' });
   const nameInput = page.getByRole('textbox', { name: 'Group name' });
 

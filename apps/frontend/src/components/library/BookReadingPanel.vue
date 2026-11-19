@@ -9,18 +9,11 @@ import {
   untagBook,
   updateReadingStatus,
 } from '@/services/api';
-import type {
-  BookDetail,
-  FolderSummary,
-  LibraryBook,
-  ReadingStatus,
-  TagSummary,
-} from '@/types/library';
+import type { FolderSummary, LibraryBook, ReadingStatus, TagSummary } from '@/types/library';
 import { progressPercent, readingStatusLabels } from '@/utils/library';
 
 const props = defineProps<{
   book: LibraryBook;
-  detail: BookDetail;
   folders: FolderSummary[];
   /** All of the reader's tags, used to name the ids on this book. */
   tags: TagSummary[];
@@ -201,7 +194,6 @@ async function toggleFolder(folderId: string) {
       <span :class="['status-badge', `status-badge--${book.status}`]">
         {{ statusLabel.toUpperCase() }}
       </span>
-      <span class="read-through">{{ detail.readThroughLabel }}</span>
     </div>
 
     <progress

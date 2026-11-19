@@ -23,8 +23,8 @@ export class BookService {
    * already exists, that one is returned and nothing is written.
    */
   async register(props: NewBookProps, authorNames: readonly string[] = []): Promise<Book> {
-    const book = Book.create(props);
-    return this.books.saveWithAuthors(book, authorNames);
+    const book = Book.create({ ...props, authors: authorNames });
+    return this.books.saveWithAuthors(book, book.authors);
   }
 
   async get(rawId: unknown): Promise<Book> {
@@ -72,8 +72,9 @@ export class BookService {
         pageCount: found.pageCount,
         coverUrl: found.coverUrl,
         isCommunityAdded: false,
+        authors: found.authors,
       });
-      return await this.books.saveWithAuthors(book, found.authors);
+      return await this.books.saveWithAuthors(book, book.authors);
     } catch (error) {
       // One bad record, or a failed write, must not break the search.
       console.warn(`Could not import catalog book ${found.isbn13}: ${String(error)}`);

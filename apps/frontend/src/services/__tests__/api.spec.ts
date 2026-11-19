@@ -13,6 +13,7 @@ vi.mock('@/services/auth', () => ({
 
 import * as api from '../api';
 import type {
+  ApiBook,
   ApiBookClub,
   ApiBookClubDetail,
   ApiChallengeGroup,
@@ -622,6 +623,7 @@ describe('library mappers', () => {
     book: {
       id: austen,
       title: 'Emma',
+      authors: ['Jane Austen'],
       description: null,
       isbn13: null,
       pageCount: 200,
@@ -633,7 +635,7 @@ describe('library mappers', () => {
     ...overrides,
   });
 
-  it('maps an in-progress book with known author and progress', () => {
+  it('maps an in-progress book with its authors and progress', () => {
     expect(api.mapApiLibraryItemToBook(item({ folderIds: ['f1'], tagIds: ['t1'] }))).toEqual({
       id: austen,
       title: 'Emma',
@@ -643,7 +645,6 @@ describe('library mappers', () => {
       status: 'in-progress',
       pages: 200,
       currentPage: 50,
-      genre: 'Classics',
       summary: '50 / 200 pages • 25% complete',
       folderIds: ['f1'],
       tagIds: ['t1'],
@@ -654,7 +655,7 @@ describe('library mappers', () => {
 
   it.each([
     ['not-started', 'Ready when you are', 'To read'],
-    ['finished', 'Read 1 time • ★★★★★', 'Finished'],
+    ['finished', 'Finished • 1 pages', 'Finished'],
     ['dnf', 'Stopped at page 0', 'DNF'],
   ] as const)('maps status %s', (status, summary, chip) => {
     const book = api.mapApiLibraryItemToBook(
@@ -664,6 +665,7 @@ describe('library mappers', () => {
         book: {
           id: 'x',
           title: 'X',
+          authors: [],
           description: null,
           isbn13: null,
           pageCount: 0,
@@ -674,10 +676,9 @@ describe('library mappers', () => {
     expect(book).toMatchObject({
       summary,
       chip,
-      author: 'Unknown Author',
-      genre: 'General',
+      author: '',
       pages: 1,
-      cover: '/placeholder-cover.png',
+      cover: '',
       detailCover: undefined,
       folderIds: [],
       tagIds: [],
@@ -688,6 +689,7 @@ describe('library mappers', () => {
     const book = api.mapApiBookToLibraryBook({
       id: 'x',
       title: 'X',
+      authors: [],
       description: null,
       isbn13: null,
       pageCount: 10,
@@ -700,7 +702,15 @@ describe('library mappers', () => {
       updatedAt: '2026-01-01T00:00:00Z',
     });
     const noDate = api.mapApiBookToLibraryBook(
-      { id: 'x', title: 'X', description: null, isbn13: null, pageCount: 10, coverUrl: null },
+      {
+        id: 'x',
+        title: 'X',
+        authors: [],
+        description: null,
+        isbn13: null,
+        pageCount: 10,
+        coverUrl: null,
+      },
       'in-progress',
       5,
     );
@@ -708,9 +718,16 @@ describe('library mappers', () => {
     expect(Date.parse(noDate.updatedAt!)).not.toBeNaN();
   });
 
-  it('authorOf knows seeded books only', () => {
-    expect(api.authorOf(austen)).toBe('Jane Austen');
-    expect(api.authorOf('other')).toBe('');
+  it('maps no invented genre, rating or placeholder image', () => {
+    const book = api.mapApiLibraryItemToBook(item({ status: 'finished' }));
+    expect(book.genre).toBeUndefined();
+    expect(book.summary).not.toContain('★');
+  });
+
+  it('authorLine joins the authors and is empty without any', () => {
+    expect(api.authorLine(['Terry Pratchett', 'Neil Gaiman'])).toBe('Terry Pratchett, Neil Gaiman');
+    expect(api.authorLine([])).toBe('');
+    expect(api.authorLine(undefined)).toBe('');
   });
 });
 
@@ -853,7 +870,13 @@ describe('book club mappers', () => {
     finished: 1,
     expected: 2,
     daysLeft: 5,
-    book: { id: austen, title: 'Emma', pageCount: 300, coverUrl: 'e.png' },
+    book: {
+      id: austen,
+      title: 'Emma',
+      authors: ['Jane Austen'],
+      pageCount: 300,
+      coverUrl: 'e.png',
+    },
     ...overrides,
   });
   const club = (overrides: Partial<ApiBookClub> = {}): ApiBookClub => ({
@@ -905,7 +928,7 @@ describe('book club mappers', () => {
       club({
         round: round({
           daysLeft: 1,
-          book: { id: 'x', title: 'X', pageCount: null, coverUrl: null },
+          book: { id: 'x', title: 'X', authors: [], pageCount: null, coverUrl: null },
         }),
       }),
     );
@@ -959,10 +982,18 @@ describe('book club mappers', () => {
           id: 'pp1',
           bookId: 'b9',
           title: 'Persuasion',
+          authors: ['Jane Austen'],
           proposedBy: { userId: 'u2', displayName: 'Bo' },
           votes: 1,
         },
-        { id: 'pp2', bookId: austen, title: 'Emma', proposedBy: null, votes: 0 },
+        {
+          id: 'pp2',
+          bookId: austen,
+          title: 'Emma',
+          authors: ['Jane Austen'],
+          proposedBy: null,
+          votes: 0,
+        },
       ],
       yourVote: 'pp1',
       voted: 1,
@@ -1054,12 +1085,130 @@ describe('book club mappers', () => {
       detail({
         round: round({
           daysLeft: 1,
-          book: { id: 'x', title: 'X', pageCount: null, coverUrl: null },
+          book: { id: 'x', title: 'X', authors: [], pageCount: null, coverUrl: null },
         }),
       }),
       'u2',
     );
     expect(page.subtitle).toBe('Round 2: X.');
     expect(page.daysLeft).toBe('1 day to turn the last page');
+  });
+});
+
+describe('mock-to-real helpers', () => {
+  const book = (overrides: Partial<ApiBook> = {}): ApiBook => ({
+    id: 'emma',
+    title: 'Emma',
+    authors: ['Jane Austen'],
+    description: 'A comedy of manners.',
+    isbn13: '9780141439587',
+    pageCount: 474,
+    coverUrl: null,
+    ...overrides,
+  });
+  const club = (overrides: Partial<ApiBookClub['round']> = {}): ApiBookClub => ({
+    id: 'classics',
+    name: 'Classics',
+    description: '',
+    adminId: 'u1',
+    members: [
+      { userId: 'u1', role: 'admin', joinedAt: '2026-11-01T00:00:00Z' },
+      { userId: 'u2', role: 'member', joinedAt: '2026-11-01T00:00:00Z' },
+    ],
+    round: {
+      id: 'r1',
+      number: 2,
+      startDate: '2026-11-01',
+      deadline: '2026-11-30',
+      outcome: 'active',
+      finished: 0,
+      expected: 2,
+      daysLeft: 13,
+      book: { id: 'emma', title: 'Emma', authors: [], pageCount: 474, coverUrl: null },
+      ...overrides,
+    },
+    createdAt: '2026-11-01T00:00:00Z',
+  });
+  const challenge = (status: ApiChallengeGroup['status']): ApiChallengeGroup => ({
+    id: `c-${status}`,
+    name: `Challenge ${status}`,
+    description: '',
+    adminId: 'u1',
+    status,
+    challenge: {
+      startDate: '2026-11-01',
+      endDate: '2026-11-30',
+      winMetric: 'minutes',
+      metricGoal: 0,
+    },
+    members: [],
+    createdAt: '2026-11-01T00:00:00Z',
+  });
+
+  it('getActiveReadingSession returns null when no session runs (204)', async () => {
+    respondWith(new Response(null, { status: 204 }));
+    await expect(api.getActiveReadingSession()).resolves.toBeNull();
+    expect(lastCall().url).toBe('/api/me/reading-sessions/active');
+  });
+
+  it('getActiveReadingSession returns the running session', async () => {
+    respondWith(jsonResponse({ id: 's1', bookId: 'emma', elapsedSeconds: 60 }));
+    await expect(api.getActiveReadingSession()).resolves.toMatchObject({ id: 's1' });
+  });
+
+  it('getActiveReadingSession rejects with the server error', async () => {
+    respondWith(jsonResponse({ error: 'boom' }, 500));
+    await expect(api.getActiveReadingSession()).rejects.toThrow('boom');
+  });
+
+  it('getFriendRequests returns each request with its requester', async () => {
+    respondWith(
+      jsonResponse([{ id: 'fr1', requester: { displayName: 'Sofia Chen', username: 'sofia' } }]),
+    );
+    const [request] = await api.getFriendRequests();
+    expect(request?.requester?.displayName).toBe('Sofia Chen');
+    expect(lastCall().url).toBe('/api/me/friend-requests');
+  });
+
+  it('mapApiBookToDetail uses the catalogue fields and the club reading the book', () => {
+    expect(api.mapApiBookToDetail(book(), [club()])).toEqual({
+      tagline: 'Jane Austen',
+      synopsis: 'A comedy of manners.',
+      edition: { isbn: '9780141439587' },
+      club: {
+        groupId: 'classics',
+        name: 'Classics',
+        roundLabel: 'Round 2',
+        memberCount: 2,
+        deadlineLabel: expect.stringContaining('November'),
+      },
+    });
+  });
+
+  it('mapApiBookToDetail leaves out what the catalogue does not have', () => {
+    const detail = api.mapApiBookToDetail(book({ authors: [], description: null, isbn13: null }), [
+      club({ outcome: 'completed' }),
+      club({ book: null }),
+    ]);
+    expect(detail).toEqual({ tagline: '', synopsis: '', edition: { isbn: null }, club: undefined });
+  });
+
+  it('sessionGroupsFor keeps active challenges and the clubs reading this book', () => {
+    const groups = api.sessionGroupsFor(
+      'emma',
+      [challenge('active'), challenge('scheduled'), challenge('completed')],
+      [
+        club(),
+        {
+          ...club({
+            book: { id: 'dune', title: 'Dune', authors: [], pageCount: 1, coverUrl: null },
+          }),
+          id: 'scifi',
+        },
+      ],
+    );
+    expect(groups.map((g) => g.id)).toEqual(['c-active', 'classics']);
+    expect(groups[0]!.note).toContain('minutes');
+    expect(groups[1]!.note).toContain('round book');
   });
 });

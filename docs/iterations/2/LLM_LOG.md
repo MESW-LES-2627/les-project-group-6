@@ -700,6 +700,45 @@ Now, I want you to create a PR to update the readme. Add the description of what
 
 Rewrote `README.md`: project description, iteration CLAIM links, architecture diagram and summary, commented repository tree, short getting-started block and a table of all Makefile targets.
 
+### 2026-11-17: Replace mock data with API data
+
+- **Date:** 2026-11-17
+- **Author:** Vasco
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, backend, testing, docs
+
+#### Prompt
+
+```text
+We need to replace the mock data in the front end with database data gathered from endpoints on the backend. We have some endpoints implemented that are not applicable. Before making changes do the following:
+1 - Go through issues and current open branches that have not been merged to main and check which mockdata has not been replaced but the issue that it relates to has been set as done (we will not replace mock data for features that have not been implemented)
+2 - List for me all locations and all data that can be replaced and the endpoints that already exist and that can be implemented to help out
+-> Ok, now change the correct the mock data to real data for those that you stated could be replaced because issues were already closed. When you replace remove the mockdata completly so there isn't a fall back that may overwrite real data when cached on browser.
+```
+
+#### Explanation of Changes
+
+Audited mock usage against closed issues and unmerged branches, then replaced the mocks on the home, library, book, session, groups and profile pages with API data and removed every fallback. Added `authors` to book responses and the requester's name to incoming friend requests in the backend. Mocks remain only for unbuilt features. Rewrote the mock-based tests to mock the API; backend 395 and frontend 486 tests pass.
+
+### 2026-11-17: Seed with real Supabase logins
+
+- **Date:** 2026-11-17
+- **Author:** Vasco
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** database, backend, docs
+
+#### Prompt
+
+```text
+Ok, implement in the seed to be used by pnpm db:seed one that reads the .env to get the keys for Supabase and can create users and also populate to the DATABASE_URL, do it in a way that the accounts are directly created and visible in the Authentication tab of supabase but I dont need to go confirming email anywhere. For this is made available the Supabase Secret in the .env such as in .env.example to grab the correct token to authenticate new users.
+```
+
+#### Explanation of Changes
+
+Rewrote `pnpm db:seed`: it creates confirmed logins through the Supabase Auth Admin API (no emails), writes their emails and passwords to a git-ignored file, and fills the database with eight readers and data for every page. Added `SUPABASE_SERVICE_ROLE_KEY` and `SEED_ALLOW_REMOTE_DATABASE` to `.env.example` and documented the seed in the backend README.
+
 
 ---
 
@@ -730,3 +769,21 @@ Fixed the two blocking bugs from the PR #160 review (streak stuck at 1) and the 
 3. Simplified `StreakService` (no session lookup to decide the update) and made `GET /me`, `PATCH /me` and `GET /users/:username` use the same live streak. `hitStreak` became `readToday`.
 4. `ProfileView.vue` shows an empty state and an error instead of mock data when the API fails.
 5. Tests: multi-day regression, `finish` saving before the streak check, the 5-minute and 5-page limits, `@req F-READ-04` tags, and an e2e test. Docs: `infra.md`, `api_routes.md`, `requirements.md`, `features_priority.md`, the e2e README and the iteration log.
+
+---
+
+### 2026-11-18: Merge main into feat/mock-to-real
+
+- **Date:** 2026-11-18
+- **Author:** Vasco
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database, frontend, testing, docs
+
+#### Prompt
+```text
+tell me if this branch has valid implementations compared to main, if it has try to merge main to here to resolve the conflicts and create the PR
+```
+
+#### Explanation of Changes
+Merged `main` (the streak rework from PR #160) into `feat/mock-to-real`. Kept the branch's Supabase seed and made `populate.ts` write `lastReadDate` instead of the removed `hitStreak`. Combined `ProfileView.vue`: the branch's library, folders and reviews from the API plus main's streak from `GET /me/streak`, with no mock fallback; removed the now unused mock streak and imported hours. Merged both sides of the profile tests and the iteration logs.

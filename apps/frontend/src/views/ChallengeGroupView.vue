@@ -5,19 +5,13 @@ import { RouterLink } from 'vue-router';
 import GroupChat from '@/components/groups/GroupChat.vue';
 import GroupLeaderboard from '@/components/groups/GroupLeaderboard.vue';
 import PagePlate from '@/components/layout/PagePlate.vue';
-import { mockCurrentMemberId } from '@/mocks/groups';
 import type { ChallengeDetail } from '@/types/groups';
 
-const props = withDefaults(
-  defineProps<{
-    challenge: ChallengeDetail;
-    /** The viewing reader's member id; the mock pages use Eleanor. */
-    meId?: string;
-    /** True when the group comes from the API: the chat is then live. */
-    live?: boolean;
-  }>(),
-  { meId: mockCurrentMemberId, live: false },
-);
+const props = defineProps<{
+  challenge: ChallengeDetail;
+  /** The signed-in reader's member id. */
+  meId: string;
+}>();
 
 const rematchStarted = ref(false);
 const me = props.challenge.members.find((m) => m.id === props.meId) ?? {
@@ -90,7 +84,7 @@ const ranked = computed(() => (myEntry.value?.rank ?? 0) > 0);
           <GroupChat
             :messages="challenge.messages"
             :me="me"
-            :group-id="live ? challenge.id : undefined"
+            :group-id="challenge.id"
             :members="challenge.members"
             :is-admin="isAdmin"
             label="Message the group"

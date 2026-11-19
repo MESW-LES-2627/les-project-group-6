@@ -8,6 +8,7 @@ import {
   readingStatus,
   userTags,
 } from '../../database/schema.js';
+import { authorNamesByBook } from '../book/book-authors-query.js';
 import type { ReadingStatusType } from '../reading-status/reading-state.js';
 import type { UserId } from '../user/user.js';
 
@@ -16,6 +17,7 @@ import type { UserId } from '../user/user.js';
 export interface LibraryBookView {
   id: string;
   title: string;
+  authors: string[];
   description: string | null;
   isbn13: string | null;
   pageCount: number | null;
@@ -66,12 +68,14 @@ export class DrizzleLibraryQuery implements LibraryQuery {
     const bookIds = rows.map((row) => row.book.id);
     const folderIdsByBook = await this.folderIdsByBook(userId, bookIds);
     const tagIdsByBook = await this.tagIdsByBook(userId, bookIds);
+    const authorsByBook = await authorNamesByBook(this.db, bookIds);
 
     return rows.map((row) => ({
       id: row.id,
       book: {
         id: row.book.id,
         title: row.book.title,
+        authors: authorsByBook.get(row.book.id) ?? [],
         description: row.book.description,
         isbn13: row.book.isbn13,
         pageCount: row.book.pageCount,

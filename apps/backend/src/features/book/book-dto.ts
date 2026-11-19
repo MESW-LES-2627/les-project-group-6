@@ -4,6 +4,7 @@ import type { Book } from './book.js';
 export interface BookDto {
   id: string;
   title: string;
+  authors: string[];
   description: string | null;
   isbn13: string | null;
   pageCount: number | null;
@@ -16,6 +17,7 @@ export function toBookDto(book: Book): BookDto {
   return {
     id: book.id.value,
     title: book.title.value,
+    authors: [...book.authors],
     description: book.description,
     isbn13: book.isbn13?.value ?? null,
     pageCount: book.pageCount?.value ?? null,

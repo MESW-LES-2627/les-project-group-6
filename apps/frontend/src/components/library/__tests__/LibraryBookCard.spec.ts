@@ -2,12 +2,18 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 
-import { mockLibrary } from '@/mocks/library';
+import {
+  circe,
+  emma,
+  midnightLibrary,
+  roomOfOnesOwn,
+  secretHistory,
+} from '@/__tests__/library-fixtures';
 import router from '@/router';
 import type { LibraryBook } from '@/types/library';
 import LibraryBookCard from '../LibraryBookCard.vue';
 
-const book = mockLibrary.books[0]!;
+const book = emma;
 
 function mountCard(props: { book: LibraryBook }) {
   return mount(LibraryBookCard, { props, global: { plugins: [router] } });
@@ -35,12 +41,11 @@ describe('LibraryBookCard', () => {
 
   it('shows a short note for books that are not in progress', () => {
     const note = (b: LibraryBook) => mountCard({ book: b }).get('.note').text();
-    const byId = (id: string) => mockLibrary.books.find((b) => b.id === id)!;
 
-    expect(note(byId('the-midnight-library'))).toBe('Not started');
-    expect(note(byId('circe'))).toBe('Finished');
-    expect(note(byId('a-room-of-ones-own'))).toBe('Read 2 times');
-    expect(note(byId('the-secret-history'))).toBe('Stopped at p. 156');
+    expect(note(midnightLibrary)).toBe('Not started');
+    expect(note(circe)).toBe('Finished');
+    expect(note(roomOfOnesOwn)).toBe('Read 2 times');
+    expect(note(secretHistory)).toBe('Stopped at p. 156');
   });
 
   it('shows the title instead of a cover that fails to load', async () => {
