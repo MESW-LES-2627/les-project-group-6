@@ -143,6 +143,40 @@ describe('DrizzleBookRepository Integration', () => {
     assert.deepEqual(titles(await repo.search('pratchett', 10)), ['Good Omens', 'Mort']);
   });
 
+  test('saveWithAuthors creates one author when two imports run at once', async () => {
+    await Promise.all([
+      repo.saveWithAuthors(
+        Book.create({ title: 'A Wizard of Earthsea', isbn13: '9780547773742' }),
+        ['Ursula K. Le Guin'],
+      ),
+      repo.saveWithAuthors(Book.create({ title: 'The Dispossessed', isbn13: '9780061054884' }), [
+        'Ursula K. Le Guin',
+      ]),
+    ]);
+
+    const { rows } = await pool.query(
+      "SELECT count(*)::int AS n FROM authors WHERE name = 'Ursula K. Le Guin'",
+    );
+    assert.equal(rows[0].n, 1);
+    const { rows: links } = await pool.query('SELECT count(*)::int AS n FROM book_authors');
+    assert.equal(links[0].n, 2);
+  });
+
+  test('saveWithAuthors reuses an author whose name differs only in case or accents', async () => {
+    await repo.saveWithAuthors(Book.create({ title: 'Blindness', isbn13: '9780156007757' }), [
+      'José Saramago',
+    ]);
+    await repo.saveWithAuthors(Book.create({ title: 'Seeing', isbn13: '9780156032742' }), [
+      'jose saramago',
+    ]);
+
+    const { rows } = await pool.query('SELECT name FROM authors');
+    assert.deepEqual(
+      rows.map((r) => r.name),
+      ['José Saramago'],
+    );
+  });
+
   test('saveWithAuthors returns the existing book when the ISBN-13 is taken', async () => {
     const existing = Book.create({ title: 'Dune', isbn13: '9780441172719' });
     await repo.save(existing);
@@ -188,7 +222,7 @@ describe('DrizzleBookRepository Integration', () => {
       await repo.save(blindness);
       await repo.save(Book.create({ title: 'Dune' }));
       await addAuthor(blindness, 'José Saramago');
-      await addAuthor(blindness, 'Jose Saramago');
+      await addAuthor(blindness, 'Saramago, J.');
 
       assert.deepEqual(titles(await repo.search('saramgo', 20)), ['Blindness']);
     });

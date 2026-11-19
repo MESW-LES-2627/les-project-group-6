@@ -587,3 +587,22 @@ Now, I want you to create a PR to update the readme. Add the description of what
 #### Explanation of Changes
 
 Rewrote `README.md`: project description, iteration CLAIM links, architecture diagram and summary, commented repository tree, short getting-started block and a table of all Makefile targets.
+
+### 2026-11-19: Unique author names (#143)
+
+- **Date:** 2026-11-19
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** database, backend, testing
+
+#### Prompt
+
+```text
+https://github.com/orgs/MESW-LES-2627/projects/23/views/10?pane=issue&itemId=301907840&issue=MESW-LES-2627%7Cles-project-group-6%7C143 this is already done?
+fix
+```
+
+#### Explanation of Changes
+
+Checked that issue #143 was still open, then added migration 0013 (merge duplicate authors, unique index on the folded name), changed `saveWithAuthors` to an insert with `ON CONFLICT DO NOTHING` plus a re-select, and added integration tests for concurrent imports and for names that differ only in case or accents.

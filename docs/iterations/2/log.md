@@ -302,3 +302,11 @@ A running record of what the team did and decided in iteration 2. The [release n
 ### 2026-11-17: README rewritten as a project overview
 
 - [README.md](../../../README.md) now has the project description, links to each iteration's `CLAIM.md`, an architecture diagram (Vue frontend, Express backend, PostgreSQL, Supabase Auth, Open Library API), the repository tree with comments inside it, and a table of every `make` command. The long per-folder explanations were dropped; [docs/architecture/](../../architecture/) and each app's README hold the details.
+
+### 2026-11-19: Authors can no longer be duplicated by concurrent imports (#143)
+
+- Branch `fix/unique-author-names`. Two Open Library imports of different books by the same author could both miss the author lookup and both insert it, because `authors.name` was not unique.
+- **Database.** Migration [`0013_unique_author_names.sql`](../../../apps/backend/src/database/migrations/0013_unique_author_names.sql) merges existing duplicates (book links and the `target_author_id` of challenges, leaderboards and reading goals move to the kept row), then adds the unique index `authors_name_normalized_key` on `f_unaccent(lower(name))`. [`schema.ts`](../../../apps/backend/src/database/schema.ts) and `schema.sql` match.
+- **Backend.** [`saveWithAuthors`](../../../apps/backend/src/features/book/book-repository.ts) now inserts with `ON CONFLICT DO NOTHING` and re-selects by the folded name on conflict.
+- **Decision: the name is unique ignoring case and accents**, the same normalisation that search uses, so "José Saramago" and "jose saramago" are one author. *Rejected:* exact-name uniqueness, which would still let search show one author as two.
+- **Tests.** Two new integration tests in [`book-repository.test.ts`](../../../apps/backend/tests/integration/book-repository.test.ts) (concurrent imports, case/accent variants); one search test no longer links two names that are now the same author. Backend: 393 tests pass.
