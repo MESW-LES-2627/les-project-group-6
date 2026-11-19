@@ -4,6 +4,7 @@ import { RouterLink, useRouter } from 'vue-router';
 
 import BookCoverImage from '@/components/library/BookCoverImage.vue';
 import ReadingTimer from '@/components/session/ReadingTimer.vue';
+import SessionSummary from '@/components/session/SessionSummary.vue';
 import {
   cancelReadingSession,
   finishReadingSession,
@@ -37,6 +38,8 @@ const groups = ref<SessionGroup[]>([]);
 const sessionError = ref<string | null>(null);
 const busy = ref(false);
 const loading = ref(true);
+/** The finished session, shown as a summary before leaving the page (#49). */
+const finished = ref<ApiReadingSession | null>(null);
 
 const session = computed(() => {
   if (!book.value || !serverSession.value) return null;
@@ -112,9 +115,12 @@ async function stopSession() {
   if (!serverSession.value) return;
 
   await whileBusy(async () => {
-    await finishReadingSession(serverSession.value!.id);
-    void router.push({ name: 'profile' });
+    finished.value = await finishReadingSession(serverSession.value!.id);
   });
+}
+
+function closeSummary() {
+  void router.push({ name: 'profile' });
 }
 
 /** Discards a session started by mistake; nothing is saved to the profile. */
@@ -145,7 +151,15 @@ async function whileBusy(action: () => Promise<void>) {
 <template>
   <main class="session-view">
     <div class="page-column">
-      <template v-if="book && session">
+      <SessionSummary
+        v-if="book && finished"
+        :title="book.title"
+        :cover="book.detailCover ?? book.cover"
+        :duration-seconds="finished.elapsedSeconds"
+        :counted-minutes="finished.countedMinutes"
+        @done="closeSummary"
+      />
+      <template v-else-if="book && session">
         <header class="session-header">
           <div class="header-copy">
             <p class="eyebrow">

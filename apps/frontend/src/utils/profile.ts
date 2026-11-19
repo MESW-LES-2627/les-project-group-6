@@ -1,4 +1,10 @@
-import { authorLine, type ApiBook, type ApiLibraryItem, type ApiMe } from '@/services/api';
+import {
+  authorLine,
+  type ApiBook,
+  type ApiChallengeGroupDetail,
+  type ApiLibraryItem,
+  type ApiMe,
+} from '@/services/api';
 import type { FolderSummary } from '@/types/library';
 import type {
   Book,
@@ -116,4 +122,15 @@ export function foldersFrom(
         .map((item) => toProfileBook(item.book)),
     };
   });
+}
+
+/**
+ * True when the reader won this finished challenge (#124): they hold the top score and it
+ * is above zero. Every reader tied on the top score is a winner.
+ */
+export function wonChallenge(group: ApiChallengeGroupDetail, userId: string): boolean {
+  if (group.status !== 'completed') return false;
+  const top = Math.max(0, ...group.standings.map((s) => s.score ?? 0));
+  if (top === 0) return false;
+  return group.standings.some((s) => s.userId === userId && s.score === top);
 }

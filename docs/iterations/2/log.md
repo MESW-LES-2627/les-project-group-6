@@ -398,3 +398,16 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Leave group.** [`LeaveGroup.vue`](../../../apps/frontend/src/components/groups/LeaveGroup.vue) on both group pages asks for confirmation, calls `DELETE /groups/:id/members/me`, and goes back to `/groups`. When the admin is blocked (`409`) it shows the server's message.
 - **Not done:** the invite list does not hide friends who already have a pending invite, because there is no endpoint listing a group's pending invites. The server refuses the duplicate and its message is shown instead.
 - **Tests.** New component tests for `InviteFriends` and `LeaveGroup`; two book club tests now read the error from the shared component. Frontend: 529 tests pass.
+### 2026-11-19: Book page status controls: add, dates and remove (#30, F-LIB-01)
+
+- Branch `feat/book-status-dates`. Changing the status from the book page already worked. The backend already stored `startedOn`/`finishedOn` and had `DELETE /me/library/:bookId`, but the page had no way to use them. This is frontend only.
+- [`BookReadingPanel.vue`](../../../apps/frontend/src/components/library/BookReadingPanel.vue): a book outside the library shows **Add to library** (status Not started). The editor has **Started on** and **Finished on** date fields; marking Finished fills in today. A finish date before the start date shows a message and cannot be saved. **Remove from library** asks for confirmation. After adding or removing, [`BookDetailView.vue`](../../../apps/frontend/src/views/BookDetailView.vue) reloads the book, and the saved days are shown under the progress bar.
+- **Decision: only dates the reader edited are sent.** The server fills in the start and finish days when the status changes, and sending empty fields would wipe them.
+- `updateReadingStatus` now shows the server's error message, and `removeFromLibrary` was added to the API client.
+- **Tests.** Add, show dates, date validation, edited dates sent, remove with and without confirmation, plus API client cases. Frontend: 533 tests pass.
+### 2026-11-19: Challenges won on the profile (#124, #61, F-PROF-01, F-GRP-04)
+
+- Branch `feat/profile-challenges-won`. The profile's "challenges won" line no longer comes from the mock: [`ProfileView.vue`](../../../apps/frontend/src/views/ProfileView.vue) reads `GET /me/groups`, loads the standings of each completed challenge and counts the ones the reader won.
+- **Rule.** [`wonChallenge`](../../../apps/frontend/src/utils/profile.ts): the challenge is completed and the reader holds the top score, which must be above zero. Everyone tied on the top score wins.
+- **Decision: count on the frontend for now.** No backend change was needed because the standings are already returned. *Rejected for now:* a `challengesWon` field on the API, worth adding if a reader has many challenges (one request per finished challenge).
+- **Tests.** Unit tests for wins, ties, running and empty challenges, and two ProfileView tests (2 wins counted, fallback when groups fail). Frontend: 528 tests pass.

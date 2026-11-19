@@ -264,7 +264,34 @@ const endpoints: Endpoint[] = [
     method: 'PUT',
     url: '/api/reading-status',
     body: { bookId: 'b1', status: 'finished', currentPage: 0 },
-    error: 'Failed to update reading status: HTTP 500',
+    error: 'nope',
+  },
+  {
+    name: 'updateReadingStatus with dates',
+    call: () =>
+      api.updateReadingStatus({
+        bookId: 'b1',
+        status: 'finished',
+        startedOn: '2026-11-01',
+        finishedOn: null,
+      }),
+    method: 'PUT',
+    url: '/api/reading-status',
+    body: {
+      bookId: 'b1',
+      status: 'finished',
+      currentPage: 0,
+      startedOn: '2026-11-01',
+      finishedOn: null,
+    },
+    error: 'nope',
+  },
+  {
+    name: 'removeFromLibrary',
+    call: () => api.removeFromLibrary('b 1'),
+    method: 'DELETE',
+    url: '/api/me/library/b%201',
+    error: 'nope',
   },
   {
     name: 'updateReadingStatus with page',
@@ -272,7 +299,7 @@ const endpoints: Endpoint[] = [
     method: 'PUT',
     url: '/api/reading-status',
     body: { bookId: 'b1', status: 'in-progress', currentPage: 12 },
-    error: 'Failed to update reading status: HTTP 500',
+    error: 'nope',
   },
   {
     name: 'startReadingSession',
@@ -650,6 +677,9 @@ describe('library mappers', () => {
       tagIds: ['t1'],
       chip: 'Reading',
       updatedAt: '2026-11-01T00:00:00Z',
+      inLibrary: true,
+      startedOn: null,
+      finishedOn: null,
     });
   });
 
