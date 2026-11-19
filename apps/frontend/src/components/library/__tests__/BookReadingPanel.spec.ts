@@ -1,9 +1,10 @@
-// @req F-LIB-04
+// @req F-LIB-04 F-LIB-01
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import router from '@/router';
 import type { FolderSummary, LibraryBook, TagSummary } from '@/types/library';
+import { toIsoDate } from '@/utils/groups';
 import BookReadingPanel from '../BookReadingPanel.vue';
 
 const api = vi.hoisted(() => ({
@@ -12,6 +13,7 @@ const api = vi.hoisted(() => ({
   updateReadingStatus: vi.fn<(payload: unknown) => Promise<void>>(),
   addBookToFolder: vi.fn<(folderId: string, bookId: string) => Promise<void>>(),
   removeBookFromFolder: vi.fn<(folderId: string, bookId: string) => Promise<void>>(),
+  removeFromLibrary: vi.fn<(bookId: string) => Promise<void>>(),
 }));
 vi.mock('@/services/api', async (original) => ({
   ...(await original<typeof import('@/services/api')>()),
@@ -208,8 +210,11 @@ describe('BookReadingPanel status editor', () => {
       bookId: BOOK_ID,
       status: 'finished',
       currentPage: 400,
+      finishedOn: toIsoDate(new Date()),
     });
-    expect(wrapper.emitted('updated')).toEqual([[{ status: 'finished', currentPage: 400 }]]);
+    expect(wrapper.emitted('updated')).toEqual([
+      [{ status: 'finished', currentPage: 400, finishedOn: toIsoDate(new Date()) }],
+    ]);
     expect(wrapper.get('.editor-message').text()).toBe('Status saved to backend!');
 
     vi.advanceTimersByTime(1500);
@@ -342,5 +347,100 @@ describe('BookReadingPanel tag removal guard', () => {
     await flushPromises();
 
     expect(api.untagBook).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('BookReadingPanel library and dates (F-LIB-01)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+  });
+
+  it('offers "Add to library" for a book that is not in the library', async () => {
+    api.updateReadingStatus.mockResolvedValue();
+    const wrapper = mountPanel([], [], BOOK_ID, {
+      inLibrary: false,
+      status: 'not-started',
+      currentPage: 0,
+    });
+
+    await wrapper.get('.add-to-library').trigger('click');
+    await flushPromises();
+
+    expect(api.updateReadingStatus).toHaveBeenCalledWith({
+      bookId: BOOK_ID,
+      status: 'not-started',
+      currentPage: 0,
+    });
+    expect(wrapper.emitted('libraryChanged')).toHaveLength(1);
+  });
+
+  it('shows the saved start and finish days', () => {
+    const wrapper = mountPanel([], [], BOOK_ID, {
+      status: 'finished',
+      startedOn: '2026-11-02',
+      finishedOn: '2026-11-15',
+    });
+
+    expect(wrapper.get('.reading-dates').text()).toBe('Started 2 Nov 2026 • Finished 15 Nov 2026');
+  });
+
+  it('refuses a finish date before the start date', async () => {
+    const wrapper = mountPanel([], [], BOOK_ID, { startedOn: '2026-11-10' });
+
+    await wrapper.get('.update-status').trigger('click');
+    await wrapper.get('.editor-select').setValue('finished');
+    await wrapper.get('.finished-on').setValue('2026-11-05');
+    await wrapper.get('.status-editor').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.get('.date-error').text()).toBe(
+      'The finish date cannot be before the start date.',
+    );
+    expect(wrapper.get('.button-save').attributes('disabled')).toBeDefined();
+    expect(api.updateReadingStatus).not.toHaveBeenCalled();
+  });
+
+  it('sends the edited dates', async () => {
+    vi.useFakeTimers();
+    api.updateReadingStatus.mockResolvedValue();
+    const wrapper = mountPanel([], [], BOOK_ID, { startedOn: '2026-11-10' });
+
+    await wrapper.get('.update-status').trigger('click');
+    await wrapper.get('.editor-select').setValue('finished');
+    await wrapper.get('.started-on').setValue('2026-11-01');
+    await wrapper.get('.finished-on').setValue('2026-11-12');
+    await wrapper.get('.status-editor').trigger('submit');
+    await flushPromises();
+
+    expect(api.updateReadingStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ startedOn: '2026-11-01', finishedOn: '2026-11-12' }),
+    );
+    vi.useRealTimers();
+  });
+
+  it('removes the book after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    api.removeFromLibrary.mockResolvedValue();
+    const wrapper = mountPanel();
+
+    await wrapper.get('.update-status').trigger('click');
+    await wrapper.get('.remove-from-library').trigger('click');
+    await flushPromises();
+
+    expect(window.confirm).toHaveBeenCalledWith('Remove Dune from your library?');
+    expect(api.removeFromLibrary).toHaveBeenCalledWith(BOOK_ID);
+    expect(wrapper.emitted('libraryChanged')).toHaveLength(1);
+  });
+
+  it('keeps the book when the reader does not confirm', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const wrapper = mountPanel();
+
+    await wrapper.get('.update-status').trigger('click');
+    await wrapper.get('.remove-from-library').trigger('click');
+    await flushPromises();
+
+    expect(api.removeFromLibrary).not.toHaveBeenCalled();
   });
 });

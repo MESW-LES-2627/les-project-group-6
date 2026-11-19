@@ -177,6 +177,9 @@ export interface ApiLibraryItem {
   folderIds?: string[];
   /** The reader's own tags on this book (F-LIB-04). */
   tagIds?: string[];
+  /** Day the reader started and finished the book (YYYY-MM-DD). */
+  startedOn?: string | null;
+  finishedOn?: string | null;
 }
 
 /** The authors of a book as one line, e.g. "Terry Pratchett, Neil Gaiman"; empty when unknown. */
@@ -225,6 +228,9 @@ export function mapApiLibraryItemToBook(item: ApiLibraryItem): LibraryBook {
     tagIds: item.tagIds ?? [],
     chip,
     updatedAt: item.updatedAt,
+    inLibrary: true,
+    startedOn: item.startedOn ?? null,
+    finishedOn: item.finishedOn ?? null,
   };
 }
 
@@ -233,13 +239,16 @@ export function mapApiBookToLibraryBook(
   status: ReadingStatus = 'not-started',
   currentPage = 0,
 ): LibraryBook {
-  return mapApiLibraryItemToBook({
-    id: book.id,
-    book,
-    status,
-    currentPage,
-    updatedAt: book.createdAt || new Date().toISOString(),
-  });
+  return {
+    ...mapApiLibraryItemToBook({
+      id: book.id,
+      book,
+      status,
+      currentPage,
+      updatedAt: book.createdAt || new Date().toISOString(),
+    }),
+    inLibrary: false,
+  };
 }
 
 export async function getHealth(): Promise<string> {
@@ -373,22 +382,33 @@ export async function updateReadingStatus(payload: {
   bookId: string;
   status: ReadingStatus;
   currentPage?: number;
+  /** YYYY-MM-DD; null clears the date, undefined leaves it as it is. */
+  startedOn?: string | null;
+  finishedOn?: string | null;
 }): Promise<unknown> {
-  const response = await apiFetch('/reading-status', {
-    method: 'PUT',
-    headers: JSON_HEADERS,
-    body: JSON.stringify({
-      bookId: payload.bookId,
-      status: payload.status,
-      currentPage: payload.currentPage ?? 0,
+  const response = await ensureOk(
+    await apiFetch('/reading-status', {
+      method: 'PUT',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        bookId: payload.bookId,
+        status: payload.status,
+        currentPage: payload.currentPage ?? 0,
+        startedOn: payload.startedOn,
+        finishedOn: payload.finishedOn,
+      }),
     }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to update reading status: HTTP ${response.status}`);
-  }
-
+    'Failed to update reading status',
+  );
   return response.json();
+}
+
+/** Removes the book and the reader's status for it from their library (F-LIB-01). */
+export async function removeFromLibrary(bookId: string): Promise<void> {
+  await ensureOk(
+    await apiFetch(`/me/library/${encodeURIComponent(bookId)}`, { method: 'DELETE' }),
+    'Failed to remove the book',
+  );
 }
 
 export interface ApiReadingSession {
@@ -788,6 +808,14 @@ async function sendJson<T>(
 }
 
 const id = (value: string) => encodeURIComponent(value);
+
+/** The reader leaves the group (F-GRP-01). The admin gets 409 while others remain. */
+export async function leaveGroup(groupId: string): Promise<void> {
+  await ensureOk(
+    await apiFetch(`/groups/${id(groupId)}/members/me`, { method: 'DELETE' }),
+    'Failed to leave the group',
+  );
+}
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');

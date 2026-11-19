@@ -390,3 +390,30 @@ A running record of what the team did and decided in iteration 2. The [release n
 - [`ReadingSessionService.finish`](../../../apps/backend/src/features/reading-session/reading-session-service.ts) now publishes `SessionCompleted { sessionId, userId, bookId, startedAt, endedAt, countedMinutes }` once, after the session is saved, to `SessionCompletedListener`s. This is the same Observer pattern as `MemberJoinedListener`. Nothing subscribes yet; badges and the feed can subscribe without changing the service.
 - **Decision: the streak stays a direct call** instead of moving to a listener, to avoid touching the streak rules reworked in #160. *Not done:* the `SessionDeletionPolicy` from the issue, since finished sessions cannot be deleted (see #49).
 - **Tests.** The event is published once with the saved values, and not on cancel or on a refused second finish. Backend: 299 unit tests pass.
+### 2026-11-19: Leave a group API (#55, F-GRP-01)
+
+- Branch `feat/leave-group`. Invite, accept and decline already existed; leaving a group did not.
+- **API.** `DELETE /groups/:id/members/me` ([`group-membership-routes.ts`](../../../apps/backend/src/features/group/group-membership-routes.ts), [`GroupMembershipService`](../../../apps/backend/src/features/group/group-membership-service.ts)) returns `204`. Non-members get `404`. The rule lives in `GroupRoster.requireCanLeave`: the admin gets `409` while anyone else is in the group, so a group never loses its admin. Documented in [`api_routes.md`](../../architecture/api_routes.md).
+- **Decision: delete the membership row instead of marking it `left`.** Sessions belong to the reader, not the group, so their history is not lost. The leaderboard is built from current members, so the reader drops out of it. Removing the row also lets them be invited again with no extra code. *Rejected:* a `status`/`left_at` column, which would need a migration and a filter in every membership query, for no feature that uses it yet.
+- **Tests.** Unit tests for the leave rules ([`group-membership.test.ts`](../../../apps/backend/tests/unit/group-membership.test.ts)) pass (301 unit tests). The API test [`group-membership-api.test.ts`](../../../apps/backend/tests/integration/group-membership-api.test.ts) was written but not run: the shared test database is missing migration `0013` (`last_read_date`), so every integration test that saves a user currently fails there.
+
+### 2026-11-19: Invite friends and leave a group in the UI (#59, F-GRP-01)
+
+- Same branch `feat/leave-group`, after the leave API (#55). Pending invites with Accept/Decline on `/groups` already existed.
+- **Invite friends.** The book club's invite list moved into a shared [`InviteFriends.vue`](../../../apps/frontend/src/components/groups/InviteFriends.vue). The challenge page now uses it too: its "Admin & settings" button, which did nothing before, opens the panel and is only shown to the admin. Server refusals (for example a second pending invite, `409`) are shown in the list.
+- **Leave group.** [`LeaveGroup.vue`](../../../apps/frontend/src/components/groups/LeaveGroup.vue) on both group pages asks for confirmation, calls `DELETE /groups/:id/members/me`, and goes back to `/groups`. When the admin is blocked (`409`) it shows the server's message.
+- **Not done:** the invite list does not hide friends who already have a pending invite, because there is no endpoint listing a group's pending invites. The server refuses the duplicate and its message is shown instead.
+- **Tests.** New component tests for `InviteFriends` and `LeaveGroup`; two book club tests now read the error from the shared component. Frontend: 529 tests pass.
+### 2026-11-19: Book page status controls: add, dates and remove (#30, F-LIB-01)
+
+- Branch `feat/book-status-dates`. Changing the status from the book page already worked. The backend already stored `startedOn`/`finishedOn` and had `DELETE /me/library/:bookId`, but the page had no way to use them. This is frontend only.
+- [`BookReadingPanel.vue`](../../../apps/frontend/src/components/library/BookReadingPanel.vue): a book outside the library shows **Add to library** (status Not started). The editor has **Started on** and **Finished on** date fields; marking Finished fills in today. A finish date before the start date shows a message and cannot be saved. **Remove from library** asks for confirmation. After adding or removing, [`BookDetailView.vue`](../../../apps/frontend/src/views/BookDetailView.vue) reloads the book, and the saved days are shown under the progress bar.
+- **Decision: only dates the reader edited are sent.** The server fills in the start and finish days when the status changes, and sending empty fields would wipe them.
+- `updateReadingStatus` now shows the server's error message, and `removeFromLibrary` was added to the API client.
+- **Tests.** Add, show dates, date validation, edited dates sent, remove with and without confirmation, plus API client cases. Frontend: 533 tests pass.
+### 2026-11-19: Challenges won on the profile (#124, #61, F-PROF-01, F-GRP-04)
+
+- Branch `feat/profile-challenges-won`. The profile's "challenges won" line no longer comes from the mock: [`ProfileView.vue`](../../../apps/frontend/src/views/ProfileView.vue) reads `GET /me/groups`, loads the standings of each completed challenge and counts the ones the reader won.
+- **Rule.** [`wonChallenge`](../../../apps/frontend/src/utils/profile.ts): the challenge is completed and the reader holds the top score, which must be above zero. Everyone tied on the top score wins.
+- **Decision: count on the frontend for now.** No backend change was needed because the standings are already returned. *Rejected for now:* a `challengesWon` field on the API, worth adding if a reader has many challenges (one request per finished challenge).
+- **Tests.** Unit tests for wins, ties, running and empty challenges, and two ProfileView tests (2 wins counted, fallback when groups fail). Frontend: 528 tests pass.

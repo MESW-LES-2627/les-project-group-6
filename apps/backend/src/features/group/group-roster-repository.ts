@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { groups, member } from '../../database/schema.js';
 import { UserId } from '../user/user.js';
@@ -7,6 +7,8 @@ import { GroupId, GroupRoster, groupKindOf, memberRoleOf, type Membership } from
 export interface IGroupRosterRepository {
   findById(id: GroupId): Promise<GroupRoster | null>;
   addMember(groupId: GroupId, membership: Membership): Promise<void>;
+  /** Removes the membership; the reader's sessions are theirs and stay. */
+  removeMember(groupId: GroupId, userId: UserId): Promise<void>;
 }
 
 export class DrizzleGroupRosterRepository implements IGroupRosterRepository {
@@ -46,5 +48,11 @@ export class DrizzleGroupRosterRepository implements IGroupRosterRepository {
         joinedAt: membership.joinedAt.toISOString(),
       })
       .onConflictDoNothing();
+  }
+
+  async removeMember(groupId: GroupId, userId: UserId): Promise<void> {
+    await this.db
+      .delete(member)
+      .where(and(eq(member.groupId, groupId.value), eq(member.userId, userId.value)));
   }
 }

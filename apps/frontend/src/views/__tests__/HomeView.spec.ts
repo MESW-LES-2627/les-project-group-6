@@ -1,4 +1,4 @@
-// @req F-HOME-01
+// @req F-HOME-01 F-READ-04
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -8,6 +8,7 @@ import type {
   ApiChallengeGroup,
   ApiChallengeGroupDetail,
   ApiExplore,
+  ApiStreak,
   ApiIncomingRequest,
   ApiLibraryItem,
   ApiPendingInvite,
@@ -36,6 +37,7 @@ const api = vi.hoisted(() => ({
   declineFriendRequest: vi.fn<(id: string) => Promise<void>>(),
   answerInvite: vi.fn<(id: string, answer: 'accept' | 'decline') => Promise<unknown>>(),
   getExplore: vi.fn<() => Promise<ApiExplore>>(),
+  getStreak: vi.fn<() => Promise<ApiStreak>>(),
 }));
 vi.mock('@/services/api', async (original) => ({
   ...(await original<typeof import('@/services/api')>()),
@@ -144,7 +146,28 @@ async function mountView() {
   return wrapper;
 }
 
+const STREAK: ApiStreak = {
+  current: 3,
+  longest: 9,
+  readToday: true,
+  lastReadDate: '2026-11-19',
+  streakType: 'daily',
+  freezesLeft: 1,
+  days: [
+    '2026-11-11',
+    '2026-11-12',
+    '2026-11-13',
+    '2026-11-14',
+    '2026-11-15',
+    '2026-11-16',
+    '2026-11-17',
+    '2026-11-18',
+    '2026-11-19',
+  ].map((date) => ({ date, read: date >= '2026-11-17' })),
+};
+
 beforeEach(() => {
+  api.getStreak.mockResolvedValue(STREAK);
   api.getUserLibrary.mockResolvedValue([PERSUASION, EMMA]);
   api.getActiveReadingSession.mockResolvedValue(null);
   api.getUserBookClubs.mockResolvedValue([CLASSICS]);
@@ -309,10 +332,38 @@ describe('HomeView', () => {
     expect(trending).toContain('1 reader this week');
   });
 
-  it('keeps the streak and goals from the mock until their features exist', async () => {
+  it('keeps the goals from the mock until their feature exists', async () => {
     const wrapper = await mountView();
 
-    expect(wrapper.get('.streak-line').text()).toBe('12 days in a row');
     expect(wrapper.text()).toContain('18 of 24 books');
+  });
+});
+
+describe('HomeView streak', () => {
+  it('shows the streak and the last seven days from the API', async () => {
+    const wrapper = await mountView();
+
+    expect(wrapper.get('.streak-line').text()).toBe('3 days in a row');
+    expect(wrapper.text()).toContain('1 freeze left');
+    const days = wrapper.findAll('.week-day');
+    expect(days).toHaveLength(7);
+    expect(days.map((d) => d.classes('read'))).toEqual([
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  it('shows an error only in the streak section when it cannot be loaded', async () => {
+    api.getStreak.mockRejectedValue(new Error('offline'));
+    const wrapper = await mountView();
+
+    expect(wrapper.text()).toContain('We could not load your streak.');
+    expect(wrapper.find('.streak-line').exists()).toBe(false);
+    expect(wrapper.text()).toContain('Circe');
   });
 });

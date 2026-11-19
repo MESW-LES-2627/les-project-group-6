@@ -65,13 +65,6 @@ export interface TrendingBook {
 // Sections whose features are not built yet (mock data in src/mocks/home.ts)
 // ---------------------------------------------------------------------------
 
-export interface Streak {
-  days: number;
-  freezesLeft: number;
-  freezesMax: number;
-  todayComplete: boolean;
-}
-
 export interface YearGoals {
   year: number;
   booksRead: number;
@@ -96,7 +89,6 @@ export interface ReadingFriend {
 
 /** The home sections still on mock data until their features exist. */
 export interface UnbuiltHomeSections {
-  streak: Streak;
   goals: YearGoals;
   activity: ActivityItem[];
   readingNow: ReadingFriend[];
