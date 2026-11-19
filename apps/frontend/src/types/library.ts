@@ -32,6 +32,11 @@ export interface LibraryBook {
   chip: string;
   /** ISO datetime, used by the "Recently updated" sort. */
   updatedAt: string;
+  /** False for a catalogue book the reader has not added yet (F-LIB-01). */
+  inLibrary?: boolean;
+  /** Day the reader started and finished the book (YYYY-MM-DD), when known. */
+  startedOn?: string | null;
+  finishedOn?: string | null;
 }
 
 export interface Shelf {
