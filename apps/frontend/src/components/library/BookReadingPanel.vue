@@ -5,11 +5,13 @@ import { RouterLink } from 'vue-router';
 import {
   addBookToFolder,
   removeBookFromFolder,
+  removeFromLibrary,
   tagBook,
   untagBook,
   updateReadingStatus,
 } from '@/services/api';
 import type { FolderSummary, LibraryBook, ReadingStatus, TagSummary } from '@/types/library';
+import { toIsoDate } from '@/utils/groups';
 import { progressPercent, readingStatusLabels } from '@/utils/library';
 
 const props = defineProps<{
@@ -20,7 +22,16 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  updated: [data: { status: ReadingStatus; currentPage: number }];
+  updated: [
+    data: {
+      status: ReadingStatus;
+      currentPage: number;
+      startedOn?: string | null;
+      finishedOn?: string | null;
+    },
+  ];
+  /** The book was added to or removed from the library; the page reloads it. */
+  libraryChanged: [];
   foldersUpdated: [folderIds: string[]];
   tagAdded: [tag: TagSummary];
   tagRemoved: [tagId: string];
@@ -33,6 +44,68 @@ const selectedStatus = ref<ReadingStatus>(
 const selectedPage = ref<number>(props.book.currentPage || 10);
 const isSaving = ref(false);
 const message = ref<string | null>(null);
+// F-LIB-01: the start and finish days, as YYYY-MM-DD ('' when not set).
+const startedOn = ref(props.book.startedOn ?? '');
+const finishedOn = ref(props.book.finishedOn ?? '');
+const libraryBusy = ref(false);
+const libraryMessage = ref<string | null>(null);
+
+const dateError = computed(() =>
+  selectedStatus.value === 'finished' &&
+  startedOn.value &&
+  finishedOn.value &&
+  finishedOn.value < startedOn.value
+    ? 'The finish date cannot be before the start date.'
+    : null,
+);
+
+// Marking a book finished fills in today as the finish day, which the reader can edit.
+watch(selectedStatus, (status) => {
+  if (status === 'finished' && !finishedOn.value) finishedOn.value = toIsoDate(new Date());
+});
+
+function formatDay(day: string): string {
+  return new Date(`${day}T12:00:00`).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+const datesLabel = computed(() => {
+  const parts: string[] = [];
+  if (props.book.startedOn) parts.push(`Started ${formatDay(props.book.startedOn)}`);
+  if (props.book.finishedOn) parts.push(`Finished ${formatDay(props.book.finishedOn)}`);
+  return parts.join(' • ');
+});
+
+async function addToLibrary() {
+  libraryBusy.value = true;
+  libraryMessage.value = null;
+  try {
+    await updateReadingStatus({ bookId: props.book.id, status: 'not-started', currentPage: 0 });
+    emit('libraryChanged');
+  } catch (err: unknown) {
+    libraryMessage.value = err instanceof Error ? err.message : 'Failed to add the book';
+  } finally {
+    libraryBusy.value = false;
+  }
+}
+
+async function remove() {
+  if (!window.confirm(`Remove ${props.book.title} from your library?`)) return;
+  libraryBusy.value = true;
+  libraryMessage.value = null;
+  try {
+    await removeFromLibrary(props.book.id);
+    isEditing.value = false;
+    emit('libraryChanged');
+  } catch (err: unknown) {
+    libraryMessage.value = err instanceof Error ? err.message : 'Failed to remove the book';
+  } finally {
+    libraryBusy.value = false;
+  }
+}
 
 const isEditingFolders = ref(false);
 const selectedFolderIds = ref<string[]>([...props.book.folderIds]);
@@ -53,6 +126,8 @@ watch(
     selectedStatus.value = newBook.status === 'not-started' ? 'in-progress' : newBook.status;
     selectedPage.value = newBook.currentPage || 10;
     selectedFolderIds.value = [...newBook.folderIds];
+    startedOn.value = newBook.startedOn ?? '';
+    finishedOn.value = newBook.finishedOn ?? '';
   },
   { deep: true },
 );
@@ -71,17 +146,33 @@ function toggleEdit() {
 }
 
 async function saveStatus() {
+  if (dateError.value) return;
   isSaving.value = true;
   message.value = null;
+  // Only the dates the reader edited are sent; the server fills in the others itself.
+  const changed = (value: string, saved: string | null | undefined) =>
+    value === (saved ?? '') ? undefined : value || null;
+  const dates = {
+    startedOn:
+      selectedStatus.value === 'not-started'
+        ? undefined
+        : changed(startedOn.value, props.book.startedOn),
+    finishedOn:
+      selectedStatus.value === 'finished'
+        ? changed(finishedOn.value, props.book.finishedOn)
+        : undefined,
+  };
   try {
     await updateReadingStatus({
       bookId: props.book.id,
       status: selectedStatus.value,
       currentPage: selectedPage.value,
+      ...dates,
     });
     emit('updated', {
       status: selectedStatus.value,
       currentPage: selectedPage.value,
+      ...dates,
     });
     message.value = 'Status saved to backend!';
     setTimeout(() => {
@@ -205,6 +296,7 @@ async function toggleFolder(folderId: string) {
     <p class="progress-label">
       Page {{ book.currentPage }} of {{ book.pages }} • {{ percent }}% complete
     </p>
+    <p v-if="datesLabel" class="progress-label reading-dates">{{ datesLabel }}</p>
 
     <div class="actions">
       <RouterLink
@@ -216,10 +308,20 @@ async function toggleFolder(folderId: string) {
         </svg>
         Start session
       </RouterLink>
-      <button type="button" class="update-status" @click="toggleEdit">
+      <button
+        v-if="book.inLibrary === false"
+        type="button"
+        class="update-status add-to-library"
+        :disabled="libraryBusy"
+        @click="addToLibrary"
+      >
+        Add to library <span aria-hidden="true">•</span>
+      </button>
+      <button v-else type="button" class="update-status" @click="toggleEdit">
         {{ isEditing ? 'Close' : 'Update status' }} <span aria-hidden="true">•</span>
       </button>
     </div>
+    <p v-if="libraryMessage" class="editor-message" role="alert">{{ libraryMessage }}</p>
 
     <form v-if="isEditing" class="status-editor" @submit.prevent="saveStatus">
       <div class="editor-fields">
@@ -243,13 +345,37 @@ async function toggleFolder(folderId: string) {
             class="editor-input"
           />
         </label>
+
+        <label v-if="selectedStatus !== 'not-started'" class="editor-field">
+          <span class="field-label">Started on</span>
+          <input v-model="startedOn" type="date" class="editor-input started-on" />
+        </label>
+
+        <label v-if="selectedStatus === 'finished'" class="editor-field">
+          <span class="field-label">Finished on</span>
+          <input
+            v-model="finishedOn"
+            type="date"
+            class="editor-input finished-on"
+            :aria-invalid="dateError ? 'true' : undefined"
+          />
+        </label>
       </div>
+      <p v-if="dateError" class="editor-message date-error" role="alert">{{ dateError }}</p>
 
       <div class="editor-buttons">
-        <button type="submit" class="button-save" :disabled="isSaving">
+        <button type="submit" class="button-save" :disabled="isSaving || !!dateError">
           {{ isSaving ? 'Saving...' : 'Save status' }}
         </button>
         <button type="button" class="button-cancel" @click="isEditing = false">Cancel</button>
+        <button
+          type="button"
+          class="button-cancel remove-from-library"
+          :disabled="libraryBusy"
+          @click="remove"
+        >
+          Remove from library
+        </button>
       </div>
 
       <p v-if="message" class="editor-message">{{ message }}</p>

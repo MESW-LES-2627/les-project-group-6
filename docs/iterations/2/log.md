@@ -384,6 +384,13 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Decision: the name is unique ignoring case and accents**, the same normalisation that search uses, so "José Saramago" and "jose saramago" are one author. *Rejected:* exact-name uniqueness, which would still let search show one author as two.
 - **Tests.** Two new integration tests in [`book-repository.test.ts`](../../../apps/backend/tests/integration/book-repository.test.ts) (concurrent imports, case/accent variants); one search test no longer links two names that are now the same author. Backend: 393 tests pass.
 
+### 2026-11-19: Book page status controls: add, dates and remove (#30, F-LIB-01)
+
+- Branch `feat/book-status-dates`. Changing the status from the book page already worked. The backend already stored `startedOn`/`finishedOn` and had `DELETE /me/library/:bookId`, but the page had no way to use them. This is frontend only.
+- [`BookReadingPanel.vue`](../../../apps/frontend/src/components/library/BookReadingPanel.vue): a book outside the library shows **Add to library** (status Not started). The editor has **Started on** and **Finished on** date fields; marking Finished fills in today. A finish date before the start date shows a message and cannot be saved. **Remove from library** asks for confirmation. After adding or removing, [`BookDetailView.vue`](../../../apps/frontend/src/views/BookDetailView.vue) reloads the book, and the saved days are shown under the progress bar.
+- **Decision: only dates the reader edited are sent.** The server fills in the start and finish days when the status changes, and sending empty fields would wipe them.
+- `updateReadingStatus` now shows the server's error message, and `removeFromLibrary` was added to the API client.
+- **Tests.** Add, show dates, date validation, edited dates sent, remove with and without confirmation, plus API client cases. Frontend: 533 tests pass.
 ### 2026-11-19: Challenges won on the profile (#124, #61, F-PROF-01, F-GRP-04)
 
 - Branch `feat/profile-challenges-won`. The profile's "challenges won" line no longer comes from the mock: [`ProfileView.vue`](../../../apps/frontend/src/views/ProfileView.vue) reads `GET /me/groups`, loads the standings of each completed challenge and counts the ones the reader won.

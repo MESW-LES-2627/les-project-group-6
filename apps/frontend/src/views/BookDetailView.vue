@@ -95,9 +95,14 @@ watch(
   },
 );
 
-function onStatusUpdated(updated: { status: ReadingStatus; currentPage: number }) {
+function onStatusUpdated(updated: {
+  status: ReadingStatus;
+  currentPage: number;
+  startedOn?: string | null;
+  finishedOn?: string | null;
+}) {
   if (!book.value) return;
-  book.value = { ...book.value, status: updated.status, currentPage: updated.currentPage };
+  book.value = { ...book.value, ...updated };
 }
 
 function onFoldersUpdated(folderIds: string[]) {
@@ -196,6 +201,7 @@ const mailtoHref = computed(() => {
               :folders="folders"
               :tags="tags"
               @updated="onStatusUpdated"
+              @library-changed="fetchBookData"
               @folders-updated="onFoldersUpdated"
               @tag-added="onTagAdded"
               @tag-removed="onTagRemoved"
