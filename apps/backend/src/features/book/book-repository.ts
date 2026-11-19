@@ -72,7 +72,7 @@ function toRow(book: Book): typeof books.$inferInsert {
 
 /** Below this length trigrams are unreliable, so only prefixes match. */
 const TRIGRAM_MIN_LENGTH = 3;
-/** pg_trgm's default (0.6) only just lets "hary poter" find "Harry Potter". */
+/** pg_trgm's default (0.6) only just lets "harry potter" find "Harry Potter". */
 const WORD_SIMILARITY_THRESHOLD = 0.5;
 
 function escapeLike(text: string): string {

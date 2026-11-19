@@ -13,7 +13,7 @@ const emit = defineEmits<{ submit: [query: string] }>();
         v-model="query"
         class="field-input"
         type="search"
-        placeholder="Try “hary poter” or an ISBN"
+        placeholder="Try “harry potter” or an ISBN"
         autocomplete="off"
       />
       <button type="submit" class="button">
