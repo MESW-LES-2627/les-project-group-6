@@ -384,8 +384,9 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Decision: the name is unique ignoring case and accents**, the same normalisation that search uses, so "José Saramago" and "jose saramago" are one author. *Rejected:* exact-name uniqueness, which would still let search show one author as two.
 - **Tests.** Two new integration tests in [`book-repository.test.ts`](../../../apps/backend/tests/integration/book-repository.test.ts) (concurrent imports, case/accent variants); one search test no longer links two names that are now the same author. Backend: 393 tests pass.
 
-### 2026-11-19: Home shows the real reading streak (#148, F-HOME-01, F-READ-04)
+### 2026-11-19: Challenges won on the profile (#124, #61, F-PROF-01, F-GRP-04)
 
-- Branch `feat/home-real-streak`. An audit of the open issues found that Home already uses real data for every #148 scenario. The only exception was the "This week" streak card, which still came from the mock even though `GET /me/streak` exists. #52 was already implemented and was closed.
-- [`HomeView.vue`](../../../apps/frontend/src/views/HomeView.vue) now loads the streak on its own. It shows the current run, the freezes left and the last seven days as the API marks them (reader's timezone). If that request fails, only the streak card shows an error. The streak was removed from [`mocks/home.ts`](../../../apps/frontend/src/mocks/home.ts) and `UnbuiltHomeSections`; the yearly goals stay mocked because there is no goals endpoint yet.
-- **Tests.** Two new tests in `HomeView.spec.ts`: the streak card and seven days come from the API, and a failing streak request only breaks that card. Frontend: 525 tests pass.
+- Branch `feat/profile-challenges-won`. The profile's "challenges won" line no longer comes from the mock: [`ProfileView.vue`](../../../apps/frontend/src/views/ProfileView.vue) reads `GET /me/groups`, loads the standings of each completed challenge and counts the ones the reader won.
+- **Rule.** [`wonChallenge`](../../../apps/frontend/src/utils/profile.ts): the challenge is completed and the reader holds the top score, which must be above zero. Everyone tied on the top score wins.
+- **Decision: count on the frontend for now.** No backend change was needed because the standings are already returned. *Rejected for now:* a `challengesWon` field on the API, worth adding if a reader has many challenges (one request per finished challenge).
+- **Tests.** Unit tests for wins, ties, running and empty challenges, and two ProfileView tests (2 wins counted, fallback when groups fail). Frontend: 528 tests pass.

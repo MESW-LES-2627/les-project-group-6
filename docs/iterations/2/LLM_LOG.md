@@ -798,7 +798,7 @@ fix
 
 Checked that issue #143 was still open, then added migration 0014 (merge duplicate authors, unique index on the folded name), changed `saveWithAuthors` to an insert with `ON CONFLICT DO NOTHING` plus a re-select, and added integration tests for concurrent imports and for names that differ only in case or accents.
 
-### 2026-11-19: Audit of open issues and real streak on Home
+### 2026-11-19: Challenges won on the profile
 
 - **Date:** 2026-11-19
 - **Author:** Robert Gleison
@@ -808,8 +808,8 @@ Checked that issue #143 was still open, then added migration 0014 (merge duplica
 
 #### Prompt
 ```text
-I also have some missing issues, can you implement? ... check if someone is missing. If something is already implemented, then close the issue. (then: start with #148)
+I am missing one issue, to show the challenges won in the profile page in frontend. Can you do for me? (issue #124)
 ```
 
 #### Explanation of Changes
-Checked the open issues against the code: closed #52, which was already implemented, and listed what is missing in the others. Replaced the mock streak on Home with `GET /me/streak` and gave it its own error state and tests.
+Replaced the mock challenges-won count on the profile with a count of finished challenges the reader won (top score, ties included), computed from the existing challenge standings API. Added unit and view tests.
