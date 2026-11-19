@@ -1,6 +1,7 @@
 -- #143: authors.name had no unique constraint, so two concurrent imports could
 -- insert the same author twice. Merge existing duplicates (same name ignoring
 -- case and accents) into the oldest-looking row, then enforce uniqueness.
+-- IF NOT EXISTS: the index was applied early to Supabase under the old 0013 number.
 CREATE TEMP TABLE author_merge ON COMMIT DROP AS
 SELECT id AS dup_id, keep_id
 FROM (
@@ -22,4 +23,4 @@ UPDATE reading_goals g SET target_author_id = m.keep_id FROM author_merge m WHER
 --> statement-breakpoint
 DELETE FROM authors a USING author_merge m WHERE a.id = m.dup_id;
 --> statement-breakpoint
-CREATE UNIQUE INDEX "authors_name_normalized_key" ON "authors" USING btree (f_unaccent(lower("name")));
+CREATE UNIQUE INDEX IF NOT EXISTS "authors_name_normalized_key" ON "authors" USING btree (f_unaccent(lower("name")));
