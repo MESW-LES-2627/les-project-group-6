@@ -4,6 +4,8 @@ import { RouterLink } from 'vue-router';
 
 import GroupChat from '@/components/groups/GroupChat.vue';
 import GroupLeaderboard from '@/components/groups/GroupLeaderboard.vue';
+import InviteFriends from '@/components/groups/InviteFriends.vue';
+import LeaveGroup from '@/components/groups/LeaveGroup.vue';
 import PagePlate from '@/components/layout/PagePlate.vue';
 import type { ChallengeDetail } from '@/types/groups';
 
@@ -14,6 +16,7 @@ const props = defineProps<{
 }>();
 
 const rematchStarted = ref(false);
+const showAdmin = ref(false);
 const me = props.challenge.members.find((m) => m.id === props.meId) ?? {
   id: props.meId,
   name: 'You',
@@ -48,7 +51,14 @@ const ranked = computed(() => (myEntry.value?.rank ?? 0) > 0);
       <p class="lede">{{ challenge.tagline }}</p>
       <template #actions>
         <RouterLink class="plate-button" :to="{ name: 'library' }">Start a session</RouterLink>
-        <button type="button" class="plate-link">
+        <button
+          v-if="isAdmin"
+          type="button"
+          class="plate-link"
+          :aria-expanded="showAdmin"
+          aria-controls="admin-panel"
+          @click="showAdmin = !showAdmin"
+        >
           <svg
             width="14"
             height="14"
@@ -65,6 +75,16 @@ const ranked = computed(() => (myEntry.value?.rank ?? 0) > 0);
         </button>
       </template>
     </PagePlate>
+
+    <section
+      v-if="isAdmin && showAdmin"
+      id="admin-panel"
+      class="page-column section ruled"
+      aria-labelledby="admin-title"
+    >
+      <h2 id="admin-title" class="section-title heading-gap">Admin &amp; settings</h2>
+      <InviteFriends :group-id="challenge.id" :members="challenge.members" />
+    </section>
 
     <div class="page-column columns">
       <div class="column">
@@ -142,6 +162,8 @@ const ranked = computed(() => (myEntry.value?.rank ?? 0) > 0);
             A rematch with the same members and rules is ready to set up.
           </p>
         </section>
+
+        <LeaveGroup :group-id="challenge.id" :group-name="challenge.name" />
       </div>
     </div>
   </main>

@@ -384,6 +384,20 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Decision: the name is unique ignoring case and accents**, the same normalisation that search uses, so "José Saramago" and "jose saramago" are one author. *Rejected:* exact-name uniqueness, which would still let search show one author as two.
 - **Tests.** Two new integration tests in [`book-repository.test.ts`](../../../apps/backend/tests/integration/book-repository.test.ts) (concurrent imports, case/accent variants); one search test no longer links two names that are now the same author. Backend: 393 tests pass.
 
+### 2026-11-19: Leave a group API (#55, F-GRP-01)
+
+- Branch `feat/leave-group`. Invite, accept and decline already existed; leaving a group did not.
+- **API.** `DELETE /groups/:id/members/me` ([`group-membership-routes.ts`](../../../apps/backend/src/features/group/group-membership-routes.ts), [`GroupMembershipService`](../../../apps/backend/src/features/group/group-membership-service.ts)) returns `204`. Non-members get `404`. The rule lives in `GroupRoster.requireCanLeave`: the admin gets `409` while anyone else is in the group, so a group never loses its admin. Documented in [`api_routes.md`](../../architecture/api_routes.md).
+- **Decision: delete the membership row instead of marking it `left`.** Sessions belong to the reader, not the group, so their history is not lost. The leaderboard is built from current members, so the reader drops out of it. Removing the row also lets them be invited again with no extra code. *Rejected:* a `status`/`left_at` column, which would need a migration and a filter in every membership query, for no feature that uses it yet.
+- **Tests.** Unit tests for the leave rules ([`group-membership.test.ts`](../../../apps/backend/tests/unit/group-membership.test.ts)) pass (301 unit tests). The API test [`group-membership-api.test.ts`](../../../apps/backend/tests/integration/group-membership-api.test.ts) was written but not run: the shared test database is missing migration `0013` (`last_read_date`), so every integration test that saves a user currently fails there.
+
+### 2026-11-19: Invite friends and leave a group in the UI (#59, F-GRP-01)
+
+- Same branch `feat/leave-group`, after the leave API (#55). Pending invites with Accept/Decline on `/groups` already existed.
+- **Invite friends.** The book club's invite list moved into a shared [`InviteFriends.vue`](../../../apps/frontend/src/components/groups/InviteFriends.vue). The challenge page now uses it too: its "Admin & settings" button, which did nothing before, opens the panel and is only shown to the admin. Server refusals (for example a second pending invite, `409`) are shown in the list.
+- **Leave group.** [`LeaveGroup.vue`](../../../apps/frontend/src/components/groups/LeaveGroup.vue) on both group pages asks for confirmation, calls `DELETE /groups/:id/members/me`, and goes back to `/groups`. When the admin is blocked (`409`) it shows the server's message.
+- **Not done:** the invite list does not hide friends who already have a pending invite, because there is no endpoint listing a group's pending invites. The server refuses the duplicate and its message is shown instead.
+- **Tests.** New component tests for `InviteFriends` and `LeaveGroup`; two book club tests now read the error from the shared component. Frontend: 529 tests pass.
 ### 2026-11-19: Book page status controls: add, dates and remove (#30, F-LIB-01)
 
 - Branch `feat/book-status-dates`. Changing the status from the book page already worked. The backend already stored `startedOn`/`finishedOn` and had `DELETE /me/library/:bookId`, but the page had no way to use them. This is frontend only.
