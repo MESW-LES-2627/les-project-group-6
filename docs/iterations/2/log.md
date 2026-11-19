@@ -70,7 +70,6 @@ A running record of what the team did and decided in iteration 2. The [release n
 - First run: backend 378 tests pass, 95.4% lines and 93.6% branches (with Postgres up and migrations applied); frontend 172 tests pass, 83.7% statements and 79.8% branches.
 - **Decision: CI fails below 95% line coverage** in both apps (`--test-coverage-lines=95` in the backend, `thresholds.lines` in [`vitest.config.ts`](../../../apps/frontend/vitest.config.ts)). Backend and Frontend CI now run `test:coverage` and upload the report as an artifact. *Rejected:* a ratchet that locks the current numbers. **The frontend (84.8%) fails the gate until tests are added**, which also blocks frontend prod deploys, since CD calls CI. Start with `services/api.ts` and `chat-socket.ts`.
 
-
 - Split #126 and #127 into Task sub-issues and assign owners. #126 now has a [spec](../../superpowers/specs/2026-11-11-explore-page-design.md) to split from. #125 is built on `feat/125-organize-library`; open its PR and merge.
 - In project 23, add the views that the API cannot create: **Current sprint** (board, filter `iteration:@current`, columns by Status) and group **Prioritized backlog** by Iteration.
 - Check and close the open issues that look done in the code: #10 #25 (book page), #28 #30 (library and status), #43 #49 (session API and summary), #52 #55 #59 (group invites, done in #107).
@@ -147,7 +146,6 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 - **Decision: with no "added this week" activity, `GET /explore` returns `suggestions`**, up to 10 random books from the catalogue (`IBookRepository.random`, `ORDER BY random()`). The Trending tab shows them with a note, without the "#1" tag and with "A pick to start with" instead of a reader count. Real trending replaces them as soon as one book is added. *Rejected:* padding `trending` with random books, because it would show fake reader counts; and picking them in the frontend, because there is no endpoint that lists the catalogue.
 - "Most read this week" keeps its empty message.
-
 
 ### 2026-11-11: Book search design: fuzzy, search-as-you-type (F-EXP-01)
 
@@ -319,7 +317,6 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Decision: the panel normalises names like the API (trim, single spaces, lower case)** and refuses a tag the book already has before calling the API. *Rejected:* a separate tag manager, since the backend creates tags on first use and deletes them when empty.
 - **Tests.** 13 new unit tests ([`BookReadingPanel.spec.ts`](../../../apps/frontend/src/components/library/__tests__/BookReadingPanel.spec.ts), `LibraryView.api.spec.ts`, `BookDetailView.spec.ts`); frontend 201 unit tests pass. New e2e [`library-tags.spec.ts`](../../../apps/frontend/e2e/library-tags.spec.ts): tag the fixture book, filter the library by it, remove it, and several tags on one book. They use unique names and remove the tags in teardown.
 
-
 ### 2026-11-17: Frontend password recovery (#8, F-AUTH-02)
 
 - Added `/forgot-password` and `/reset-password`, login navigation, accessible validated forms, account-neutral confirmation/errors and session-bound recovery operations in the existing [auth adapter](../../../apps/frontend/src/services/auth.ts). Recovery routes precede profile redirects; other private routes retain protection. **Decision:** use the installed SDK's implicit flow and recovery event with tab-local context; rejected treating an ordinary stored session as recovery proof or creating a second Supabase client. Cleanup signs out only the matching recovery session locally.
@@ -378,3 +375,11 @@ A running record of what the team did and decided in iteration 2. The [release n
 - Merged `main` after [PR #160](https://github.com/MESW-LES-2627/les-project-group-6/pull/160) so [PR #165](https://github.com/MESW-LES-2627/les-project-group-6/pull/165) can merge. Conflicts were in the seed, the profile page, its tests and these logs.
 - **Seed.** Kept the branch's Supabase seed ([`seed.ts`](../../../apps/backend/src/database/seed.ts)); [`populate.ts`](../../../apps/backend/src/database/seed/populate.ts) now writes `last_read_date` (the reader's latest session day when they have a streak) instead of the removed `hit_streak`.
 - **Profile.** [`ProfileView.vue`](../../../apps/frontend/src/views/ProfileView.vue) keeps the branch's library, folders and reviews from the API and main's live streak from `GET /me/streak`, with an error instead of mock data. The mock streak and imported hours were removed from [`mocks/profile.ts`](../../../apps/frontend/src/mocks/profile.ts).
+
+### 2026-11-19: Authors can no longer be duplicated by concurrent imports (#143)
+
+- Branch `fix/unique-author-names`. Two Open Library imports of different books by the same author could both miss the author lookup and both insert it, because `authors.name` was not unique.
+- **Database.** Migration [`0014_unique_author_names.sql`](../../../apps/backend/src/database/migrations/0014_unique_author_names.sql) merges existing duplicates (book links and the `target_author_id` of challenges, leaderboards and reading goals move to the kept row), then adds the unique index `authors_name_normalized_key` on `f_unaccent(lower(name))`. [`schema.ts`](../../../apps/backend/src/database/schema.ts) and `schema.sql` match.
+- **Backend.** [`saveWithAuthors`](../../../apps/backend/src/features/book/book-repository.ts) now inserts with `ON CONFLICT DO NOTHING` and re-selects by the folded name on conflict.
+- **Decision: the name is unique ignoring case and accents**, the same normalisation that search uses, so "José Saramago" and "jose saramago" are one author. *Rejected:* exact-name uniqueness, which would still let search show one author as two.
+- **Tests.** Two new integration tests in [`book-repository.test.ts`](../../../apps/backend/tests/integration/book-repository.test.ts) (concurrent imports, case/accent variants); one search test no longer links two names that are now the same author. Backend: 393 tests pass.

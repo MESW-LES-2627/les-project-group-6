@@ -101,6 +101,8 @@ export const authors = pgTable(
   // F-EXP-01: fuzzy author search (pg_trgm). Created in 0009.
   (table) => [
     index('authors_name_trgm_idx').using('gin', sql`f_unaccent(lower(${table.name})) gin_trgm_ops`),
+    // One row per author name, ignoring case and accents. Created in 0014 (#143).
+    uniqueIndex('authors_name_normalized_key').using('btree', sql`f_unaccent(lower(${table.name}))`),
   ],
 );
 

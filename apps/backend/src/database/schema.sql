@@ -80,6 +80,8 @@ CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text
 
 CREATE INDEX books_title_trgm_idx ON books USING gin (f_unaccent(lower(title)) gin_trgm_ops);
 CREATE INDEX authors_name_trgm_idx ON authors USING gin (f_unaccent(lower(name)) gin_trgm_ops);
+-- One row per author name, ignoring case and accents (#143).
+CREATE UNIQUE INDEX authors_name_normalized_key ON authors (f_unaccent(lower(name)));
 
 -- Granular sub-classification or genre tag for books.
 CREATE TABLE genres (

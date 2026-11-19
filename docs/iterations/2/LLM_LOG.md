@@ -78,7 +78,6 @@ add any missing one from https://github.com/orgs/MESW-LES-2627/projects/9
 #### Explanation of Changes
 Checked the code to see which features are still missing or mocked, and added the challenge winner story left over from project 9. Wrote 8 user stories with Gherkin scenarios as issues #120 to #127, moved the existing task issues under them as sub-issues, and closed the old parents. On project 23, changed the Iteration field to one-week sprints and gave each story a Priority, story points and Iteration 2. Added the user story issue template and updated the README and the iteration log. The team still has to review the points and priority order.
 
-
 ### 2026-11-08: Component diagram for iteration 1
 
 - **Date:** 2026-11-08
@@ -248,7 +247,6 @@ nice, now, when we have no activity, can you get some random books to add on tre
 #### Result
 Added `IBookRepository.random`, a `suggestions` list in `ExploreService` and `GET /explore` (only while nothing trends), and the Trending tab's fallback cards with a note. Also removed the unused header search in favour of the Explore page. New tests for the repository, the service, the route and the view.
 
-
 ### 2026-11-11: Book search design (fuzzy, search-as-you-type)
 
 - **Date:** 2026-11-11
@@ -329,7 +327,6 @@ now, I want to do this user story (#120). If I search by a book that i am not fi
 #### Result
 `POST /book` saves authors; new `AddBookForm` on Explore, opened from "Add this book" under the search results, which creates the book, adds it to the library as "Not started" and opens it; `addBook`/`addToLibrary` API helpers; 5 new tests.
 
-
 ### 2026-11-12: Library folders (F-LIB-03, #125)
 
 - **Date:** 2026-11-12
@@ -383,7 +380,6 @@ the data is not persists, when I refresh the folders I created are lostt, also t
 
 #### Result
 Design spec `docs/superpowers/specs/2026-11-13-e2e-tests-design.md` for Playwright e2e tests (auth via a shared setup, production build and shared database, per-test data, CI on main and manual dispatch). Decisions were made with the user during brainstorming. No code yet.
-
 
 ### 2026-11-13: e2e tests implementation (#127)
 
@@ -579,7 +575,6 @@ Implemented live user profile and streak retrieval for the authenticated user on
 3. In `apps/frontend/src/views/__tests__/ProfileView.spec.ts`:
    - Added unit tests for rendering the authenticated user profile and live streak calendar, bringing the total passing frontend unit tests to 191 across 33 test files.
 
-
 ### 2026-11-16: Mutation testing and requirement traceability
 
 - **Date:** 2026-11-16
@@ -635,8 +630,6 @@ I merged the tag changes, why I can't add tags in frontend in my ui?
 #### Explanation of Changes
 Found that PR #153 was backend only. Added the tag API client, the add/remove tag editor on the book page, real tags with counts in the library sidebar, unit tests and two Playwright e2e tests for F-LIB-04.
 
-
-
 ### 2026-11-17: Frontend password recovery
 
 - **Date:** 2026-11-17
@@ -658,7 +651,6 @@ Supabase configuration, one-hour expiry and live verification gaps. Update the a
 
 #### Explanation of Changes
 Implemented the two recovery routes and adapter operations using Supabase's existing implicit recovery flow, session-bound tab metadata, account-neutral errors and local cleanup. Added accessible responsive forms based on the supplied image and existing tokens, adapter/component/router tests, and a separate deterministic desktop/mobile Playwright configuration without backend/database fixtures. Documented Supabase setup and manual live verification, created the missing docs index and updated the real iteration 2 log. Full issue criteria were inaccessible. Live delivery and hosted configuration remain unverified; no GitHub changes or commits were made.
-
 
 Validation: 234 unit/component/router tests and 20 deterministic desktop/mobile browser scenarios pass; production build/typecheck and scoped lint/format checks pass. Full frontend lint/format checks retain the existing config/API-file failures, and the global coverage check reports 86% lines against a 95% gate. Recovery ownership was separated from update permission so expired/consumed sessions cannot bypass cleanup by navigating to private pages. The [recovery guide](../../architecture/password-recovery.md) records exact commands, external setup and live verification gaps.
 
@@ -739,7 +731,6 @@ Ok, implement in the seed to be used by pnpm db:seed one that reads the .env to 
 
 Rewrote `pnpm db:seed`: it creates confirmed logins through the Supabase Auth Admin API (no emails), writes their emails and passwords to a git-ignored file, and fills the database with eight readers and data for every page. Added `SUPABASE_SERVICE_ROLE_KEY` and `SEED_ALLOW_REMOTE_DATABASE` to `.env.example` and documented the seed in the backend README.
 
-
 ---
 
 ### 2026-11-18: Streak rework after the PR #160 review
@@ -787,3 +778,22 @@ tell me if this branch has valid implementations compared to main, if it has try
 
 #### Explanation of Changes
 Merged `main` (the streak rework from PR #160) into `feat/mock-to-real`. Kept the branch's Supabase seed and made `populate.ts` write `lastReadDate` instead of the removed `hitStreak`. Combined `ProfileView.vue`: the branch's library, folders and reviews from the API plus main's streak from `GET /me/streak`, with no mock fallback; removed the now unused mock streak and imported hours. Merged both sides of the profile tests and the iteration logs.
+
+### 2026-11-19: Unique author names (#143)
+
+- **Date:** 2026-11-19
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** database, backend, testing
+
+#### Prompt
+
+```text
+https://github.com/orgs/MESW-LES-2627/projects/23/views/10?pane=issue&itemId=301907840&issue=MESW-LES-2627%7Cles-project-group-6%7C143 this is already done?
+fix
+```
+
+#### Explanation of Changes
+
+Checked that issue #143 was still open, then added migration 0014 (merge duplicate authors, unique index on the folded name), changed `saveWithAuthors` to an insert with `ON CONFLICT DO NOTHING` plus a re-select, and added integration tests for concurrent imports and for names that differ only in case or accents.

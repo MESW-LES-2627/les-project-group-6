@@ -218,15 +218,22 @@ export class DrizzleBookRepository implements IBookRepository {
 
       const names = [...new Set(authorNames.map((n) => n.trim()).filter(Boolean))];
       for (const name of names) {
-        // authors.name is not unique, so look it up first.
-        const found = await tx
-          .select({ id: authors.id })
-          .from(authors)
-          .where(eq(authors.name, name))
-          .limit(1);
+        // The unique index on folded(name) makes concurrent imports safe (#143):
+        // insert, and on conflict reuse the row the other import created.
+        const insertedAuthor = await tx
+          .insert(authors)
+          .values({ name })
+          .onConflictDoNothing()
+          .returning({ id: authors.id });
         const authorId =
-          found[0]?.id ??
-          (await tx.insert(authors).values({ name }).returning({ id: authors.id }))[0]!.id;
+          insertedAuthor[0]?.id ??
+          (
+            await tx
+              .select({ id: authors.id })
+              .from(authors)
+              .where(sql`${folded(authors.name)} = ${folded(sql`${name}::text`)}`)
+              .limit(1)
+          )[0]!.id;
         await tx
           .insert(bookAuthors)
           .values({ bookId: book.id.value, authorId })
