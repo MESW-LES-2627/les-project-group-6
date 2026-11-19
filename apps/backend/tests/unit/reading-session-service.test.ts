@@ -9,6 +9,7 @@ import type { StreakService } from '../../src/features/user/streak-service.js';
 import {
   AnotherSessionActiveError,
   ReadingSessionService,
+  type SessionCompleted,
 } from '../../src/features/reading-session/reading-session-service.js';
 import {
   NotSessionOwnerError,
@@ -226,6 +227,52 @@ describe('ReadingSessionService', () => {
       const session = await readFor(15);
       await serviceWithStreak.cancel({ id: session.id.value, userId: USER_ID });
       assert.deepStrictEqual(recorded, []);
+    });
+  });
+
+  describe('SessionCompleted event', () => {
+    let events: SessionCompleted[];
+    let observed: ReadingSessionService;
+
+    beforeEach(() => {
+      events = [];
+      observed = new ReadingSessionService(
+        new InMemoryReadingSessionRepository(),
+        books,
+        () => now,
+        undefined,
+        undefined,
+        [{ sessionCompleted: async (event) => void events.push(event) }],
+      );
+    });
+
+    test('is published once with the saved session when it finishes', async () => {
+      const session = await observed.start({ userId: USER_ID, bookId: book.id.value });
+      const startedAt = now;
+      advance(25 * 60);
+      await observed.finish({ id: session.id.value, userId: USER_ID });
+      await assert.rejects(
+        observed.finish({ id: session.id.value, userId: USER_ID }),
+        SessionAlreadyFinishedError,
+      );
+
+      assert.deepStrictEqual(events, [
+        {
+          sessionId: session.id.value,
+          userId: USER_ID,
+          bookId: book.id.value,
+          startedAt,
+          endedAt: now,
+          countedMinutes: 25,
+        },
+      ]);
+    });
+
+    test('is not published when a session is cancelled', async () => {
+      const session = await observed.start({ userId: USER_ID, bookId: book.id.value });
+      await observed.cancel({ id: session.id.value, userId: USER_ID });
+
+      assert.deepStrictEqual(events, []);
     });
   });
 });

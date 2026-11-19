@@ -30,6 +30,22 @@ export interface FinishReadingSessionCommand {
   userId: unknown;
 }
 
+/** Domain event: a reader stopped a session and its minutes were saved. */
+export interface SessionCompleted {
+  sessionId: string;
+  userId: string;
+  bookId: string;
+  startedAt: Date;
+  endedAt: Date;
+  countedMinutes: number;
+}
+
+// Observer: features that react to a finished session (badges, feed) subscribe here
+// instead of being called by this service.
+export interface SessionCompletedListener {
+  sessionCompleted(event: SessionCompleted): Promise<void>;
+}
+
 // Application service: one method per use case on the reader's timed sessions.
 export class ReadingSessionService {
   constructor(
@@ -38,6 +54,7 @@ export class ReadingSessionService {
     private readonly now: Clock = () => new Date(),
     private readonly readingStatuses?: ReadingStatusService,
     private readonly streakService?: StreakService,
+    private readonly listeners: SessionCompletedListener[] = [],
   ) {}
 
   /**
@@ -79,6 +96,16 @@ export class ReadingSessionService {
     if (sessionCountsForStreak(session.countedMinutes)) {
       await this.streakService?.recordReadToday(session.userId, session.endedAt ?? undefined);
     }
+    // Published once, after the session is saved.
+    const event: SessionCompleted = {
+      sessionId: session.id.value,
+      userId: session.userId.value,
+      bookId: session.bookId.value,
+      startedAt: session.startedAt,
+      endedAt: session.endedAt ?? this.now(),
+      countedMinutes: session.countedMinutes,
+    };
+    for (const listener of this.listeners) await listener.sessionCompleted(event);
     return session;
   }
 
