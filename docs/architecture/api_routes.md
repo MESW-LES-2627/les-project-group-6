@@ -139,6 +139,12 @@ Tags are private to the reader. They are created on first use, stored in lower c
 | POST | `/group-invites/:id/accept` | Accepts an invite: joins the group, posts "X joined the group" in the chat, and a book club adds its round book to the library. |
 | POST | `/group-invites/:id/decline` | Declines an invite. |
 
+### Group membership (`features/group/group-membership-routes.ts`)
+
+| Method | Path | Description |
+|---|---|---|
+| DELETE | `/groups/:id/members/me` | Leaves the group (`204`). Non-members get `404`. The admin gets `409` while other members remain and can leave once they are the last one. The reader can be invited again later. |
+
 ### Group chat, REST part (`features/group-chat/chat-routes.ts`, ADR-0006)
 
 REST is the source of truth for the chat: messages are sent, read and deleted here. Only group members may use these routes (`403` otherwise).

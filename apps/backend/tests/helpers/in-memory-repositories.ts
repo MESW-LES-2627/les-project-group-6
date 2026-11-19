@@ -282,6 +282,13 @@ export class InMemoryGroupRosterRepository implements IGroupRosterRepository {
     if (!r) return;
     this.put(new GroupRoster(r.groupId, r.name, r.kind, r.adminId, [...r.members, membership]));
   }
+
+  async removeMember(groupId: GroupId, userId: UserId): Promise<void> {
+    const r = this.rosters.get(groupId.value);
+    if (!r) return;
+    const rest = r.members.filter((m) => !m.userId.equals(userId));
+    this.put(new GroupRoster(r.groupId, r.name, r.kind, r.adminId, rest));
+  }
 }
 
 export class InMemoryFriendRepository implements IFriendRepository {

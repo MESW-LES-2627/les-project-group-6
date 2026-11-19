@@ -1,5 +1,9 @@
 import crypto from 'node:crypto';
-import { ForbiddenError, InvalidValueError } from '../../utils/errors.js';
+import {
+  BusinessRuleViolationError,
+  ForbiddenError,
+  InvalidValueError,
+} from '../../utils/errors.js';
 import { Uuid } from '../../utils/uuid.js';
 import type { UserId } from '../user/user.js';
 
@@ -77,6 +81,12 @@ export class NotGroupMemberError extends ForbiddenError {
   }
 }
 
+export class AdminCannotLeaveError extends BusinessRuleViolationError {
+  constructor() {
+    super('The admin cannot leave while other members are in the group');
+  }
+}
+
 // Who belongs to a group, whatever its category. Used by the features that work
 // on any group (invites, chat) without loading the category's aggregate.
 export class GroupRoster {
@@ -94,6 +104,16 @@ export class GroupRoster {
 
   isAdmin(userId: UserId): boolean {
     return this.adminId.equals(userId);
+  }
+
+  /**
+   * Throws unless the reader may leave (F-GRP-01): the admin stays while anyone else is
+   * still in the group, so it never ends up without an admin.
+   */
+  requireCanLeave(userId: UserId): void {
+    if (this.isAdmin(userId) && this.members.some((m) => !m.userId.equals(userId))) {
+      throw new AdminCannotLeaveError();
+    }
   }
 
   /** Throws unless the reader is a member, so they can `action`. */

@@ -797,3 +797,19 @@ fix
 #### Explanation of Changes
 
 Checked that issue #143 was still open, then added migration 0014 (merge duplicate authors, unique index on the folded name), changed `saveWithAuthors` to an insert with `ON CONFLICT DO NOTHING` plus a re-select, and added integration tests for concurrent imports and for names that differ only in case or accents.
+
+### 2026-11-19: Leave a group API
+
+- **Date:** 2026-11-19
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, testing, docs
+
+#### Prompt
+```text
+yes (implement the missing part of #55: leaving a group)
+```
+
+#### Explanation of Changes
+Added `DELETE /groups/:id/members/me`, with the rule that the admin cannot leave while others remain. Added unit and API tests and updated the API routes doc.

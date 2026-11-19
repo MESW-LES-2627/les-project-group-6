@@ -43,6 +43,8 @@ import { friendRoutes } from '../features/friend/friend-routes.js';
 import { FriendService } from '../features/friend/friend-service.js';
 import type { IGroupInviteRepository } from '../features/group-invite/group-invite-repository.js';
 import { groupInviteRoutes } from '../features/group-invite/group-invite-routes.js';
+import { groupMembershipRoutes } from '../features/group/group-membership-routes.js';
+import { GroupMembershipService } from '../features/group/group-membership-service.js';
 import { GroupInviteService } from '../features/group-invite/group-invite-service.js';
 import type { IGroupRosterRepository } from '../features/group/group-roster-repository.js';
 import type { MemberJoinedListener } from '../features/group/group.js';
@@ -268,6 +270,10 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
         ),
       ),
     );
+  }
+
+  if (groupRosterRepository) {
+    router.use(groupMembershipRoutes(new GroupMembershipService(groupRosterRepository)));
   }
 
   if (libraryQuery) {
