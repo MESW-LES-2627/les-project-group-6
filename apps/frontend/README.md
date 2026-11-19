@@ -67,7 +67,7 @@ The [Home](../../docs/design/screens/05-home.png) and [authentication](../../doc
 
 ## Authentication
 
-Every page except `/login` needs a signed-in reader (F-AUTH-01, [issue #7](https://github.com/MESW-LES-2627/les-project-group-6/issues/7)). Identity (email, password, session) is Supabase Auth; the profile (username, display name, timezone) is our `users` row behind `POST/GET /me`.
+Every page except `/login`, `/forgot-password` and `/reset-password` needs a signed-in reader (F-AUTH-01, [issue #7](https://github.com/MESW-LES-2627/les-project-group-6/issues/7)). Identity (email, password, session) is Supabase Auth; the profile (username, display name, timezone) is our `users` row behind `POST/GET /me`.
 
 Set the public project values in `apps/frontend/.env.local` (copy `.env.example`) and restart Vite. In production they are environment variables of the **frontend** static site on Render, read at build time, so a change needs a redeploy. Never use a service-role or secret key in `VITE_*` variables. The backend needs `SUPABASE_URL` (see its README).
 
@@ -81,11 +81,19 @@ In Supabase, add `http://localhost:5173/login` and the production `/login` URL t
 How it fits together:
 
 - `src/services/auth.ts`: the Supabase adapter (`AuthProvider`): sign in, sign up, sign out, the current account, the access token and session changes, all in our own types. One client; “Keep me signed in” picks local storage, otherwise session storage (`rememberAwareStorage`).
-- `src/stores/session.ts`: the session store (`session.state.status` is `signed-out`, `profile-required`, `ready` or `error`, plus `me`). Sign-up first checks `GET /usernames/:username/availability`, so a taken username never creates a Supabase account. When Supabase returns a session at once, it calls `POST /me` with the browser timezone and opens Home. With email confirmation on, the reader confirms, logs in and the store finishes the profile from the sign-up metadata; if that fails (e.g. the username was taken meanwhile), they land on `/complete-profile`.
+- `src/stores/session.ts`: the session store (`session.state.status` is `signed-out`, `profile-required`, `ready`, `recovery` or `error`, plus `me`). Sign-up first checks `GET /usernames/:username/availability`, so a taken username never creates a Supabase account. When Supabase returns a session at once, it calls `POST /me` with the browser timezone and opens Home. With email confirmation on, the reader confirms, logs in and the store finishes the profile from the sign-up metadata; if that fails (e.g. the username was taken meanwhile), they land on `/complete-profile`.
 - `src/router/index.ts`: `installAuthGuard` sends visitors to `/login?redirect=…` (only same-site paths are followed, `src/utils/redirect.ts`), readers without a profile to `/complete-profile`, and signed-in readers away from both.
 - `src/services/api.ts`: every request goes through `apiFetch`, which adds `Authorization: Bearer <token>`; the API takes the user from the token, so no call sends a `userId`. A `401` signs the reader out and shows the login page. The chat socket sends the token in its handshake.
 - **Sign out** is in the header's account menu (and on the complete-profile page).
 
-Login is by email and password only: Supabase signs in by email, and a public username → email lookup would leak emails, so username login is not offered. Password recovery (F-AUTH-02) and social login are not implemented.
+Login is by email and password only: Supabase signs in by email, and a public username → email lookup would leak emails, so username login is not offered. Password recovery (F-AUTH-02) uses `/forgot-password` and `/reset-password`; see the [recovery guide](../../docs/architecture/password-recovery.md) for the adapter/session design, required Supabase redirect allowlist and one-hour expiry configuration, and live verification steps. Social login is not implemented.
 
 Tests never contact Supabase: `src/services/__tests__/auth.spec.ts` mocks the SDK, `src/stores/__tests__/session.spec.ts` and the router guard tests use the doubles in `src/stores/__tests__/fake-session.ts`, and `LoginView.spec.ts` / `CompleteProfileView.spec.ts` run the pages through the store with a faked API.
+
+Deterministic recovery and authentication browser regressions (no backend, database or live email):
+
+```sh
+pnpm --filter @bookmarked/frontend exec playwright test --config playwright.recovery.config.ts
+```
+
+This separate configuration tests desktop/mobile Chromium with network mocks and a dedicated build in `dist-ssr/recovery`; it does not establish live Supabase email delivery or dashboard configuration.

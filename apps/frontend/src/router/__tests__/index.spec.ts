@@ -1,4 +1,4 @@
-// @req F-AUTH-01
+// @req F-AUTH-01 F-AUTH-02
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { describe, expect, it, vi } from 'vitest';
 import { createSession } from '@/stores/session';
@@ -143,5 +143,32 @@ describe('auth guard (F-AUTH-01)', () => {
     await target.push('/library');
 
     expect(target.currentRoute.value.name).toBe('login');
+  });
+  it.each(['signed-out', 'profile-required', 'ready'] as const)(
+    'keeps recovery routes accessible when %s',
+    async (state) => {
+      const { target } = guarded(state);
+      for (const path of ['/forgot-password', '/reset-password']) {
+        await target.push(path);
+        expect(target.currentRoute.value.path).toBe(path);
+        expect(target.currentRoute.value.meta.hideAppChrome).toBe(true);
+      }
+    },
+  );
+
+  it('keeps a recovery session away from private routes and profile creation', async () => {
+    const auth = fakeAuth().auth;
+    auth.hasRecoverySession = async () => true;
+    const api = fakeProfileApi(null);
+    const getMe = vi.spyOn(api, 'getMe');
+    const session = createSession(auth, api);
+    const target = createRouter({ history: createMemoryHistory(), routes: router.options.routes });
+    installAuthGuard(target, session);
+    for (const path of ['/home', '/complete-profile', '/login', '/library']) {
+      await target.push(path);
+      expect(target.currentRoute.value.name).toBe('reset-password');
+    }
+    expect(await session.refresh()).toBe('recovery');
+    expect(getMe).not.toHaveBeenCalled();
   });
 });

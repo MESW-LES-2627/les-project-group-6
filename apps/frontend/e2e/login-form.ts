@@ -6,10 +6,6 @@ export async function logIn(page: Page, email: string, password: string): Promis
   await page.locator('#login-password').fill(password);
   // Without this the session lives in sessionStorage, which storageState does not save.
   await page.getByLabel('Keep me signed in').check();
-  // The tab above the form is also a "Log in" button, and the hidden sign-up form has its
-  // own submit button, so click the button inside the login form ("Welcome back").
-  await page
-    .getByRole('form', { name: 'Welcome back' })
-    .getByRole('button', { name: 'Log in' })
-    .click();
+  // The tab above the form is also a "Log in" button, so submit the form itself.
+  await page.locator('form').getByRole('button', { name: 'Log in', exact: true }).click();
 }
