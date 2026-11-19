@@ -417,3 +417,8 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Rule.** [`wonChallenge`](../../../apps/frontend/src/utils/profile.ts): the challenge is completed and the reader holds the top score, which must be above zero. Everyone tied on the top score wins.
 - **Decision: count on the frontend for now.** No backend change was needed because the standings are already returned. *Rejected for now:* a `challengesWon` field on the API, worth adding if a reader has many challenges (one request per finished challenge).
 - **Tests.** Unit tests for wins, ties, running and empty challenges, and two ProfileView tests (2 wins counted, fallback when groups fail). Frontend: 528 tests pass.
+
+### 2026-11-19: Fix search tests after the "harry potter" rename
+
+- Branch `fix/search-typo-tests`. `04f4979` changed the search placeholder to "harry potter". It also changed the input of two tests whose job is to check misspellings. The frontend `api-search.spec.ts` then expected a URL the input no longer produced, which broke `test:coverage` on `main`. The backend "finds books despite a typo" test no longer contained a typo.
+- **Fix.** The frontend test now expects `?q=harry%20potter`. The backend test and the `WORD_SIMILARITY_THRESHOLD` comment go back to "hary poter", because that typo is what they check. The placeholder keeps the new text.
