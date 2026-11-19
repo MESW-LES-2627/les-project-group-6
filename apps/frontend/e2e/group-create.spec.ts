@@ -9,9 +9,11 @@ test('the new-group form previews the name without creating a group', async ({ p
 
   // The form starts with no name, which previews as "Untitled group".
   const preview = page.getByRole('complementary', { name: 'Preview' });
-  await expect(page.locator('#group-name')).toHaveValue('');
-  await expect(preview.getByText('Untitled group')).toBeVisible();
+  const nameInput = page.getByRole('textbox', { name: 'Group name' });
 
-  await page.locator('#group-name').fill('E2E preview only');
-  await expect(preview.getByText('E2E preview only')).toBeVisible();
+  await nameInput.fill('');
+  await expect(preview.getByText('Untitled group', { exact: true })).toBeVisible();
+
+  await nameInput.fill('E2E preview only');
+  await expect(preview.getByText('E2E preview only', { exact: true })).toBeVisible();
 });

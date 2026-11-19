@@ -16,7 +16,9 @@ const REQ_ID = /\bF-[A-Z]+-\d+\b/g;
 // --- requirements: first row that names an ID gives its name and tier ---
 const requirements = new Map();
 let tier = 'Core';
-for (const line of readFileSync(join(root, 'docs/requirements/features_priority.md'), 'utf8').split('\n')) {
+for (const line of readFileSync(join(root, 'docs/requirements/features_priority.md'), 'utf8').split(
+  '\n',
+)) {
   if (line.startsWith('## Tier 2')) tier = 'Extra';
   if (line.startsWith('## Tier 3')) tier = 'Optional';
   if (line.startsWith('## Requirements that change')) break;
@@ -64,7 +66,8 @@ for (const path of walk(join(root, 'apps'))) {
     continue;
   }
   for (const id of ids) {
-    if (!perReq.has(id)) perReq.set(id, { files: 0, unit: 0, integration: 0, component: 0, e2e: 0 });
+    if (!perReq.has(id))
+      perReq.set(id, { files: 0, unit: 0, integration: 0, component: 0, e2e: 0 });
     const row = perReq.get(id);
     row.files += 1;
     row[layerOf(path)] += tests;
@@ -88,7 +91,9 @@ for (const [id, r] of shown) {
     continue;
   }
   const total = LAYERS.reduce((s, l) => s + row[l], 0);
-  out.push(`| ${id} | ${r.name} | ${r.tier} | ${row.files} | ${LAYERS.map((l) => row[l] || '').join(' | ')} | ${total} |`);
+  out.push(
+    `| ${id} | ${r.name} | ${r.tier} | ${row.files} | ${LAYERS.map((l) => row[l] || '').join(' | ')} | ${total} |`,
+  );
 }
 
 const planned = shown.filter(([, r]) => r.tier !== 'Optional');
@@ -96,8 +101,12 @@ const tested = (tier) => planned.filter(([id, r]) => r.tier === tier && perReq.h
 const count = (tier) => planned.filter(([, r]) => r.tier === tier).length;
 out.push('');
 out.push(`- Core requirements with tests: **${tested('Core')} of ${count('Core')}**`);
-out.push(`- Extra requirements with tests: **${tested('Extra')} of ${count('Extra')}** (not all are built yet)`);
-out.push(`- Test cases: ${totalTests}, of which ${totalTests - untagged.reduce((s, f) => s + f.tests, 0)} are tagged with a requirement`);
+out.push(
+  `- Extra requirements with tests: **${tested('Extra')} of ${count('Extra')}** (not all are built yet)`,
+);
+out.push(
+  `- Test cases: ${totalTests}, of which ${totalTests - untagged.reduce((s, f) => s + f.tests, 0)} are tagged with a requirement`,
+);
 if (untagged.length) {
   out.push('');
   out.push('Test files without a requirement (infrastructure, or a tag is missing):');

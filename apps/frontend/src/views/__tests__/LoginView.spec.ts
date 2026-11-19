@@ -62,6 +62,10 @@ async function render(path = '/login') {
         name: 'complete-profile',
         component: { template: '<p>Complete</p>' },
       },
+      {
+        path: '/forgot-password',
+        component: { template: '<p>Password recovery</p>' },
+      },
     ],
   });
   await router.push(path);
@@ -271,15 +275,16 @@ describe('authentication page and Supabase integration', () => {
     wrapper.unmount();
   });
 
-  it('says password recovery is not available yet', async () => {
-    const { wrapper } = await render();
+  it('opens password recovery from the login page', async () => {
+    const { wrapper, router } = await render();
 
-    await wrapper
-      .findAll('.link-button')
-      .find((b) => b.text() === 'Forgot password?')!
-      .trigger('click');
+    const link = wrapper.get('a[href="/forgot-password"]');
+    expect(link.text()).toBe('Forgot password?');
 
-    expect(wrapper.get('[role="status"]').text()).toBe('Password recovery is not available yet.');
+    await link.trigger('click');
+    await flushPromises();
+
+    expect(router.currentRoute.value.path).toBe('/forgot-password');
     wrapper.unmount();
   });
 
