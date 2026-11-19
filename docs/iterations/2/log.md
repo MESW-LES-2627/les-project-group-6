@@ -383,3 +383,9 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Backend.** [`saveWithAuthors`](../../../apps/backend/src/features/book/book-repository.ts) now inserts with `ON CONFLICT DO NOTHING` and re-selects by the folded name on conflict.
 - **Decision: the name is unique ignoring case and accents**, the same normalisation that search uses, so "José Saramago" and "jose saramago" are one author. *Rejected:* exact-name uniqueness, which would still let search show one author as two.
 - **Tests.** Two new integration tests in [`book-repository.test.ts`](../../../apps/backend/tests/integration/book-repository.test.ts) (concurrent imports, case/accent variants); one search test no longer links two names that are now the same author. Backend: 393 tests pass.
+
+### 2026-11-19: Session summary after Stop (#49, F-READ-01)
+
+- Branch `feat/session-summary`. Stopping a session used to jump straight to the profile. [`ActiveSessionView.vue`](../../../apps/frontend/src/views/ActiveSessionView.vue) now shows [`SessionSummary.vue`](../../../apps/frontend/src/components/session/SessionSummary.vue) with the cover, title, duration (`1 h 05 min`, from the server) and counted minutes. A session under a minute says it counted 0 minutes. "Done" goes to the profile. The duration format lives in [`utils/session.ts`](../../../apps/frontend/src/utils/session.ts).
+- **Decision: no "Delete session" after Stop.** The backend only lets a reader cancel a running session; a finished one has already updated the streak and challenge leaderboards. Deleting it would either leave a streak day the reader no longer earned or need a streak recount. Mistaken sessions are still discarded with Cancel before stopping. *Rejected:* deleting finished sessions, with or without recomputing the streak.
+- **Tests.** Summary content, the 0-minute note, Done going to the profile, and `formatDuration`. Frontend: 526 tests pass.

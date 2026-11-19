@@ -797,3 +797,19 @@ fix
 #### Explanation of Changes
 
 Checked that issue #143 was still open, then added migration 0014 (merge duplicate authors, unique index on the folded name), changed `saveWithAuthors` to an insert with `ON CONFLICT DO NOTHING` plus a re-select, and added integration tests for concurrent imports and for names that differ only in case or accents.
+
+### 2026-11-19: Session summary after Stop
+
+- **Date:** 2026-11-19
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, testing
+
+#### Prompt
+```text
+continue (implement #49; chosen: no delete after Stop)
+```
+
+#### Explanation of Changes
+Added a summary shown after a session is stopped: duration, counted minutes, and a note for 0-minute sessions. Deleting finished sessions was left out on purpose. Added tests.
