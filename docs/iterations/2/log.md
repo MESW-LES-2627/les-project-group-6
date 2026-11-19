@@ -383,3 +383,10 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Backend.** [`saveWithAuthors`](../../../apps/backend/src/features/book/book-repository.ts) now inserts with `ON CONFLICT DO NOTHING` and re-selects by the folded name on conflict.
 - **Decision: the name is unique ignoring case and accents**, the same normalisation that search uses, so "José Saramago" and "jose saramago" are one author. *Rejected:* exact-name uniqueness, which would still let search show one author as two.
 - **Tests.** Two new integration tests in [`book-repository.test.ts`](../../../apps/backend/tests/integration/book-repository.test.ts) (concurrent imports, case/accent variants); one search test no longer links two names that are now the same author. Backend: 393 tests pass.
+
+### 2026-11-19: SessionCompleted event (#43, F-READ-01)
+
+- Branch `feat/session-completed-event`. The session API (start, active, finish, cancel, `409` for a second running session, owner checks) already existed under `/reading-sessions`. The `SessionCompleted` event was the only missing piece.
+- [`ReadingSessionService.finish`](../../../apps/backend/src/features/reading-session/reading-session-service.ts) now publishes `SessionCompleted { sessionId, userId, bookId, startedAt, endedAt, countedMinutes }` once, after the session is saved, to `SessionCompletedListener`s. This is the same Observer pattern as `MemberJoinedListener`. Nothing subscribes yet; badges and the feed can subscribe without changing the service.
+- **Decision: the streak stays a direct call** instead of moving to a listener, to avoid touching the streak rules reworked in #160. *Not done:* the `SessionDeletionPolicy` from the issue, since finished sessions cannot be deleted (see #49).
+- **Tests.** The event is published once with the saved values, and not on cancel or on a refused second finish. Backend: 299 unit tests pass.

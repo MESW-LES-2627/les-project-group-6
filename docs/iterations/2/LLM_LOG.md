@@ -797,3 +797,19 @@ fix
 #### Explanation of Changes
 
 Checked that issue #143 was still open, then added migration 0014 (merge duplicate authors, unique index on the folded name), changed `saveWithAuthors` to an insert with `ON CONFLICT DO NOTHING` plus a re-select, and added integration tests for concurrent imports and for names that differ only in case or accents.
+
+### 2026-11-19: SessionCompleted event
+
+- **Date:** 2026-11-19
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, testing
+
+#### Prompt
+```text
+continue (implement the missing part of #43: the SessionCompleted event)
+```
+
+#### Explanation of Changes
+Added a `SessionCompleted` domain event and a listener interface to the reading session service, published once after a session is finished and saved. Added unit tests.
