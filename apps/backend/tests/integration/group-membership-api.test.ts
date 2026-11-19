@@ -85,7 +85,7 @@ describe('Leave group API', () => {
   test('the admin gets 409 while members remain, and can leave last', async () => {
     const blocked = await request(ADMIN, 'DELETE', `/groups/${groupId}/members/me`);
     assert.equal(blocked.status, 409);
-    assert.match(((await blocked.json()) as { message: string }).message, /admin cannot leave/);
+    assert.match(((await blocked.json()) as { error: string }).error, /admin cannot leave/);
 
     await request(MAYA, 'DELETE', `/groups/${groupId}/members/me`);
     assert.equal((await request(ADMIN, 'DELETE', `/groups/${groupId}/members/me`)).status, 204);

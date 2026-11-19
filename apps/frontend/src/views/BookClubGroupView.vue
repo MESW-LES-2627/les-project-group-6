@@ -5,19 +5,13 @@ import { RouterLink } from 'vue-router';
 import BookPicker, { type PickedBook } from '@/components/groups/BookPicker.vue';
 import GroupChat from '@/components/groups/GroupChat.vue';
 import GroupLeaderboard from '@/components/groups/GroupLeaderboard.vue';
-import MemberAvatar from '@/components/groups/MemberAvatar.vue';
+import InviteFriends from '@/components/groups/InviteFriends.vue';
+import LeaveGroup from '@/components/groups/LeaveGroup.vue';
 import ToggleSwitch from '@/components/groups/ToggleSwitch.vue';
 import PagePlate from '@/components/layout/PagePlate.vue';
 import BookCoverImage from '@/components/library/BookCoverImage.vue';
-import {
-  getFriends,
-  inviteToGroup,
-  openPoll,
-  proposeBook,
-  startNextRound,
-  voteForProposal,
-} from '@/services/api';
-import type { BookClubDetail, GroupMember, ProposalOption } from '@/types/groups';
+import { openPoll, proposeBook, startNextRound, voteForProposal } from '@/services/api';
+import type { BookClubDetail, ProposalOption } from '@/types/groups';
 import { toIsoDate } from '@/utils/groups';
 
 // The club comes from the API: every action is saved and asks the parent to reload (`changed`).
@@ -47,9 +41,6 @@ const actionError = ref('');
 const showAdmin = ref(false);
 
 // Admin panel
-const friends = ref<GroupMember[]>([]);
-const invited = ref<string[]>([]);
-const inviteMessage = ref('');
 const pollCloses = ref(toIsoDate(new Date(Date.now() + 7 * 86_400_000)));
 const pollAnonymous = ref(true);
 const nextBook = ref<PickedBook | null>(null);
@@ -58,9 +49,6 @@ const nextDeadline = ref(toIsoDate(new Date(Date.now() + 30 * 86_400_000)));
 const maxVotes = computed(() => Math.max(1, ...options.value.map((o) => o.votes)));
 const votingOpen = computed(() => props.club.voting?.status === 'open');
 const canVote = computed(() => votingOpen.value && (changingVote.value || !yourVote.value));
-const invitable = computed(() =>
-  friends.value.filter((f) => !props.club.members.some((m) => m.id === f.id)),
-);
 
 /** Runs an action, shows its error, and asks the page to reload on success. */
 async function act(work: () => Promise<unknown>, onDone?: () => void) {
@@ -87,25 +75,8 @@ async function submitProposal() {
   );
 }
 
-async function toggleAdmin() {
+function toggleAdmin() {
   showAdmin.value = !showAdmin.value;
-  if (!showAdmin.value || friends.value.length) return;
-  try {
-    friends.value = await getFriends();
-  } catch (e) {
-    actionError.value = (e as Error).message;
-  }
-}
-
-async function invite(friend: GroupMember) {
-  actionError.value = '';
-  try {
-    await inviteToGroup(props.club.id, friend.id);
-    invited.value.push(friend.id);
-    inviteMessage.value = `Invite sent to ${friend.name}.`;
-  } catch (e) {
-    actionError.value = (e as Error).message;
-  }
 }
 
 async function openVote() {
@@ -177,25 +148,7 @@ async function startRound() {
       <section v-if="showAdmin" id="admin-panel" class="admin" aria-labelledby="admin-title">
         <h2 id="admin-title" class="section-title heading-gap">Admin &amp; settings</h2>
         <div class="admin-grid">
-          <div class="admin-block">
-            <h3 class="block-title">Invite friends</h3>
-            <ul v-if="invitable.length" class="invite-list">
-              <li v-for="friend in invitable" :key="friend.id">
-                <MemberAvatar :initials="friend.initials" size="sm" />
-                <span class="friend-name">{{ friend.name }}</span>
-                <button
-                  type="button"
-                  class="button-outline button-small"
-                  :disabled="invited.includes(friend.id)"
-                  @click="invite(friend)"
-                >
-                  {{ invited.includes(friend.id) ? 'Invited' : 'Invite' }}
-                </button>
-              </li>
-            </ul>
-            <p v-else class="lede">All your friends are already here.</p>
-            <p v-if="inviteMessage" class="lede" role="status">{{ inviteMessage }}</p>
-          </div>
+          <InviteFriends class="admin-block" :group-id="club.id" :members="club.members" />
 
           <form class="admin-block" @submit.prevent="openVote">
             <h3 class="block-title">Open a vote for the next book</h3>
@@ -358,6 +311,8 @@ async function startRound() {
             </ul>
             <p v-else class="lede">This is the club’s first round.</p>
           </section>
+
+          <LeaveGroup :group-id="club.id" :group-name="club.name" />
         </div>
       </div>
     </div>
@@ -424,27 +379,6 @@ cite {
 .field-label {
   font-size: var(--font-size-sm);
   font-weight: 500;
-}
-
-.invite-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.invite-list li {
-  display: flex;
-  gap: var(--space-3);
-  align-items: center;
-}
-
-.friend-name {
-  flex: 1;
-  font-size: var(--font-size-sm);
 }
 
 .columns {

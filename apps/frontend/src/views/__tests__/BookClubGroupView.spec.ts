@@ -106,7 +106,7 @@ describe('BookClubGroupView', () => {
     await button(wrapper, 'Invite').trigger('click');
     await flushPromises();
 
-    expect(wrapper.get('.action-error').text()).toBe('Not your friend');
+    expect(wrapper.get('.invite-error').text()).toBe('Not your friend');
     expect(button(wrapper, 'Invite').attributes('disabled')).toBeUndefined();
   });
 
@@ -195,7 +195,7 @@ describe('BookClubGroupView', () => {
     const wrapper = mountClub(liveClub());
     await openAdmin(wrapper);
 
-    expect(wrapper.get('.action-error').text()).toBe('Failed to load friends');
+    expect(wrapper.get('.invite-error').text()).toBe('Failed to load friends');
     expect(wrapper.text()).toContain('All your friends are already here.');
   });
 });

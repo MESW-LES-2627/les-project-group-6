@@ -789,6 +789,14 @@ async function sendJson<T>(
 
 const id = (value: string) => encodeURIComponent(value);
 
+/** The reader leaves the group (F-GRP-01). The admin gets 409 while others remain. */
+export async function leaveGroup(groupId: string): Promise<void> {
+  await ensureOk(
+    await apiFetch(`/groups/${id(groupId)}/members/me`, { method: 'DELETE' }),
+    'Failed to leave the group',
+  );
+}
+
 function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
