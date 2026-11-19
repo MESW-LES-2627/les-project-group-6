@@ -422,3 +422,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 - Branch `fix/search-typo-tests`. `04f4979` changed the search text in `api-search.spec.ts` but not the URL it expects, which broke `test:coverage` on `main`. The test now expects `?q=harry%20potter`.
 - **Decision: every "hary poter" is now "harry potter"**: the placeholder, tests, the `WORD_SIMILARITY_THRESHOLD` comment and the search plan and spec docs. The backend tests "finds books despite a typo" and the repository fuzzy-search test now search a correctly spelled title, so they no longer exercise typo tolerance. Build outputs (`dist/`, `reports/`) are regenerated, not edited.
+
+### 2026-11-19: CLAIM for iteration 2
+
+Filled [CLAIM.md](CLAIM.md) following the iteration 1 template: permalinks on tag `iter-2`, pipelines (now with E2E, mutation and iteration release), and the stories closed since 2026-11-07.
