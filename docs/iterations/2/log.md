@@ -426,3 +426,11 @@ A running record of what the team did and decided in iteration 2. The [release n
 ### 2026-11-19: CLAIM for iteration 2
 
 Filled [CLAIM.md](CLAIM.md) following the iteration 1 template: permalinks on tag `iter-2`, pipelines (now with E2E, mutation and iteration release), and the stories closed since 2026-11-07.
+
+### 2026-11-19: OOP deliverables for iteration 2 (class diagram, component diagram, change analysis)
+ 
+- New [class diagram](../../oop_assets/class_diagram_iteration_2.png) and [component diagram](../../oop_assets/component_diagram_iteration_2.png), with their Mermaid sources and a list of changes in [`design.md`](../../design.md) under Iteration 3. They show what iteration 2 added: library folders and tags, reviews, authors and the Open Library catalogue port, reading-status dates, the streak on `User`, leaving a group, the `SessionCompleted` and `MemberJoined` events, and the planned badges.
+- New [change analysis for iteration 2](../../oop_assets/change_analysis_iteration_2.md). Scenario: **reader badges** (F-GAM-01), followed by notifications and the feed. It covers the scenario and context, coupling and cohesion (strength, distance, volatility) and the options. The date of the first analysis (2026-11-08) was added to [`change_analysis.md`](../../oop_assets/change_analysis.md).
+- **Decision: a Badge module that subscribes to events** (`SessionCompleted`, `MemberJoined` and one new `StreakExtended`) and publishes `BadgeEarned`. *Rejected:* calling a badge service from each module like the streak (four modules would depend on the most volatile one), working badges out when read (no moment to notify or feed), and an event bus with a queue (too much infrastructure).
+- **Decision kept:** the streak stays a direct call, as decided on 2026-11-19 for `SessionCompleted`. The strong, volatile link from Reading Session and Reading Status to the streak is recorded as accepted debt, to revisit with "streak freeze" (#9).
+ 
