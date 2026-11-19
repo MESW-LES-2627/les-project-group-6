@@ -7,7 +7,7 @@ test('explore search finds a seeded book', async ({ page }) => {
   await page.goto('/explore');
   await expect(page.getByRole('heading', { name: 'Follow your curiosity.' })).toBeVisible();
 
-  await page.getByPlaceholder('Try “hary poter” or an ISBN').fill(book.title);
+  await page.getByPlaceholder('Try “harry potter” or an ISBN').fill(book.title);
   await page.keyboard.press('Enter');
   // Only the seeded book is asserted; Open Library results may also appear.
   // Scoped to the results: trending cards use the same "View <title>" link.

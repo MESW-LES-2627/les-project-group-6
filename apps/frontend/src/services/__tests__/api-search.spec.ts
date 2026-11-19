@@ -16,7 +16,7 @@ describe('searchBooks', () => {
     vi.stubGlobal('fetch', fetchMock);
     const controller = new AbortController();
 
-    await expect(searchBooks('hary poter', controller.signal)).resolves.toEqual([]);
+    await expect(searchBooks('harry potter', controller.signal)).resolves.toEqual([]);
 
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(url).toBe('/api/book?q=hary%20poter');

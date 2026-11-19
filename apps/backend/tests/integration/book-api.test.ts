@@ -189,7 +189,7 @@ describe('Book API Endpoints', () => {
     await bookRepository.save(Book.create({ title: 'Dune' }));
 
     await withApp(app, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/book?q=${encodeURIComponent('hary poter')}`, {
+      const response = await fetch(`${baseUrl}/book?q=${encodeURIComponent('harry potter')}`, {
         headers: auth,
       });
       assert.strictEqual(response.status, 200);
