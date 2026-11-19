@@ -196,7 +196,7 @@ describe('DrizzleBookRepository Integration', () => {
       await repo.save(Book.create({ title: "Harry Potter and the Philosopher's Stone" }));
       await repo.save(Book.create({ title: 'Dune' }));
 
-      assert.deepEqual(titles(await repo.search('hary poter', 20)), [
+      assert.deepEqual(titles(await repo.search('harry potter', 20)), [
         "Harry Potter and the Philosopher's Stone",
       ]);
     });

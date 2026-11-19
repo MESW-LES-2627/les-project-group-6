@@ -19,7 +19,7 @@ describe('searchBooks', () => {
     await expect(searchBooks('harry potter', controller.signal)).resolves.toEqual([]);
 
     const [url, init] = fetchMock.mock.calls[0]!;
-    expect(url).toBe('/api/book?q=hary%20poter');
+    expect(url).toBe('/api/book?q=harry%20potter');
     expect(init!.signal!.aborted).toBe(false);
     controller.abort();
     expect(init!.signal!.aborted).toBe(true);
