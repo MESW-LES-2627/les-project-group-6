@@ -797,3 +797,19 @@ fix
 #### Explanation of Changes
 
 Checked that issue #143 was still open, then added migration 0014 (merge duplicate authors, unique index on the folded name), changed `saveWithAuthors` to an insert with `ON CONFLICT DO NOTHING` plus a re-select, and added integration tests for concurrent imports and for names that differ only in case or accents.
+
+### 2026-11-19: Audit of open issues and real streak on Home
+
+- **Date:** 2026-11-19
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, testing
+
+#### Prompt
+```text
+I also have some missing issues, can you implement? ... check if someone is missing. If something is already implemented, then close the issue. (then: start with #148)
+```
+
+#### Explanation of Changes
+Checked the open issues against the code: closed #52, which was already implemented, and listed what is missing in the others. Replaced the mock streak on Home with `GET /me/streak` and gave it its own error state and tests.
