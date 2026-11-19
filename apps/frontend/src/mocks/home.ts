@@ -1,11 +1,10 @@
 import type { UnbuiltHomeSections } from '@/types/home';
 
-// Mock data only for the Home sections whose features are not built yet: the reading
-// streak (#121), yearly goals, friend activity (F-SOC-03) and friends reading now
+// Mock data only for the Home sections whose features are not built yet: yearly
+// goals, friend activity (F-SOC-03) and friends reading now
 // (F-SOC-04). Every other Home section comes from the API. Remove each part when its
 // endpoint exists.
 export const mockHome: UnbuiltHomeSections = {
-  streak: { days: 12, freezesLeft: 2, freezesMax: 2, todayComplete: true },
   goals: {
     year: 2026,
     booksRead: 18,

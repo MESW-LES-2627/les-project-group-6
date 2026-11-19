@@ -14,9 +14,11 @@ import {
   getExplore,
   getFriendRequests,
   getPendingInvites,
+  getStreak,
   getUserBookClubs,
   getUserGroups,
   getUserLibrary,
+  type ApiStreak,
 } from '@/services/api';
 import { session } from '@/stores/session';
 import type {
@@ -39,9 +41,13 @@ import {
 } from '@/utils/home';
 
 // Every section loads from the API on its own, so one failing request does not blank
-// the page. The streak, goals, friend activity and "reading now" are not built yet and
-// still come from src/mocks/home.ts.
-const { streak, goals } = mockHome;
+// the page. The goals, friend activity and "reading now" are not built yet and still
+// come from src/mocks/home.ts.
+const { goals } = mockHome;
+
+// #148: the streak comes from GET /me/streak; a failure shows a short message instead.
+const streak = ref<ApiStreak | null>(null);
+const streakState = ref<'loading' | 'ready' | 'error'>('loading'); // same states as Load
 
 const now = new Date();
 const greeting = greetingFor(now);
@@ -111,6 +117,15 @@ async function loadRequests() {
   invitations.value = invites.map(toInvitation);
 }
 
+async function loadStreak() {
+  try {
+    streak.value = await getStreak();
+    streakState.value = 'ready';
+  } catch {
+    streakState.value = 'error';
+  }
+}
+
 async function loadTrending() {
   try {
     trending.value = toTrending(await getExplore());
@@ -125,6 +140,7 @@ onMounted(() => {
   void loadGroups();
   void loadRequests();
   void loadTrending();
+  void loadStreak();
 });
 
 const bedsidePercent = computed(() =>
@@ -147,24 +163,27 @@ const goalBars = [
   },
 ];
 
-// The last seven days, oldest first. A day is read when the streak reaches back to it.
+// The last seven days, oldest first, as the API marks them (reader's timezone).
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const week = Array.from({ length: 7 }, (_, i) => {
-  const date = new Date(now);
-  date.setDate(now.getDate() - 6 + i);
-  const daysAgo = 6 - i;
-  const isToday = daysAgo === 0;
-  const read = streak.todayComplete ? daysAgo < streak.days : daysAgo > 0 && daysAgo <= streak.days;
-  const name = date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-  return {
-    key: date.toDateString(),
-    letter: WEEKDAY_LETTERS[date.getDay()],
-    day: date.getDate(),
-    read,
-    isToday,
-    label: `${name}, ${read ? 'read' : 'no reading'}${isToday ? ', today' : ''}`,
-  };
-});
+const week = computed(() =>
+  (streak.value?.days ?? []).slice(-7).map((d, i, all) => {
+    const date = new Date(`${d.date}T12:00:00`);
+    const isToday = i === all.length - 1;
+    const name = date.toLocaleDateString('en-GB', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+    return {
+      key: d.date,
+      letter: WEEKDAY_LETTERS[date.getDay()],
+      day: date.getDate(),
+      read: d.read,
+      isToday,
+      label: `${name}, ${d.read ? 'read' : 'no reading'}${isToday ? ', today' : ''}`,
+    };
+  }),
+);
 
 const hasRequests = computed(() => friendRequests.value.length > 0 || invitations.value.length > 0);
 const hasGroups = computed(() => challenges.value.length > 0 || clubs.value.length > 0);
@@ -278,11 +297,14 @@ async function respondToInvite(invite: HomeInvitation, accept: boolean) {
         <section aria-labelledby="week-title">
           <div class="section-heading">
             <h2 id="week-title" class="section-title">This week</h2>
-            <span class="section-meta">
+            <span v-if="streak" class="section-meta">
               {{ streak.freezesLeft }} {{ streak.freezesLeft === 1 ? 'freeze' : 'freezes' }} left
             </span>
           </div>
-          <ol class="week" aria-label="Reading days, last 7 days">
+          <p v-if="streakState === 'error'" class="note" role="alert">
+            We could not load your streak.
+          </p>
+          <ol v-else-if="streak" class="week" aria-label="Reading days, last 7 days">
             <li v-for="day in week" :key="day.key">
               <span class="week-letter" aria-hidden="true">{{ day.letter }}</span>
               <span :class="['week-day', { read: day.read, today: day.isToday && day.read }]">
@@ -291,8 +313,9 @@ async function respondToInvite(invite: HomeInvitation, accept: boolean) {
               </span>
             </li>
           </ol>
-          <p class="streak-line">
-            <strong>{{ streak.days }} days</strong> in a row
+          <p v-if="streak" class="streak-line">
+            <strong>{{ streak.current }} {{ streak.current === 1 ? 'day' : 'days' }}</strong> in a
+            row
           </p>
         </section>
 
