@@ -797,3 +797,19 @@ fix
 #### Explanation of Changes
 
 Checked that issue #143 was still open, then added migration 0014 (merge duplicate authors, unique index on the folded name), changed `saveWithAuthors` to an insert with `ON CONFLICT DO NOTHING` plus a re-select, and added integration tests for concurrent imports and for names that differ only in case or accents.
+
+### 2026-11-19: Challenges won on the profile
+
+- **Date:** 2026-11-19
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, testing
+
+#### Prompt
+```text
+I am missing one issue, to show the challenges won in the profile page in frontend. Can you do for me? (issue #124)
+```
+
+#### Explanation of Changes
+Replaced the mock challenges-won count on the profile with a count of finished challenges the reader won (top score, ties included), computed from the existing challenge standings API. Added unit and view tests.

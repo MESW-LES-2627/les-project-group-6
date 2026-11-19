@@ -1,8 +1,8 @@
 import type { Book, CoverStyle, UnbuiltProfileSections } from '@/types/profile';
 
 // Mock data only for the profile sections whose features are not built yet: the unread
-// notification count (F-NOTIF), the chapter and XP level, challenges won (#61) and the
-// monthly recap. The user, books, shelf, folders, streak and reading time come from the
+// notification count (F-NOTIF), the chapter and XP level and the monthly recap.
+// The user, books, shelf, folders, streak, reading time and challenges won come from the
 // API. Remove each part when its endpoint exists.
 
 function book(id: string, title: string, author: string, cover: CoverStyle): Book {
@@ -18,7 +18,6 @@ export const mockProfile: UnbuiltProfileSections = {
     xp: 640,
     xpToNext: 1000,
   },
-  challengesWon: 3,
   recap: {
     month: '2026-09-01',
     books: [
