@@ -1,4 +1,4 @@
-// @req F-LIB-01 F-READ-02
+// @req F-LIB-01 F-READ-02 F-READ-04
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { ReadingStatusService } from '../../src/features/reading-status/reading-status-service.js';
@@ -9,6 +9,7 @@ import {
 } from '../../src/features/reading-status/reading-state.js';
 import { ProgressNotAllowedError } from '../../src/features/reading-status/reading-status.js';
 import { UserId } from '../../src/features/user/user.js';
+import type { StreakService } from '../../src/features/user/streak-service.js';
 import { NotFoundError } from '../../src/utils/errors.js';
 import {
   InMemoryBookRepository,
@@ -212,5 +213,96 @@ describe('ReadingStatusService', () => {
       NotFoundError,
     );
     assert.strictEqual((await statuses.findById(entry.id))?.status, 'in-progress');
+  });
+
+  describe('streak triggering on reading progress (F-READ-04)', () => {
+    let recordedUsers: string[];
+    let serviceWithStreak: ReadingStatusService;
+
+    beforeEach(() => {
+      recordedUsers = [];
+      const streakService = {
+        recordReadToday: async (userId: UserId) => {
+          recordedUsers.push(userId.value);
+        },
+      } as unknown as StreakService;
+      serviceWithStreak = new ReadingStatusService(statuses, books, streakService);
+    });
+
+    const startReading = async (currentPage: number) => {
+      const entry = await serviceWithStreak.set({
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'in-progress',
+        currentPage,
+      });
+      recordedUsers = [];
+      return entry;
+    };
+
+    test('starting a book, even at a later page, does not count', async () => {
+      await serviceWithStreak.set({
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'in-progress',
+        currentPage: 25,
+      });
+      assert.deepStrictEqual(recordedUsers, []);
+    });
+
+    test('marking a book finished that was never being read does not count', async () => {
+      await serviceWithStreak.set({ userId: USER_ID, bookId: book.id.value, status: 'finished' });
+      assert.deepStrictEqual(recordedUsers, []);
+    });
+
+    test('update counts when the page moves forward by 5 or more', async () => {
+      const entry = await startReading(10);
+      await serviceWithStreak.update({ id: entry.id.value, userId: USER_ID, currentPage: 15 });
+      assert.deepStrictEqual(recordedUsers, [USER_ID]);
+    });
+
+    test('set counts when the page moves forward by 5 or more', async () => {
+      await startReading(10);
+      await serviceWithStreak.set({
+        userId: USER_ID,
+        bookId: book.id.value,
+        status: 'in-progress',
+        currentPage: 40,
+      });
+      assert.deepStrictEqual(recordedUsers, [USER_ID]);
+    });
+
+    test('moving forward by less than 5 pages, or backwards, does not count', async () => {
+      const entry = await startReading(50);
+      await serviceWithStreak.update({ id: entry.id.value, userId: USER_ID, currentPage: 54 });
+      await serviceWithStreak.update({ id: entry.id.value, userId: USER_ID, currentPage: 30 });
+      assert.deepStrictEqual(recordedUsers, []);
+    });
+
+    test('finishing a book that was being read counts', async () => {
+      const entry = await startReading(600);
+      await serviceWithStreak.update({ id: entry.id.value, userId: USER_ID, status: 'finished' });
+      assert.deepStrictEqual(recordedUsers, [USER_ID]);
+    });
+
+    test('abandoning a book does not count', async () => {
+      const entry = await startReading(100);
+      await serviceWithStreak.update({
+        id: entry.id.value,
+        userId: USER_ID,
+        status: 'did-not-finish',
+      });
+      assert.deepStrictEqual(recordedUsers, []);
+    });
+
+    test('changing only the dates does not count', async () => {
+      const entry = await startReading(10);
+      await serviceWithStreak.update({
+        id: entry.id.value,
+        userId: USER_ID,
+        startedOn: '2026-11-01',
+      });
+      assert.deepStrictEqual(recordedUsers, []);
+    });
   });
 });

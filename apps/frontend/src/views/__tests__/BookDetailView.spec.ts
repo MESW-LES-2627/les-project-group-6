@@ -1,24 +1,97 @@
 // @req F-BOOK-01 F-EXP-02 F-LIB-03 F-LIB-04
 import { flushPromises, mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { mockLibrary } from '@/mocks/library';
 import router from '@/router';
-import type { ApiBook, ApiBookReviews, ApiLibraryItem, ApiReview } from '@/services/api';
+import type {
+  ApiBook,
+  ApiBookClub,
+  ApiBookReviews,
+  ApiLibraryItem,
+  ApiReview,
+} from '@/services/api';
+import type { TagSummary } from '@/types/library';
 import BookDetailView from '../BookDetailView.vue';
 
 const api = vi.hoisted(() => ({
   getBookReviews: vi.fn<(bookId: string) => Promise<ApiBookReviews>>(),
-  getUserLibrary: vi.fn<() => Promise<ApiLibraryItem[]>>(async () => []),
-  getBook: vi.fn<(bookId: string) => Promise<ApiBook>>(async () => {
-    throw new Error('offline');
-  }),
+  getUserLibrary: vi.fn<() => Promise<ApiLibraryItem[]>>(),
+  getUserBookClubs: vi.fn<() => Promise<ApiBookClub[]>>(),
+  getBook: vi.fn<(bookId: string) => Promise<ApiBook>>(),
+  getLibraryFolders: vi.fn<() => Promise<unknown>>(),
+  getLibraryTags: vi.fn<() => Promise<TagSummary[]>>(),
+  tagBook: vi.fn<(bookId: string, name: string) => Promise<TagSummary>>(),
+  untagBook: vi.fn<(bookId: string, tagId: string) => Promise<void>>(),
+  addBookToFolder: vi.fn<(folderId: string, bookId: string) => Promise<void>>(),
+  removeBookFromFolder: vi.fn<(folderId: string, bookId: string) => Promise<void>>(),
   updateReadingStatus: vi.fn<(payload: unknown) => Promise<void>>(async () => {}),
 }));
 vi.mock('@/services/api', async (original) => ({
   ...(await original<typeof import('@/services/api')>()),
   ...api,
 }));
+
+const book = (id: string, title: string, overrides: Partial<ApiBook> = {}): ApiBook => ({
+  id,
+  title,
+  authors: [],
+  description: null,
+  isbn13: null,
+  pageCount: 474,
+  coverUrl: null,
+  ...overrides,
+});
+
+const EMMA = book('emma', 'Emma', {
+  authors: ['Jane Austen'],
+  description: 'Emma Woodhouse takes up matchmaking.',
+  isbn13: '9780141439587',
+});
+const CIRCE = book('circe', 'Circe', { pageCount: 393 });
+
+const LIBRARY: ApiLibraryItem[] = [
+  {
+    id: 'li-emma',
+    book: EMMA,
+    status: 'in-progress',
+    currentPage: 294,
+    updatedAt: '2026-11-10T00:00:00Z',
+    folderIds: ['autumn', 'club'],
+    tagIds: [],
+  },
+  {
+    id: 'li-circe',
+    book: CIRCE,
+    status: 'finished',
+    currentPage: 393,
+    updatedAt: '2026-11-01T00:00:00Z',
+    folderIds: [],
+    tagIds: [],
+  },
+];
+
+const CLASSICS: ApiBookClub = {
+  id: 'classics',
+  name: 'Classics',
+  description: '',
+  adminId: 'u1',
+  members: [
+    { userId: 'u1', role: 'admin', joinedAt: '2026-10-01T00:00:00Z' },
+    { userId: 'u2', role: 'member', joinedAt: '2026-10-01T00:00:00Z' },
+  ],
+  round: {
+    id: 'r1',
+    number: 1,
+    startDate: '2026-11-01',
+    deadline: '2026-11-30',
+    outcome: 'active',
+    finished: 0,
+    expected: 2,
+    daysLeft: 13,
+    book: { id: 'emma', title: 'Emma', authors: ['Jane Austen'], pageCount: 474, coverUrl: null },
+  },
+  createdAt: '2026-10-01T00:00:00Z',
+};
 
 const review = (id: string, name: string, rating: number, comment: string | null): ApiReview => ({
   id,
@@ -44,21 +117,66 @@ async function mountView(bookId = 'emma') {
   return wrapper;
 }
 
+beforeEach(() => {
+  api.getUserLibrary.mockResolvedValue(LIBRARY);
+  api.getUserBookClubs.mockResolvedValue([CLASSICS]);
+  api.getBook.mockRejectedValue(new Error('Book not found'));
+  api.getLibraryFolders.mockResolvedValue([
+    { id: 'autumn', name: 'Autumn reading', count: 1 },
+    { id: 'favorites', name: 'All-time favorites', count: 0 },
+    { id: 'club', name: 'Classics club', count: 1 },
+  ]);
+  api.getLibraryTags.mockResolvedValue([]);
+  api.tagBook.mockImplementation(async (_bookId, name) => ({
+    id: 'tag-new',
+    name: name.trim().toLowerCase(),
+    count: 1,
+  }));
+  api.untagBook.mockResolvedValue(undefined);
+  api.addBookToFolder.mockResolvedValue(undefined);
+  api.removeBookFromFolder.mockResolvedValue(undefined);
+});
+
 describe('BookDetailView', () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it('shows the reading, edition and club content for a book', async () => {
+  it('shows the authors, reading progress, edition, description and club from the API', async () => {
     api.getBookReviews.mockRejectedValueOnce(new Error('offline'));
     const wrapper = await mountView();
 
     expect(wrapper.get('h1').text()).toBe('Emma');
-    expect(wrapper.get('.subtitle').text()).toContain('Jane Austen');
+    expect(wrapper.get('.subtitle').text()).toBe('Jane Austen');
     expect(wrapper.get('.reading-panel').text()).toContain('Page 294 of 474 • 62% complete');
     expect(wrapper.get('.start-session').attributes('href')).toBe('/session/emma');
-    expect(wrapper.get('.edition-panel').text()).toContain('Published 1815');
-    expect(wrapper.get('.club-panel').text()).toContain('Classics • October');
+    expect(wrapper.get('.edition-panel').text()).toContain('474 pages');
+    expect(wrapper.get('.edition-panel').text()).toContain('ISBN 9780141439587');
+    expect(wrapper.get('.synopsis').text()).toBe('Emma Woodhouse takes up matchmaking.');
+    expect(wrapper.get('.club-panel').text()).toContain('Classics • Round 1');
+    expect(wrapper.get('.club-panel').text()).toContain('2 members');
+    expect(wrapper.get('.club-link').attributes('href')).toBe('/groups/classics');
+  });
+
+  it('invents nothing the catalogue does not have', async () => {
+    api.getBookReviews.mockResolvedValueOnce(noReviews);
+    const wrapper = await mountView('circe');
+
+    expect(wrapper.find('.subtitle').exists()).toBe(false);
+    expect(wrapper.get('.about-section').text()).toContain('No description yet.');
+    expect(wrapper.get('.edition-panel').text()).not.toContain('ISBN');
+    expect(wrapper.get('.edition-panel').text()).not.toContain('Published');
+    expect(wrapper.find('.club-panel').exists()).toBe(false);
+  });
+
+  it('loads a book that is not in the library from the catalogue', async () => {
+    api.getBookReviews.mockResolvedValueOnce(noReviews);
+    api.getBook.mockResolvedValueOnce(book('dune', 'Dune', { authors: ['Frank Herbert'] }));
+    const wrapper = await mountView('dune');
+
+    expect(api.getBook).toHaveBeenCalledWith('dune');
+    expect(wrapper.get('h1').text()).toBe('Dune');
+    expect(wrapper.get('.subtitle').text()).toBe('Frank Herbert');
   });
 
   it('shows friend reviews, public reviews and the public average from the API', async () => {
@@ -147,7 +265,7 @@ describe('BookDetailView', () => {
     expect(chips()).toEqual(before);
   });
 
-  it('updates the status of a mock book after saving it', async () => {
+  it('updates the status of a book after saving it', async () => {
     api.getBookReviews.mockResolvedValueOnce(noReviews);
     const wrapper = await mountView('circe');
 
@@ -157,14 +275,12 @@ describe('BookDetailView', () => {
     await wrapper.get('.status-editor').trigger('submit');
     await flushPromises();
 
-    // Mock books are plain objects: the update is written onto the shared mock entry.
     expect(api.updateReadingStatus).toHaveBeenCalledWith({
       bookId: 'circe',
       status: 'did-not-finish',
       currentPage: 12,
     });
-    const circe = mockLibrary.books.find((item) => item.id === 'circe')!;
-    expect(circe.status).toBe('did-not-finish');
-    expect(circe.currentPage).toBe(12);
+    expect(wrapper.get('.status-badge').text()).toBe('DID NOT FINISH');
+    expect(wrapper.get('.reading-panel').text()).toContain('Page 12 of 393');
   });
 });

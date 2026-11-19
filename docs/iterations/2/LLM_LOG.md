@@ -78,7 +78,6 @@ add any missing one from https://github.com/orgs/MESW-LES-2627/projects/9
 #### Explanation of Changes
 Checked the code to see which features are still missing or mocked, and added the challenge winner story left over from project 9. Wrote 8 user stories with Gherkin scenarios as issues #120 to #127, moved the existing task issues under them as sub-issues, and closed the old parents. On project 23, changed the Iteration field to one-week sprints and gave each story a Priority, story points and Iteration 2. Added the user story issue template and updated the README and the iteration log. The team still has to review the points and priority order.
 
-
 ### 2026-11-08: Component diagram for iteration 1
 
 - **Date:** 2026-11-08
@@ -248,7 +247,6 @@ nice, now, when we have no activity, can you get some random books to add on tre
 #### Result
 Added `IBookRepository.random`, a `suggestions` list in `ExploreService` and `GET /explore` (only while nothing trends), and the Trending tab's fallback cards with a note. Also removed the unused header search in favour of the Explore page. New tests for the repository, the service, the route and the view.
 
-
 ### 2026-11-11: Book search design (fuzzy, search-as-you-type)
 
 - **Date:** 2026-11-11
@@ -329,7 +327,6 @@ now, I want to do this user story (#120). If I search by a book that i am not fi
 #### Result
 `POST /book` saves authors; new `AddBookForm` on Explore, opened from "Add this book" under the search results, which creates the book, adds it to the library as "Not started" and opens it; `addBook`/`addToLibrary` API helpers; 5 new tests.
 
-
 ### 2026-11-12: Library folders (F-LIB-03, #125)
 
 - **Date:** 2026-11-12
@@ -383,7 +380,6 @@ the data is not persists, when I refresh the folders I created are lostt, also t
 
 #### Result
 Design spec `docs/superpowers/specs/2026-11-13-e2e-tests-design.md` for Playwright e2e tests (auth via a shared setup, production build and shared database, per-test data, CI on main and manual dispatch). Decisions were made with the user during brainstorming. No code yet.
-
 
 ### 2026-11-13: e2e tests implementation (#127)
 
@@ -494,6 +490,91 @@ Added `test:coverage` scripts to both apps (Vitest v8 coverage on the frontend, 
 
 ---
 
+### 2026-11-16: Streak calculation service (#121, #31, #34)
+
+- **Date:** 2026-11-16
+- **Author:** Vasco
+- **Model:** Gemini 2.5 Pro
+- **Tool:** Antigravity
+- **Domain:** backend, database, testing, docs
+
+#### Prompt
+```text
+You are goin to follow exactly this roadmap mapping also against the instructions:
+
+Lets do it like this, imagine a user read today:
+  1. Check if hitStreak is true
+  - If it is then the streak doesnt need update
+  - If it is not continue to 2
+  2. Check if he read the day before
+  - If not set the hit streak and current streak to 1
+  - If yes then update hit streak and increment on the current streak
+  
+  PS: When incrementing currentStreak check againtst longestStreak to see if it needs updating
+
+Create this under the users also but create a separate streak-service inside the users folder to add the logic for all strak calculations. Do not implement endpoints yet, only calculations for the streak and database updates, not yet the entrypoints.
+```
+
+#### Explanation of Changes
+Implemented `StreakService` in `apps/backend/src/features/user/streak-service.ts` encapsulating all streak calculation logic and database updates according to the roadmap:
+1. Checked `hitStreak`: if true, streak does not need update.
+2. If false, checked whether the reader read the day before: if not, sets `hitStreak = true` and `currentStreak = 1`; if yes, sets `hitStreak = true` and increments `currentStreak`.
+3. Checked against `longestStreak` and updated it when `currentStreak > longestStreak`.
+Updated `User` domain aggregate in `user.ts` with `recordReadingDay`, `resetDailyHitStreak`, and `resetStreak`. Added `findCompletedSessions` to `IReadingSessionRepository` and its Drizzle/in-memory implementations. Added timezone-aware ISO calendar helpers (`isoDayInTimezone`, `previousIsoDay`, `nextIsoDay`). Added 11 unit tests in `streak-service.test.ts`. All 266 backend unit tests pass.
+
+---
+
+### 2026-11-16: Reading triggers and streak endpoints (#121, #31, #34)
+
+- **Date:** 2026-11-16
+- **Author:** Vasco
+- **Model:** Gemini 2.5 Pro
+- **Tool:** Antigravity
+- **Domain:** backend, api, testing, docs
+
+#### Prompt
+```text
+The plan now is to expose the backend API to be used then by front end. Lets start with only the backend endpoints. This will be incrementing on the retrieval of a user data, include streak data to be processed when showing info about a user. Also implement in the reading status incrementations, when a book that is in a "reading" status and the number of pages is updated to higher one then th streak calculation should be triggered. If a reading session is completed update the minutes and trigger the streak calculation.
+```
+
+#### Explanation of Changes
+Wired streak calculation into reading triggers and backend API endpoints:
+1. Triggered `recordReadToday` in `ReadingStatusService` whenever a book in `'in-progress'` status has its `currentPage` updated to a higher page number.
+2. Triggered `recordReadToday` in `ReadingSessionService.finish` upon session completion.
+3. Extended `GET /me` and `PATCH /me` with live streak fields (`currentStreak`, `longestStreak`, `hitStreak`, `streakType`).
+4. Exposed `GET /me/streak` returning live streak statistics and 28-day history calendar (`current`, `longest`, `hitStreak`, `streakType`, `freezesLeft`, `days`).
+5. Included live streak numbers in `getProfileByUsername` for visible user profiles.
+6. Updated `docs/architecture/api_routes.md` with the new streak endpoints.
+7. Added 12 new unit tests in `reading-status-service.test.ts`, `reading-session-service.test.ts`, `user-service.test.ts`, and `me-routes.test.ts`. Total backend unit tests: 278 passing.
+
+---
+
+### 2026-11-16: Frontend user profile and streaks integration (#121, #54, #60)
+
+- **Date:** 2026-11-16
+- **Author:** Vasco
+- **Model:** Gemini 2.5 Pro
+- **Tool:** Antigravity
+- **Domain:** frontend, api, testing, docs
+
+#### Prompt
+```text
+Now, we are going to implement the user profile according to the one that is logged in, we are to use the JWT token + supabase authentication for validation in the backend to call the me in the backend and retrieve the streaks, after validating the token. Data should be passed accordingly from the table and only set according to the layoput using mockdata but this time with database one.
+```
+
+#### Explanation of Changes
+Implemented live user profile and streak retrieval for the authenticated user on the frontend:
+1. In `apps/frontend/src/services/api.ts`:
+   - Updated `ApiMe` with `streakType`, `currentStreak`, `longestStreak`, and `hitStreak`.
+   - Added `getStreak()` to fetch `GET /me/streak` with Supabase JWT `Authorization: Bearer` header.
+2. In `apps/frontend/src/views/ProfileView.vue`:
+   - Replaced mock user and streak with live calls to `getMe()` and `getStreak()`.
+   - Populated `ProfileBookplate.vue` with the logged-in reader's name, handle, member-since date, initials, and bio.
+   - Populated `StreakCalendar.vue` with the 28-day reading history calendar and live streak numbers.
+   - Maintained graceful fallback for offline/disconnected states.
+3. In `apps/frontend/src/views/__tests__/ProfileView.spec.ts`:
+   - Added unit tests for rendering the authenticated user profile and live streak calendar, bringing the total passing frontend unit tests to 191 across 33 test files.
+
 ### 2026-11-16: Mutation testing and requirement traceability
 
 - **Date:** 2026-11-16
@@ -549,6 +630,29 @@ I merged the tag changes, why I can't add tags in frontend in my ui?
 #### Explanation of Changes
 Found that PR #153 was backend only. Added the tag API client, the add/remove tag editor on the book page, real tags with counts in the library sidebar, unit tests and two Playwright e2e tests for F-LIB-04.
 
+### 2026-11-17: Frontend password recovery
+
+- **Date:** 2026-11-17
+- **Author:** Segun Adesanya
+- **Model:** GPT-6 (Codex)
+- **Tool:** Codex
+- **Domain:** frontend, authentication, testing, docs
+
+#### Prompt
+```text
+Implement the frontend-only password recovery flow for Bookmarked, requirement F-AUTH-02 / issue #8.
+Inspect the current implementation and repository instructions before editing. Preserve unrelated changes.
+Work on feat/8-password-reset; do not commit, push, open a PR or modify GitHub issues.
+Use the existing Vue 3, TypeScript, Vue Router, styling tokens and Supabase authentication adapter.
+Implement forgot/reset screens, validation, generic confirmation, recovery context/session cleanup,
+route handling, automated tests and frontend regression checks. Document required external
+Supabase configuration, one-hour expiry and live verification gaps. Update the active iteration logs and docs index.
+```
+
+#### Explanation of Changes
+Implemented the two recovery routes and adapter operations using Supabase's existing implicit recovery flow, session-bound tab metadata, account-neutral errors and local cleanup. Added accessible responsive forms based on the supplied image and existing tokens, adapter/component/router tests, and a separate deterministic desktop/mobile Playwright configuration without backend/database fixtures. Documented Supabase setup and manual live verification, created the missing docs index and updated the real iteration 2 log. Full issue criteria were inaccessible. Live delivery and hosted configuration remain unverified; no GitHub changes or commits were made.
+
+Validation: 234 unit/component/router tests and 20 deterministic desktop/mobile browser scenarios pass; production build/typecheck and scoped lint/format checks pass. Full frontend lint/format checks retain the existing config/API-file failures, and the global coverage check reports 86% lines against a 95% gate. Recovery ownership was separated from update permission so expired/consumed sessions cannot bypass cleanup by navigating to private pages. The [recovery guide](../../architecture/password-recovery.md) records exact commands, external setup and live verification gaps.
 
 ---
 
@@ -588,6 +692,93 @@ Now, I want you to create a PR to update the readme. Add the description of what
 
 Rewrote `README.md`: project description, iteration CLAIM links, architecture diagram and summary, commented repository tree, short getting-started block and a table of all Makefile targets.
 
+### 2026-11-17: Replace mock data with API data
+
+- **Date:** 2026-11-17
+- **Author:** Vasco
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, backend, testing, docs
+
+#### Prompt
+
+```text
+We need to replace the mock data in the front end with database data gathered from endpoints on the backend. We have some endpoints implemented that are not applicable. Before making changes do the following:
+1 - Go through issues and current open branches that have not been merged to main and check which mockdata has not been replaced but the issue that it relates to has been set as done (we will not replace mock data for features that have not been implemented)
+2 - List for me all locations and all data that can be replaced and the endpoints that already exist and that can be implemented to help out
+-> Ok, now change the correct the mock data to real data for those that you stated could be replaced because issues were already closed. When you replace remove the mockdata completly so there isn't a fall back that may overwrite real data when cached on browser.
+```
+
+#### Explanation of Changes
+
+Audited mock usage against closed issues and unmerged branches, then replaced the mocks on the home, library, book, session, groups and profile pages with API data and removed every fallback. Added `authors` to book responses and the requester's name to incoming friend requests in the backend. Mocks remain only for unbuilt features. Rewrote the mock-based tests to mock the API; backend 395 and frontend 486 tests pass.
+
+### 2026-11-17: Seed with real Supabase logins
+
+- **Date:** 2026-11-17
+- **Author:** Vasco
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** database, backend, docs
+
+#### Prompt
+
+```text
+Ok, implement in the seed to be used by pnpm db:seed one that reads the .env to get the keys for Supabase and can create users and also populate to the DATABASE_URL, do it in a way that the accounts are directly created and visible in the Authentication tab of supabase but I dont need to go confirming email anywhere. For this is made available the Supabase Secret in the .env such as in .env.example to grab the correct token to authenticate new users.
+```
+
+#### Explanation of Changes
+
+Rewrote `pnpm db:seed`: it creates confirmed logins through the Supabase Auth Admin API (no emails), writes their emails and passwords to a git-ignored file, and fills the database with eight readers and data for every page. Added `SUPABASE_SERVICE_ROLE_KEY` and `SEED_ALLOW_REMOTE_DATABASE` to `.env.example` and documented the seed in the backend README.
+
+---
+
+### 2026-11-18: Streak rework after the PR #160 review
+
+- **Date:** 2026-11-18
+- **Author:** Vasco
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database, frontend, testing, docs
+
+#### Prompt
+```text
+Hey there, this is PR 160 to close issue 121, can you check the comments left on the PR regarding some issues and check them out for context, dont alter anything yet
+
+Yes, reform it to a last day read, need to alter both the populate seed but also the database in itself. Also, make sure to count the reading minutes, the only ones that should trigger the streak to be updated is a session of 5 minutes or more or changing the reading status:
+
+1. Book is selected as reading and pages read updated increasing 5 or more.
+2. Book is selected as reading and it is then set as completed.
+
+This is to avoid users not getting streak counted even though they read and just didnt have the app opened. Update on the documents that reference this and make sure everything in the PR nad the comment are corrected.
+```
+
+#### Explanation of Changes
+Fixed the two blocking bugs from the PR #160 review (streak stuck at 1) and the minor points:
+1. Replaced the `hit_streak` flag with `last_read_date` on `User` (`recordReadingDay(today)`, `streakOn(today)`), with migration `0013_streak_last_read_date` (add, backfill, drop) and updated `schema.ts`, `schema.sql` and the seed.
+2. Added `streak-rules.ts`: a session counts from 5 counted minutes; a status change counts when a book in progress moves forward 5+ pages or goes to finished. Applied in `ReadingSessionService.finish` and `ReadingStatusService.set/update`.
+3. Simplified `StreakService` (no session lookup to decide the update) and made `GET /me`, `PATCH /me` and `GET /users/:username` use the same live streak. `hitStreak` became `readToday`.
+4. `ProfileView.vue` shows an empty state and an error instead of mock data when the API fails.
+5. Tests: multi-day regression, `finish` saving before the streak check, the 5-minute and 5-page limits, `@req F-READ-04` tags, and an e2e test. Docs: `infra.md`, `api_routes.md`, `requirements.md`, `features_priority.md`, the e2e README and the iteration log.
+
+---
+
+### 2026-11-18: Merge main into feat/mock-to-real
+
+- **Date:** 2026-11-18
+- **Author:** Vasco
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** backend, database, frontend, testing, docs
+
+#### Prompt
+```text
+tell me if this branch has valid implementations compared to main, if it has try to merge main to here to resolve the conflicts and create the PR
+```
+
+#### Explanation of Changes
+Merged `main` (the streak rework from PR #160) into `feat/mock-to-real`. Kept the branch's Supabase seed and made `populate.ts` write `lastReadDate` instead of the removed `hitStreak`. Combined `ProfileView.vue`: the branch's library, folders and reviews from the API plus main's streak from `GET /me/streak`, with no mock fallback; removed the now unused mock streak and imported hours. Merged both sides of the profile tests and the iteration logs.
+
 ### 2026-11-19: Unique author names (#143)
 
 - **Date:** 2026-11-19
@@ -605,4 +796,4 @@ fix
 
 #### Explanation of Changes
 
-Checked that issue #143 was still open, then added migration 0013 (merge duplicate authors, unique index on the folded name), changed `saveWithAuthors` to an insert with `ON CONFLICT DO NOTHING` plus a re-select, and added integration tests for concurrent imports and for names that differ only in case or accents.
+Checked that issue #143 was still open, then added migration 0014 (merge duplicate authors, unique index on the folded name), changed `saveWithAuthors` to an insert with `ON CONFLICT DO NOTHING` plus a re-select, and added integration tests for concurrent imports and for names that differ only in case or accents.

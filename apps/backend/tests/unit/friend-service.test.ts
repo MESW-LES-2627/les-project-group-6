@@ -208,6 +208,17 @@ describe('FriendService', () => {
     });
   });
 
+  describe('incomingRequestsFor', () => {
+    it('returns each pending request with the profile of who sent it', async () => {
+      await service.request(alice.id.value, bob.id.value);
+
+      const incoming = await service.incomingRequestsFor(bob.id.value);
+      assert.equal(incoming.length, 1);
+      assert.ok(incoming[0]?.friendship.requesterId.equals(alice.id));
+      assert.equal(incoming[0]?.requester?.displayName, alice.displayName);
+    });
+  });
+
   describe('pendingRequestsFor', () => {
     it('returns all pending requests where user is the requested one', async () => {
       // Alice -> Bob, Charlie -> Bob

@@ -43,9 +43,10 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | `POST`   | `/me`                                             | Creates the reader's `users` row from the token's id and email and `{ username, displayName, timezone }` (`201`; `409` if it exists or the username is taken)                                             |
 | `GET`    | `/me`                                             | The reader's profile (`200`; `403 PROFILE_REQUIRED` before `POST /me`)                                                                                                                                    |
 | `PATCH`  | `/me`                                             | Updates `displayName` and/or `timezone` (`200`)                                                                                                                                                           |
+| `GET`    | `/me/streak`                                      | The reader's live streak (`current`, `longest`, `readToday`, `lastReadDate`) and the last 28 days (`200`). A day counts with a 5+ minute session, 5+ pages on a book in progress, or finishing it (F-READ-04) |
 | `POST`   | `/book`                                           | Adds a reader's book (`201 Created`, requires `title`); the server marks it `isCommunityAdded`. There is no `DELETE`: other readers' data cascades from a book                                                                                                                                                      |
 | `GET`    | `/book?q=...`                                     | Searches by title, author or ISBN, tolerating small typos; best match first, at most 20 (`200 OK`)                                                                                                        |
-| `GET`    | `/book/:id`                                       | Returns a single book by UUID (`200 OK` or `404 Not Found`)                                                                                                                                               |
+| `GET`    | `/book/:id`                                       | Returns a single book by UUID (`200 OK` or `404 Not Found`). Every book in a response carries `authors` (names, alphabetical; `[]` when unknown), also in `GET /me/library`, the explore lists and book clubs |
 | `PUT`    | `/reading-status`                                 | Sets reading status, page progress and dates (`startedOn`, `finishedOn`) for a book (`200 OK`; `400` if `finishedOn` is before `startedOn`) |
 | `PATCH`  | `/reading-status/:id`                             | Edits the reader's reading status, progress or dates by ID (`200 OK` or `404 Not Found`, also for another reader's entry) |
 | `PATCH`  | `/reading-status`                                 | Edits status, progress or dates by `id` or `bookId` in the body (`200 OK` or `404 Not Found`) |
@@ -86,13 +87,16 @@ Then open <http://localhost:3000/health>, which returns `{ "status": "ok", "db":
 | `POST`   | `/group-invites/:id/accept` · `/decline`          | The invitee answers; accepting adds them to the group (`200`)                                                                                                                                             |
 | `GET`    | `/me/friends`                                     | Accepted friends (`200`)                                                                                                                                                                                  |
 | `POST`   | `/friend-requests`                                | Sends a friend request from the signed-in reader to `targetUserId` (`201`; `200` if a request or friendship already exists; `400` for yourself or an unknown user) |
-| `GET`    | `/me/friend-requests`                             | The reader's incoming pending friend requests (`200`) |
+| `GET`    | `/me/friend-requests`                             | The reader's incoming pending friend requests, each with `requester: { displayName, username }` (`200`) |
 | `POST`   | `/friend-requests/:id/accept`                     | The addressee accepts a pending request (`200`; `404` if not found or not theirs, `409` if not pending) |
 | `POST`   | `/friend-requests/:id/decline`                    | The addressee declines a pending request (`204`; `404` if not found or not theirs) |
 | `DELETE` | `/friends/:userId`                                | Removes the friendship between the reader and that user (`204`; `404` if not friends) |
 | `POST`   | `/groups/:groupId/messages`                       | Sends a chat message (`clientId` UUID, `body`); members only. A retry with the same `clientId` returns the stored message (`201` new, `200` retry, `403` not a member)                                    |
 | `GET`    | `/groups/:groupId/messages?after=&before=&limit=` | Chat history in `seq` order: the latest page, newer than `after` (catch-up) or older than `before` (`200`, `403`)                                                                                         |
 | `DELETE` | `/groups/:groupId/messages/:messageId`            | Soft-deletes a message; its author or the group admin (`204`, `403`, `404`)                                                                                                                               |
+| `GET`    | `/users?q=`                                       | Finds readers by username or display name (`@` optional, at least 2 characters, at most 20) (`200`) |
+| `GET`    | `/users/:username`                                | A reader's profile with friendship status, streak and reading time; a private profile hides details from strangers (`200` or `404`) |
+| `GET`    | `/explore`                                        | `{ mostReadThisWeek, trending, suggestions }`: the books read most this week, the books most readers started, and random suggestions while nothing trends (`200`) |
 | `GET`    | `/me/reading-stats`                               | Returns `{ totalMinutes, sessionsCount }` over finished sessions (`200 OK`)                                                                                                                               |
 
 **Group chat socket** (ADR-0006): Socket.IO on the same port, path `/socket.io`. Connect with `auth: { token }` (the Supabase access token; the user is its subject), emit `group:join` with a group id (ack `{ ok }`, members only), then receive `message:new` (a message as above) and `message:deleted` (`{ id, groupId, seq }`). Clients never write through the socket; on reconnect they call `GET …/messages?after=<last seq>`.
@@ -113,10 +117,22 @@ Run them inside `apps/backend`, or from the root with `pnpm --filter @bookmarked
 | `test`        | Runs `tests/**/*.test.ts` with the Node.js test runner (through `tsx`) |
 | `db:generate` | Generates SQL migrations from schema using `drizzle-kit`               |
 | `db:migrate`  | Applies pending migrations to the database                             |
-| `db:seed`     | Populates database with demo user, books, and reading statuses         |
+| `db:seed`     | Creates confirmed seed logins in Supabase and fills the database (see [Seed data](#seed-data)) |
 | `db:studio`   | Opens Drizzle Studio local database viewer                             |
 
 CI runs lint, format check, typecheck, test and build on every pull request (see [`.github/workflows/backend-ci.yml`](../../.github/workflows/backend-ci.yml)).
+
+## Seed data
+
+`pnpm db:seed` (or `pnpm --filter @bookmarked/backend db:seed` from the root) gives you eight readers you can log in as, with enough data to see every page filled in:
+
+1. It reads `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from `apps/backend/.env` and creates one login per reader through the Supabase Auth Admin API, **already confirmed**: no email is sent and the accounts appear at once in the dashboard under Authentication > Users. Emails are `<username>@example.com`.
+2. It writes every email, password and what the account is for to **`apps/backend/seed-accounts.local.json`** (git-ignored, readable only by you).
+3. It fills `DATABASE_URL`: the readers' `users` rows (with their Supabase ids), 16 books with authors and covers, libraries in every status, reading sessions (Ana has a 12-day streak, Diogo has one running now), friendships and pending requests, an active, a completed and an upcoming challenge, two book clubs (one with a completed round, an active round and an open vote), chat messages, a pending club invite, reviews, folders and tags. Dates are relative to the day you run it.
+
+Running it again is safe: existing logins are reused with the same passwords (taken from the credentials file), and their data is deleted and rebuilt so the dates stay current. Books are shared and only added when missing. Other users' data is never touched. The seed refuses a non-local `DATABASE_URL` unless `SEED_ALLOW_REMOTE_DATABASE=true`.
+
+The seed accounts are real logins in the Supabase project that `SUPABASE_URL` points to, so use a development project. To remove them, delete them in Authentication > Users and their `users` rows.
 
 ## Environment variables
 
@@ -129,6 +145,8 @@ Read from `apps/backend/.env` when it exists. See [`.env.example`](.env.example)
 | `DATABASE_URL_TEST`   | `postgresql://postgres:password123@localhost:5432/bookmarked_test` | PostgreSQL connection string for tests                                                                                                             |
 | `SUPABASE_URL`        | none (required)                                                    | Supabase project URL (same value as the frontend's `VITE_SUPABASE_URL`); tokens are verified with its JWKS. The server refuses to start without it |
 | `SUPABASE_JWT_SECRET` | empty                                                              | Only for projects still signing tokens with the legacy shared HS256 secret                                                                         |
+| `SUPABASE_SERVICE_ROLE_KEY` | empty | Only for `pnpm db:seed`: the service_role or secret key, used to create confirmed seed logins. Full admin access, never put it in the frontend |
+| `SEED_ALLOW_REMOTE_DATABASE` | `false` | `pnpm db:seed` only seeds a local `DATABASE_URL` unless this is `true` |
 | `TRUST_PROXY` | `0` | Proxies in front of the API (set `1` on Render), so rate limits count the client IP and not the proxy's |
 | `CORS_ORIGINS` | empty | Comma-separated frontend origins allowed by CORS and Socket.IO; empty allows any origin |
 
@@ -138,7 +156,8 @@ Read from `apps/backend/.env` when it exists. See [`.env.example`](.env.example)
 apps/backend/
 ├── src/
 │   ├── features/          # One folder per feature, with everything about it
-│   │   ├── book/          # book.ts (Book + value objects), book-repository.ts (interface + Drizzle + mapper),
+│   │   ├── book/          # book.ts (Book + value objects, with its authors), book-repository.ts (interface + Drizzle + mapper),
+│   │   │                  # book-authors-query.ts (author names of many books in one query, shared by the read side),
 │   │   │                  # book-service.ts (get/register/search/remove), book-dto.ts (JSON shape + mapper),
 │   │   │                  # book-routes.ts (routes)
 │   │   ├── reading-status/ # ReadingStatus aggregate, ReadingState (State pattern) + PageProgress, repository, service, DTO, routes
@@ -162,6 +181,7 @@ apps/backend/
 │   │   ├── migrations/    # Drizzle SQL migrations and journal metadata
 │   │   ├── schema.ts      # Tables for the query builder (source of the migrations)
 │   │   ├── schema.sql     # PostgreSQL database schema matching UML specification
+│   │   ├── seed/          # seed-data.ts (readers, books, groups...), populate.ts (writes them), supabase-admin.ts (creates the logins)
 │   │   └── pool.ts, migrate.ts, seed.ts, health-check.ts
 │   ├── app.ts             # createApp(): middleware, the API router and the error handler
 │   └── server.ts          # entry point: builds the repositories and starts the HTTP server

@@ -98,6 +98,8 @@ export interface NewBookProps {
   pageCount?: number | null;
   coverUrl?: string | null;
   isCommunityAdded?: boolean;
+  /** Author names as written; blanks and repeats are dropped. */
+  authors?: readonly string[];
 }
 
 export interface BookState {
@@ -109,6 +111,12 @@ export interface BookState {
   coverUrl: string | null;
   isCommunityAdded: boolean;
   createdAt: Date;
+  authors: readonly string[];
+}
+
+/** Trimmed author names, without blanks or repeats, in the order given. */
+function authorNames(raw: readonly string[] | undefined): readonly string[] {
+  return [...new Set((raw ?? []).map((name) => name.trim()).filter(Boolean))];
 }
 
 export class Book {
@@ -120,6 +128,7 @@ export class Book {
   readonly coverUrl: string | null;
   readonly isCommunityAdded: boolean;
   readonly createdAt: Date;
+  readonly authors: readonly string[];
 
   private constructor(state: BookState) {
     this.id = state.id;
@@ -130,6 +139,7 @@ export class Book {
     this.coverUrl = state.coverUrl;
     this.isCommunityAdded = state.isCommunityAdded;
     this.createdAt = state.createdAt;
+    this.authors = authorNames(state.authors);
   }
 
   /** Registers a new book: validates every field and generates its identity. */
@@ -143,6 +153,7 @@ export class Book {
       coverUrl: props.coverUrl?.trim() || null,
       isCommunityAdded: props.isCommunityAdded ?? false,
       createdAt: new Date(),
+      authors: authorNames(props.authors),
     });
   }
 

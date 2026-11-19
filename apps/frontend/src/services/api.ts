@@ -9,7 +9,14 @@ import type {
   PastResult,
   WinMetric,
 } from '@/types/groups';
-import type { FolderSummary, LibraryBook, ReadingStatus, TagSummary } from '@/types/library';
+import type {
+  BookDetail,
+  FolderSummary,
+  LibraryBook,
+  ReadingStatus,
+  TagSummary,
+} from '@/types/library';
+import type { SessionGroup } from '@/types/session';
 import { authProvider, isAuthConfigured } from '@/services/auth';
 import { formatLongDate, formatPeriod, initialsOf } from '@/utils/groups';
 
@@ -80,10 +87,34 @@ export interface ApiMe {
   email: string;
   username: string;
   displayName: string;
+  bio?: string | null;
   timezone: string;
   photoUrl: string | null;
   profileVisibility: string;
   createdAt: string;
+  streakType?: string;
+  /** Live streak: 0 once a whole day was missed (F-READ-04). */
+  currentStreak?: number;
+  longestStreak?: number;
+  /** Today already counts for the streak. */
+  readToday?: boolean;
+}
+
+export interface ApiStreakDay {
+  date: string;
+  read: boolean;
+}
+
+export interface ApiStreak {
+  current: number;
+  longest: number;
+  /** Today already counts for the streak. */
+  readToday: boolean;
+  /** Last day (YYYY-MM-DD, reader's timezone) that counted, or null before the first one. */
+  lastReadDate: string | null;
+  streakType: string;
+  freezesLeft: number;
+  days: ApiStreakDay[];
 }
 
 export interface CreateProfilePayload {
@@ -96,6 +127,12 @@ export interface CreateProfilePayload {
 export async function getMe(): Promise<ApiMe> {
   const response = await ensureOk(await apiFetch('/me'), 'Failed to load your profile');
   return response.json() as Promise<ApiMe>;
+}
+
+/** The reader's live streak statistics and 28-day reading calendar grid. */
+export async function getStreak(): Promise<ApiStreak> {
+  const response = await ensureOk(await apiFetch('/me/streak'), 'Failed to load your streak');
+  return response.json() as Promise<ApiStreak>;
 }
 
 /** Creates the `users` row for the signed-in Supabase account. */
@@ -120,6 +157,8 @@ export async function isUsernameAvailable(username: string): Promise<boolean> {
 export interface ApiBook {
   id: string;
   title: string;
+  /** Author names; empty when the catalogue has none. */
+  authors: string[];
   description: string | null;
   isbn13: string | null;
   pageCount: number;
@@ -140,28 +179,13 @@ export interface ApiLibraryItem {
   tagIds?: string[];
 }
 
-const KNOWN_AUTHORS: Record<string, string> = {
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01': 'Jane Austen',
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02': 'Matt Haig',
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a03': 'Madeline Miller',
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a04': 'Donna Tartt',
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a05': 'Virginia Woolf',
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a06': 'Susanna Clarke',
-};
-
-const KNOWN_GENRES: Record<string, string> = {
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01': 'Classics',
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02': 'Literary fiction',
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a03': 'Fantasy',
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a04': 'Dark academia',
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a05': 'Essays',
-  'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a06': 'Fantasy',
-};
+/** The authors of a book as one line, e.g. "Terry Pratchett, Neil Gaiman"; empty when unknown. */
+export function authorLine(authors: readonly string[] | undefined): string {
+  return (authors ?? []).join(', ');
+}
 
 export function mapApiLibraryItemToBook(item: ApiLibraryItem): LibraryBook {
   const book = item.book;
-  const author = KNOWN_AUTHORS[book.id] ?? 'Unknown Author';
-  const genre = KNOWN_GENRES[book.id] ?? 'General';
   const pages = book.pageCount || 1;
   const currentPage = item.currentPage || 0;
   const percent = Math.round((currentPage / pages) * 100);
@@ -172,7 +196,7 @@ export function mapApiLibraryItemToBook(item: ApiLibraryItem): LibraryBook {
   } else if (item.status === 'in-progress') {
     summary = `${currentPage} / ${pages} pages • ${percent}% complete`;
   } else if (item.status === 'finished') {
-    summary = `Read 1 time • ★★★★★`;
+    summary = `Finished • ${pages} pages`;
   } else {
     summary = `Stopped at page ${currentPage}`;
   }
@@ -189,13 +213,13 @@ export function mapApiLibraryItemToBook(item: ApiLibraryItem): LibraryBook {
   return {
     id: book.id,
     title: book.title,
-    author,
-    cover: book.coverUrl || '/placeholder-cover.png',
+    author: authorLine(book.authors),
+    // No image: the cover components show the title instead.
+    cover: book.coverUrl ?? '',
     detailCover: book.coverUrl || undefined,
     status: item.status,
     pages,
     currentPage,
-    genre,
     summary,
     folderIds: item.folderIds ?? [],
     tagIds: item.tagIds ?? [],
@@ -434,6 +458,16 @@ export async function getReadingStats(): Promise<ApiReadingStats> {
   return response.json() as Promise<ApiReadingStats>;
 }
 
+/** The reader's running session, or null when none is running (the API answers 204). */
+export async function getActiveReadingSession(): Promise<ApiReadingSession | null> {
+  const response = await ensureOk(
+    await apiFetch('/me/reading-sessions/active'),
+    'Failed to load your reading session',
+  );
+  if (response.status === 204) return null;
+  return response.json() as Promise<ApiReadingSession>;
+}
+
 /** Discards a running session started by mistake; no minutes are saved. */
 export async function cancelReadingSession(sessionId: string): Promise<void> {
   const response = await apiFetch(`/reading-sessions/${encodeURIComponent(sessionId)}`, {
@@ -523,6 +557,34 @@ export function mapApiGroupToSummary(group: ApiChallengeGroup, now = new Date())
     memberInitials: [],
     memberCount: group.members.length,
   };
+}
+
+/**
+ * The reader's groups that a session on this book counts towards: every active challenge
+ * (any book counts) and the book clubs whose active round reads this book.
+ */
+export function sessionGroupsFor(
+  bookId: string,
+  challenges: readonly ApiChallengeGroup[],
+  clubs: readonly ApiBookClub[],
+): SessionGroup[] {
+  const fromChallenges = challenges
+    .filter((group) => group.status === 'active')
+    .map((group) => ({
+      id: group.id,
+      name: group.name,
+      description: `Any book · ${formatPeriod(group.challenge.startDate, durationDays(group))}`,
+      note: `Counted ${METRIC_LABELS[group.challenge.winMetric].toLowerCase()} from finished sessions.`,
+    }));
+  const fromClubs = clubs
+    .filter((club) => club.round.outcome === 'active' && club.round.book?.id === bookId)
+    .map((club) => ({
+      id: club.id,
+      name: club.name,
+      description: `Round ${club.round.number} · deadline ${formatLongDate(club.round.deadline)}`,
+      note: 'Only time on the round book counts for this club.',
+    }));
+  return [...fromChallenges, ...fromClubs];
 }
 
 /** Builds the challenge page from the API; `meId` is the reader viewing it. */
@@ -843,10 +905,6 @@ export async function getUserReviews(userId: string): Promise<ApiProfileReview[]
   return getJson<ApiProfileReview[]>(`/users/${id(userId)}/reviews`, 'Failed to load reviews');
 }
 
-export function authorOf(bookId: string): string {
-  return KNOWN_AUTHORS[bookId] ?? '';
-}
-
 // ---------------------------------------------------------------------------
 // Friends and group invites (any group)
 // ---------------------------------------------------------------------------
@@ -961,8 +1019,13 @@ export async function sendFriendRequest(targetUserId: string): Promise<ApiFriend
   );
 }
 
-export async function getFriendRequests(): Promise<ApiFriendship[]> {
-  return getJson<ApiFriendship[]>('/me/friend-requests', 'Failed to load friend requests');
+/** A pending request addressed to the reader, with who sent it. */
+export interface ApiIncomingRequest extends ApiFriendship {
+  requester: { displayName: string; username: string } | null;
+}
+
+export async function getFriendRequests(): Promise<ApiIncomingRequest[]> {
+  return getJson<ApiIncomingRequest[]>('/me/friend-requests', 'Failed to load friend requests');
 }
 
 export async function acceptFriendRequest(friendRequestId: string): Promise<ApiFriendship> {
@@ -1016,6 +1079,7 @@ export type ApiRoundOutcome = 'active' | 'completed' | 'not-completed';
 export interface ApiClubBook {
   id: string;
   title: string;
+  authors: string[];
   pageCount: number | null;
   coverUrl: string | null;
 }
@@ -1062,6 +1126,7 @@ export interface ApiPoll {
     id: string;
     bookId: string;
     title: string;
+    authors: string[];
     proposedBy: { userId: string; displayName: string } | null;
     votes: number;
   }[];
@@ -1114,7 +1179,7 @@ export function mapApiClubToSummary(club: ApiBookClub): GroupSummary {
     book: round.book
       ? {
           title: round.book.title,
-          author: authorOf(round.book.id),
+          author: authorLine(round.book.authors),
           cover: round.book.coverUrl ?? '',
         }
       : undefined,
@@ -1164,14 +1229,14 @@ export function mapApiClubToDetail(club: ApiBookClubDetail, meId: string): BookC
     subtitle:
       club.description ||
       (book
-        ? `Round ${round.number}: ${book.title}${authorOf(book.id) ? ` by ${authorOf(book.id)}` : ''}.`
+        ? `Round ${round.number}: ${book.title}${book.authors.length ? ` by ${authorLine(book.authors)}` : ''}.`
         : ''),
     round: {
       label: `Round ${round.number} · ${OUTCOME_LABELS[round.outcome]}`,
       book: {
         id: book?.id ?? '',
         title: book?.title ?? 'Unknown book',
-        author: authorOf(book?.id ?? ''),
+        author: authorLine(book?.authors),
         pages,
         cover: book?.coverUrl ?? '',
       },
@@ -1192,7 +1257,9 @@ export function mapApiClubToDetail(club: ApiBookClubDetail, meId: string): BookC
           options: poll.proposals.map((p) => ({
             id: p.id,
             title: p.title,
-            author: p.proposedBy ? `Proposed by ${p.proposedBy.displayName}` : authorOf(p.bookId),
+            author: p.proposedBy
+              ? `Proposed by ${p.proposedBy.displayName}`
+              : authorLine(p.authors),
             votes: p.votes,
           })),
           yourVote: poll.yourVote,
@@ -1206,6 +1273,28 @@ export function mapApiClubToDetail(club: ApiBookClubDetail, meId: string): BookC
     isAdmin: club.adminId === meId,
     roundOver: round.outcome !== 'active',
     history,
+  };
+}
+
+/**
+ * The book page's details from the catalogue book, with the reader's club when one of
+ * their active rounds reads it.
+ */
+export function mapApiBookToDetail(book: ApiBook, clubs: readonly ApiBookClub[] = []): BookDetail {
+  const club = clubs.find((c) => c.round.outcome === 'active' && c.round.book?.id === book.id);
+  return {
+    tagline: authorLine(book.authors),
+    synopsis: book.description ?? '',
+    edition: { isbn: book.isbn13 },
+    club: club
+      ? {
+          groupId: club.id,
+          name: club.name,
+          roundLabel: `Round ${club.round.number}`,
+          memberCount: club.members.length,
+          deadlineLabel: formatLongDate(club.round.deadline),
+        }
+      : undefined,
   };
 }
 

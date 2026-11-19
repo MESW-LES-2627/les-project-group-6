@@ -41,7 +41,7 @@ describe('DrizzleUserRepository Integration', () => {
     assert.strictEqual(found.displayName, 'Book Worm');
     assert.strictEqual(found.profileVisibility, 'public');
     assert.strictEqual(found.currentStreak, 0);
-    assert.strictEqual(found.hitStreak, false);
+    assert.strictEqual(found.lastReadDate, null);
   });
 
   test('finds user by username', async () => {

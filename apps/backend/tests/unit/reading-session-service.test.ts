@@ -1,10 +1,11 @@
-// @req F-READ-01
+// @req F-READ-01 F-READ-04
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { Book, type BookId } from '../../src/features/book/book.js';
 import { ReadingStatus } from '../../src/features/reading-status/reading-status.js';
 import type { ReadingStatusService } from '../../src/features/reading-status/reading-status-service.js';
 import type { UserId } from '../../src/features/user/user.js';
+import type { StreakService } from '../../src/features/user/streak-service.js';
 import {
   AnotherSessionActiveError,
   ReadingSessionService,
@@ -179,6 +180,52 @@ describe('ReadingSessionService', () => {
         service.cancel({ id: 'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380a99', userId: USER_ID }),
         NotFoundError,
       );
+    });
+  });
+
+  describe('streak triggering on session finish (F-READ-04)', () => {
+    let recorded: { userId: string; at: Date | undefined }[];
+    let serviceWithStreak: ReadingSessionService;
+
+    beforeEach(() => {
+      recorded = [];
+      const streakService = {
+        recordReadToday: async (userId: UserId, at?: Date) => {
+          recorded.push({ userId: userId.value, at });
+        },
+      } as unknown as StreakService;
+      serviceWithStreak = new ReadingSessionService(
+        new InMemoryReadingSessionRepository(),
+        books,
+        () => now,
+        undefined,
+        streakService,
+      );
+    });
+
+    const readFor = async (minutes: number) => {
+      const session = await serviceWithStreak.start({ userId: USER_ID, bookId: book.id.value });
+      advance(minutes * 60);
+      return session;
+    };
+
+    test('a session of 5 minutes or more counts on the day it ended', async () => {
+      const session = await readFor(5);
+      await serviceWithStreak.finish({ id: session.id.value, userId: USER_ID });
+      assert.deepStrictEqual(recorded, [{ userId: USER_ID, at: now }]);
+    });
+
+    test('a session shorter than 5 minutes does not count', async () => {
+      const session = await readFor(4);
+      advance(59);
+      await serviceWithStreak.finish({ id: session.id.value, userId: USER_ID });
+      assert.deepStrictEqual(recorded, []);
+    });
+
+    test('a cancelled session does not count', async () => {
+      const session = await readFor(15);
+      await serviceWithStreak.cancel({ id: session.id.value, userId: USER_ID });
+      assert.deepStrictEqual(recorded, []);
     });
   });
 });

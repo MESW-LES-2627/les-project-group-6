@@ -37,6 +37,7 @@ export interface PollDto {
     id: string;
     bookId: string;
     title: string;
+    authors: string[];
     /** Null when proposals are anonymous. */
     proposedBy: { userId: string; displayName: string } | null;
     votes: number;
@@ -112,18 +113,22 @@ export function toPollDto(
     status: poll.statusAt(now),
     closesAt: poll.closesAt.toISOString(),
     anonymous: poll.anonymous,
-    proposals: poll.proposals.map((p) => ({
-      id: p.id.value,
-      bookId: p.bookId.value,
-      title: books.find((b) => b.id === p.bookId.value)?.title ?? 'Unknown book',
-      proposedBy: poll.anonymous
-        ? null
-        : {
-            userId: p.proposedBy.value,
-            displayName: names.get(p.proposedBy.value) ?? 'A member',
-          },
-      votes: poll.votesFor(p.id),
-    })),
+    proposals: poll.proposals.map((p) => {
+      const book = books.find((b) => b.id === p.bookId.value);
+      return {
+        id: p.id.value,
+        bookId: p.bookId.value,
+        title: book?.title ?? 'Unknown book',
+        authors: book?.authors ?? [],
+        proposedBy: poll.anonymous
+          ? null
+          : {
+              userId: p.proposedBy.value,
+              displayName: names.get(p.proposedBy.value) ?? 'A member',
+            },
+        votes: poll.votesFor(p.id),
+      };
+    }),
     yourVote: reader ? (poll.voteOf(reader)?.value ?? null) : null,
     voted: poll.votes.length,
     total: memberCount,

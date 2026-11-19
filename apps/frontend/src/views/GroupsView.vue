@@ -5,7 +5,6 @@ import { RouterLink } from 'vue-router';
 import GroupCard from '@/components/groups/GroupCard.vue';
 import MemberAvatar from '@/components/groups/MemberAvatar.vue';
 import PagePlate from '@/components/layout/PagePlate.vue';
-import { mockGroups, mockInvitation } from '@/mocks/groups';
 import {
   answerInvite,
   getPendingInvites,
@@ -18,13 +17,12 @@ import {
 import type { GroupKind, GroupStatus, GroupSummary } from '@/types/groups';
 import { initialsOf } from '@/utils/groups';
 
-// The reader's challenges and book clubs come from the API, listed before the mock
-// groups, with their real pending invites. Accepting or declining the mock
-// invitation only changes this page.
+// The reader's challenges and book clubs, and their pending invites, all come from the API.
 type FilterId = 'all' | GroupKind;
 
-const groups = ref<GroupSummary[]>([...mockGroups]);
-const invitation = ref<typeof mockInvitation | null>(mockInvitation);
+const groups = ref<GroupSummary[]>([]);
+const loading = ref(true);
+const loadError = ref('');
 const invites = ref<ApiPendingInvite[]>([]);
 const filter = ref<FilterId>('all');
 const message = ref('');
@@ -75,10 +73,12 @@ async function loadMine(): Promise<GroupSummary[]> {
 onMounted(async () => {
   try {
     const [mine, pending] = await Promise.all([loadMine(), getPendingInvites()]);
-    groups.value = [...mine, ...groups.value];
+    groups.value = mine;
     invites.value = pending;
   } catch {
-    // Keep the mock groups when the API is unreachable
+    loadError.value = 'We could not load your groups. Please refresh the page.';
+  } finally {
+    loading.value = false;
   }
 });
 
@@ -96,19 +96,6 @@ async function answer(invite: ApiPendingInvite, choice: 'accept' | 'decline') {
   } catch (error) {
     message.value = (error as Error).message;
   }
-}
-
-function acceptInvitation() {
-  if (!invitation.value) return;
-  groups.value.push(invitation.value.group);
-  message.value = `You joined ${invitation.value.name}.`;
-  invitation.value = null;
-}
-
-function declineInvitation() {
-  if (!invitation.value) return;
-  message.value = `You declined ${invitation.value.name}.`;
-  invitation.value = null;
 }
 
 function rematch(group: GroupSummary) {
@@ -140,7 +127,7 @@ function rematch(group: GroupSummary) {
     </PagePlate>
 
     <div class="page-column">
-      <section v-if="invites.length || invitation" class="invites" aria-label="Invitations">
+      <section v-if="invites.length" class="invites" aria-label="Invitations">
         <ul>
           <li v-for="invite in invites" :key="invite.id" class="invite">
             <MemberAvatar :initials="initialsOf(invite.inviterName)" />
@@ -156,23 +143,6 @@ function rematch(group: GroupSummary) {
                 Accept
               </button>
               <button type="button" class="button-outline" @click="answer(invite, 'decline')">
-                Decline
-              </button>
-            </div>
-          </li>
-          <li v-if="invitation" class="invite">
-            <MemberAvatar :initials="initialsOf(invitation.inviter)" />
-            <div class="invite-text">
-              <p class="invite-line">
-                {{ invitation.inviter }} invited you to <strong>{{ invitation.name }}</strong>
-              </p>
-              <p class="invite-detail">{{ invitation.detail }}</p>
-            </div>
-            <div class="invite-actions">
-              <button type="button" class="button button-small" @click="acceptInvitation">
-                View and accept
-              </button>
-              <button type="button" class="button-outline" @click="declineInvitation">
                 Decline
               </button>
             </div>
@@ -217,7 +187,9 @@ function rematch(group: GroupSummary) {
           </li>
         </ul>
       </section>
-      <p v-if="!sections.length" class="empty">No groups here yet.</p>
+      <p v-if="loading" class="empty" role="status">Loading your groups…</p>
+      <p v-else-if="loadError" class="empty" role="alert">{{ loadError }}</p>
+      <p v-else-if="!sections.length" class="empty">No groups here yet.</p>
     </div>
   </main>
 </template>

@@ -22,8 +22,10 @@ import {
  * - `profile-required`: a session but no `users` row (interrupted sign-up)
  * - `ready`: signed in with a profile
  * - `error`: signed in, but the API could not be reached
+ * - `recovery`: recovery owns the session; finish or abandon it before loading a profile
  */
-export type SessionStatus = 'unknown' | 'signed-out' | 'profile-required' | 'ready' | 'error';
+export type SessionStatus =
+  'unknown' | 'signed-out' | 'profile-required' | 'ready' | 'error' | 'recovery';
 
 export interface SessionState {
   status: SessionStatus;
@@ -92,6 +94,10 @@ export function createSession(
   /** Re-reads the Supabase session and our profile. */
   async function refresh(): Promise<SessionStatus> {
     state.error = null;
+    if (await isRecovering()) {
+      reset('recovery');
+      return state.status;
+    }
     let account: AuthAccount | null;
     try {
       account = await auth.currentAccount();
@@ -186,7 +192,16 @@ export function createSession(
     reset();
   }
 
+  async function isRecovering(): Promise<boolean> {
+    try {
+      return await auth.hasRecoverySession();
+    } catch {
+      return false;
+    }
+  }
+
   return {
+    isRecovering,
     state: readonly(state),
     ensure,
     refresh,

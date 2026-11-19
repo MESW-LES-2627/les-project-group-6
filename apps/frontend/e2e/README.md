@@ -18,9 +18,14 @@ Playwright tests of the main path of every route (#127, [spec](../../../docs/sup
 ## Rules
 
 - Tests only change what they can undo (reading sessions, shelf entries). Teardown runs even when a test fails.
+- One exception: `streak.spec.ts` logs pages on the fixture book, which counts today for the test user's streak (F-READ-04). The page is restored; the counted day stays, which is harmless because a day only counts once.
 - The new-group test never submits. Do not add tests that create groups or books: there is no delete route.
 - Never write to other users' rows, truncate or reseed.
 
 ## CI
 
 `.github/workflows/e2e.yml` runs on pushes to `main` and on manual dispatch. It is not a pull request check.
+
+## Deterministic recovery/auth regression
+
+`recovery.spec.ts` runs separately with `pnpm exec playwright test --config playwright.recovery.config.ts` from `apps/frontend`. Install Chromium with `pnpm exec playwright install chromium` first. The configuration uses a frontend-only preview on port 4175, synthetic Supabase network fixtures, desktop/mobile Chromium and no shared account or database. It does not read `.env.e2e` or run `auth.setup.ts`. The ordinary stack configuration ignores this file. See the [recovery guide](../../../docs/architecture/password-recovery.md) for external setup and live verification gaps.

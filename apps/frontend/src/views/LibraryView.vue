@@ -4,7 +4,6 @@ import { computed, onMounted, ref } from 'vue';
 import PagePlate from '@/components/layout/PagePlate.vue';
 import LibraryBookCard from '@/components/library/LibraryBookCard.vue';
 import LibrarySidebar from '@/components/library/LibrarySidebar.vue';
-import { mockLibrary } from '@/mocks/library';
 import {
   createLibraryFolder,
   deleteLibraryFolder,
@@ -14,7 +13,6 @@ import {
   mapApiLibraryItemToBook,
   renameLibraryFolder,
 } from '@/services/api';
-import { isSignedIn } from '@/stores/session';
 import type {
   FolderSummary,
   LibraryBook,
@@ -25,13 +23,13 @@ import type {
 } from '@/types/library';
 import { sortBooks } from '@/utils/library';
 
-const rawBooks = ref<LibraryBook[]>(isSignedIn.value ? [] : mockLibrary.books);
+const rawBooks = ref<LibraryBook[]>([]);
 const libraryError = ref<string | null>(null);
 
-const folders = ref<FolderSummary[]>(isSignedIn.value ? [] : mockLibrary.folders);
+const folders = ref<FolderSummary[]>([]);
 const folderError = ref<string | null>(null);
 
-const tags = ref<TagSummary[]>(isSignedIn.value ? [] : mockLibrary.tags);
+const tags = ref<TagSummary[]>([]);
 
 const DUPLICATE_FOLDER = 'You already have a folder with this name';
 
@@ -45,9 +43,8 @@ const activeGenre = ref('all');
 const search = ref('');
 const sort = ref<LibrarySort>('recent');
 
+// Everything comes from the API: the router only opens this page for a signed-in reader.
 async function fetchLibraryData() {
-  if (!isSignedIn.value) return;
-
   try {
     const items = await getUserLibrary();
     rawBooks.value = items.map(mapApiLibraryItemToBook);
@@ -59,8 +56,6 @@ async function fetchLibraryData() {
 }
 
 async function fetchFolders() {
-  if (!isSignedIn.value) return;
-
   try {
     folders.value = sortFolders(await getLibraryFolders());
     folderError.value = null;
@@ -71,8 +66,6 @@ async function fetchFolders() {
 }
 
 async function fetchTags() {
-  if (!isSignedIn.value) return;
-
   try {
     tags.value = await getLibraryTags();
   } catch {
@@ -103,15 +96,8 @@ async function createFolder(name: string) {
   }
 
   try {
-    if (isSignedIn.value) {
-      const created = await createLibraryFolder(trimmed);
-      folders.value = sortFolders([...folders.value, created]);
-    } else {
-      folders.value = sortFolders([
-        ...folders.value,
-        { id: `local-${Date.now()}`, name: trimmed, count: 0 },
-      ]);
-    }
+    const created = await createLibraryFolder(trimmed);
+    folders.value = sortFolders([...folders.value, created]);
   } catch (error) {
     folderError.value = error instanceof Error ? error.message : 'Failed to create the folder';
   }
@@ -128,7 +114,7 @@ async function renameFolder(id: string, name: string) {
   }
 
   try {
-    if (isSignedIn.value) await renameLibraryFolder(id, trimmed);
+    await renameLibraryFolder(id, trimmed);
     folders.value = sortFolders(
       folders.value.map((folder) => (folder.id === id ? { ...folder, name: trimmed } : folder)),
     );
@@ -140,7 +126,7 @@ async function renameFolder(id: string, name: string) {
 async function deleteFolder(id: string) {
   folderError.value = null;
   try {
-    if (isSignedIn.value) await deleteLibraryFolder(id);
+    await deleteLibraryFolder(id);
     folders.value = folders.value.filter((folder) => folder.id !== id);
     rawBooks.value = rawBooks.value.map((book) => ({
       ...book,
@@ -152,14 +138,15 @@ async function deleteFolder(id: string) {
   }
 }
 
-const genreOptions = computed(() => [...new Set(rawBooks.value.map((book) => book.genre))].sort());
+const genreOptions = computed(() =>
+  [...new Set(rawBooks.value.flatMap((book) => (book.genre ? [book.genre] : [])))].sort(),
+);
 
 const folderName = computed(
   () => folders.value.find((folder) => folder.id === activeFolder.value)?.name,
 );
 
 const displayFolders = computed<FolderSummary[]>(() => {
-  if (!isSignedIn.value) return folders.value;
   return folders.value.map((folder) => ({
     ...folder,
     count: rawBooks.value.filter((book) => book.folderIds.includes(folder.id)).length,
@@ -168,7 +155,6 @@ const displayFolders = computed<FolderSummary[]>(() => {
 
 // Counts follow the loaded books so they match the grid; tags on no book are hidden.
 const displayTags = computed<TagSummary[]>(() => {
-  if (!isSignedIn.value) return tags.value;
   return tags.value
     .map((tag) => ({
       ...tag,
@@ -179,7 +165,6 @@ const displayTags = computed<TagSummary[]>(() => {
 });
 
 const shelves = computed<Shelf[]>(() => {
-  if (!isSignedIn.value) return mockLibrary.shelves;
   const count = (status: ShelfId) => rawBooks.value.filter((b) => b.status === status).length;
   return [
     { id: 'all', label: 'All books', count: rawBooks.value.length },
@@ -204,7 +189,7 @@ const books = computed(() => {
   return sortBooks(filtered, sort.value);
 });
 
-const totalCount = computed(() => (isSignedIn.value ? rawBooks.value.length : mockLibrary.total));
+const totalCount = computed(() => rawBooks.value.length);
 
 const shelfCount = (id: ShelfId) => shelves.value.find((s) => s.id === id)?.count ?? 0;
 
@@ -316,7 +301,7 @@ function showEverything() {
               placeholder="Title, author or ISBN"
             />
           </label>
-          <label class="select">
+          <label v-if="genreOptions.length > 0" class="select">
             <span class="sr-only">Genre</span>
             <select v-model="activeGenre" class="field-input">
               <option value="all">All genres</option>

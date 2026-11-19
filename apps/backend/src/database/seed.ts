@@ -1,196 +1,147 @@
+import { randomBytes } from 'node:crypto';
+import { chmod, readFile, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import process from 'node:process';
-import { createPool, createDb } from './pool.js';
-import {
-  users,
-  books,
-  readingStatus,
-  friendships,
-  groups,
-  member,
-  bookClubs,
-  bookClubRounds,
-  groupInvites,
-} from './schema.js';
+import { env } from '../config/env.js';
+import { createDb, createPool } from './pool.js';
+import { populate, type SeedAccounts } from './seed/populate.js';
+import { READERS, type ReaderKey } from './seed/seed-data.js';
+import { SupabaseAdmin } from './seed/supabase-admin.js';
 
-const pool = createPool();
-const db = createDb(pool);
+// `pnpm db:seed`: creates (or reuses) one Supabase Auth login per seed reader, already
+// confirmed so no email is sent, then fills DATABASE_URL with their profiles, books,
+// sessions, friends, groups and the rest. The emails and passwords are written to
+// seed-accounts.local.json (git-ignored). Safe to run again: accounts are reused with the
+// same passwords, and their data is rebuilt so dates stay relative to today.
 
-async function seed(): Promise<void> {
-  console.log('🌱 Seeding database...');
+/** Next to package.json; the name is in the root .gitignore. */
+const CREDENTIALS_FILE = fileURLToPath(new URL('../../seed-accounts.local.json', import.meta.url));
+const EMAIL_DOMAIN = 'example.com';
 
-  // 1. Seed demo user
-  const demoUserId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
-  await db
-    .insert(users)
-    .values([
-      {
-        id: demoUserId,
-        email: 'demo@bookmarked.app',
-        username: 'demo_reader',
-        displayName: 'Demo Reader',
-        timezone: 'Europe/Lisbon',
-      },
-    ])
-    .onConflictDoNothing();
-
-  // 2. Seed books
-  const seedBooks = [
-    {
-      id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
-      title: 'Emma',
-      description: 'A classic novel of youthful hubris and romantic entanglements by Jane Austen.',
-      pageCount: 474,
-      isbn13: '9780141439587',
-      coverUrl: 'https://covers.openlibrary.org/b/olid/OL50293425M-L.jpg',
-    },
-    {
-      id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02',
-      title: 'The Midnight Library',
-      description:
-        'Between life and death there is a library with infinite books of infinite lives.',
-      pageCount: 304,
-      isbn13: '9780525559474',
-      coverUrl: 'https://covers.openlibrary.org/b/olid/OL61174737M-L.jpg',
-    },
-    {
-      id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a03',
-      title: 'Circe',
-      description:
-        'In the house of Helios, god of the sun, a daughter is born with strange powers.',
-      pageCount: 393,
-      isbn13: '9780316556347',
-      coverUrl: 'https://covers.openlibrary.org/b/olid/OL61375842M-L.jpg',
-    },
-    {
-      id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a04',
-      title: 'The Secret History',
-      description:
-        'A group of clever, eccentric misfits at an elite New England college discover a dark obsession.',
-      pageCount: 559,
-      isbn13: '9781400031702',
-      coverUrl: 'https://covers.openlibrary.org/b/olid/OL38246222M-L.jpg',
-    },
-    {
-      id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a05',
-      title: "A Room of One's Own",
-      description:
-        "An extended essay on women's education, freedom, and space to write by Virginia Woolf.",
-      pageCount: 112,
-      isbn13: '9780156787338',
-      coverUrl: 'https://covers.openlibrary.org/b/olid/OL58393454M-L.jpg',
-    },
-    {
-      id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a06',
-      title: 'Piranesi',
-      description:
-        'Piranesi lives in the House with infinite rooms and ocean tides surging through corridors.',
-      pageCount: 272,
-      isbn13: '9781635575637',
-      coverUrl: 'https://covers.openlibrary.org/b/olid/OL36128954M-L.jpg',
-    },
-  ];
-
-  await db.insert(books).values(seedBooks).onConflictDoNothing();
-
-  // 3. Link demo user to all books with status 'not-started'
-  const statuses = seedBooks.map((book, index) => ({
-    id: `d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a0${index + 1}`,
-    userId: demoUserId,
-    bookId: book.id,
-    status: 'not-started',
-    currentPage: 0,
-    startedOn: null,
-    finishedOn: null,
-  }));
-
-  await db.insert(readingStatus).values(statuses).onConflictDoNothing();
-
-  // 4. Friends of the demo user, so groups can invite them
-  const friends = [
-    ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b01', 'mayareads', 'Maya Laurent'],
-    ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b02', 'priyapages', 'Priya Shah'],
-    ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b03', 'jonahreads', 'Jonah Ellis'],
-    ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b04', 'sofiachen', 'Sofia Chen'],
-    ['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b05', 'nadiapatel', 'Nadia Patel'],
-  ] as const;
-  await db
-    .insert(users)
-    .values(
-      friends.map(([id, username, displayName]) => ({
-        id,
-        email: `${username}@bookmarked.app`,
-        username,
-        displayName,
-      })),
-    )
-    .onConflictDoNothing();
-  await db
-    .insert(friendships)
-    .values(
-      friends.map(([id], index) => ({
-        id: `f0eebc99-9c0b-4ef8-bb6d-6bb9bd380b0${index + 1}`,
-        requesterId: demoUserId,
-        addresseeId: id,
-        status: 'accepted',
-        respondedAt: new Date().toISOString(),
-      })),
-    )
-    .onConflictDoNothing();
-
-  // 5. A book club run by Maya, reading Emma, with a pending invite for the demo user
-  const mayaId = friends[0][0];
-  const priyaId = friends[1][0];
-  const clubId = 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380c01';
-  const today = new Date();
-  const deadline = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
-  await db
-    .insert(groups)
-    .values({
-      id: clubId,
-      name: 'Sunday Classics',
-      description: 'One classic a month, read slowly.',
-      kind: 'book-club',
-      adminId: mayaId,
-    })
-    .onConflictDoNothing();
-  await db
-    .insert(member)
-    .values([
-      { groupId: clubId, userId: mayaId, role: 'admin' },
-      { groupId: clubId, userId: priyaId, role: 'member' },
-    ])
-    .onConflictDoNothing();
-  await db
-    .insert(bookClubs)
-    .values({ groupId: clubId, currentBookId: seedBooks[0]!.id })
-    .onConflictDoNothing();
-  await db
-    .insert(bookClubRounds)
-    .values({
-      id: 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380c02',
-      bookClubId: clubId,
-      roundNumber: 1,
-      bookId: seedBooks[0]!.id,
-      start: today.toISOString().slice(0, 10),
-      deadline: deadline.toISOString().slice(0, 10),
-    })
-    .onConflictDoNothing();
-  await db
-    .insert(groupInvites)
-    .values({
-      id: 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380c03',
-      groupId: clubId,
-      inviteeId: demoUserId,
-      inviterId: mayaId,
-    })
-    .onConflictDoNothing();
-
-  console.log('✅ Seeding completed successfully!');
-  await pool.end();
+interface Credential {
+  username: string;
+  displayName: string;
+  email: string;
+  password: string;
+  role: string;
 }
 
-seed().catch(async (error) => {
-  console.error('❌ Seeding failed:', error);
-  await pool.end();
+function emailOf(username: string): string {
+  return `${username}@${EMAIL_DOMAIN}`;
+}
+
+function newPassword(): string {
+  // 16 random characters; letters, digits, - and _ only, so it is easy to paste.
+  return randomBytes(12).toString('base64url');
+}
+
+/** Passwords from an earlier run, by email, so re-seeding keeps them. */
+async function previousPasswords(): Promise<Map<string, string>> {
+  try {
+    const saved = JSON.parse(await readFile(CREDENTIALS_FILE, 'utf8')) as {
+      accounts?: Credential[];
+    };
+    return new Map((saved.accounts ?? []).map((a) => [a.email.toLowerCase(), a.password]));
+  } catch {
+    return new Map();
+  }
+}
+
+function isLocalDatabase(url: string): boolean {
+  try {
+    return ['localhost', '127.0.0.1', '::1', 'db', 'postgres'].includes(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function requireSettings(): { url: string; key: string } {
+  const url = env.supabaseUrl;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+  if (!url || !key) {
+    throw new Error(
+      'SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in apps/backend/.env to create the ' +
+        'seed accounts. The key is in Supabase > Project Settings > API Keys (service_role or a secret key).',
+    );
+  }
+  // The seed deletes and rebuilds its own accounts' data; never do that to a shared
+  // database by accident.
+  if (!isLocalDatabase(env.databaseUrl) && process.env.SEED_ALLOW_REMOTE_DATABASE !== 'true') {
+    throw new Error(
+      'DATABASE_URL is not a local database. Set SEED_ALLOW_REMOTE_DATABASE=true to seed it anyway.',
+    );
+  }
+  return { url, key };
+}
+
+async function createAccounts(admin: SupabaseAdmin): Promise<{
+  accounts: SeedAccounts;
+  credentials: Credential[];
+}> {
+  const existing = await admin.accountsByEmail();
+  const saved = await previousPasswords();
+  const accounts = {} as SeedAccounts;
+  const credentials: Credential[] = [];
+
+  for (const reader of READERS) {
+    const email = emailOf(reader.username);
+    const password = saved.get(email) ?? newPassword();
+    const account = {
+      email,
+      password,
+      // The same metadata the sign-up form stores.
+      metadata: { username: reader.username, display_name: reader.displayName },
+    };
+    const found = existing.get(email);
+    if (found) {
+      await admin.update(found.id, account);
+      accounts[reader.key as ReaderKey] = { id: found.id, email };
+      console.log(`  ↻ ${email} (existing login, password set again)`);
+    } else {
+      const created = await admin.create(account);
+      accounts[reader.key as ReaderKey] = created;
+      console.log(`  + ${email}`);
+    }
+    credentials.push({
+      username: reader.username,
+      displayName: reader.displayName,
+      email,
+      password,
+      role: reader.role,
+    });
+  }
+  return { accounts, credentials };
+}
+
+async function writeCredentials(credentials: Credential[]): Promise<void> {
+  const file = {
+    note: 'Seed accounts created by `pnpm db:seed`. Test passwords only; never commit this file.',
+    supabaseProject: env.supabaseUrl,
+    accounts: credentials,
+  };
+  await writeFile(CREDENTIALS_FILE, `${JSON.stringify(file, null, 2)}\n`, { mode: 0o600 });
+  await chmod(CREDENTIALS_FILE, 0o600);
+}
+
+async function seed(): Promise<void> {
+  const { url, key } = requireSettings();
+  console.log(`🌱 Creating seed logins in ${url} ...`);
+  const { accounts, credentials } = await createAccounts(new SupabaseAdmin(url, key));
+  // Written before the database step, so the passwords are kept even if it fails.
+  await writeCredentials(credentials);
+
+  console.log('🌱 Filling the database ...');
+  const pool = createPool();
+  try {
+    await populate(createDb(pool), accounts);
+  } finally {
+    await pool.end();
+  }
+
+  console.log(`✅ Seeded ${credentials.length} readers. Logins are in ${CREDENTIALS_FILE}`);
+}
+
+seed().catch((error: unknown) => {
+  console.error('❌ Seeding failed:', error instanceof Error ? error.message : error);
   process.exit(1);
 });

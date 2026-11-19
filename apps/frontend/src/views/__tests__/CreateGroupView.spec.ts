@@ -58,6 +58,7 @@ const JONAH = {
 const EMMA: ApiBook = {
   id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01',
   title: 'Emma',
+  authors: [],
   description: null,
   isbn13: null,
   pageCount: 474,
@@ -71,16 +72,59 @@ function mountView() {
 describe('CreateGroupView', () => {
   afterEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   beforeEach(() => {
-    // The friends API is unreachable by default, so the mock friends are shown.
+    // The form starts on today's date: pin it to 1 November 2026.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 1, 10, 0));
+    getFriends.mockResolvedValue([MAYA, JONAH]);
+  });
+
+  it('starts empty, on today, with no friend invited', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect((wrapper.get('#group-name').element as HTMLInputElement).value).toBe('');
+    expect((wrapper.get('#start-date').element as HTMLInputElement).value).toBe('2026-11-01');
+    expect(wrapper.findAll('.friend[aria-pressed="true"]')).toHaveLength(0);
+    expect(wrapper.get('button[type="submit"]').text()).toBe('Create group & send 0 invites');
+  });
+
+  it('lists only the friends from the API', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    const names = wrapper.findAll('.friend').map((f) => f.text());
+    expect(names).toHaveLength(2);
+    expect(names.join(' ')).toContain('Maya Laurent');
+    expect(names.join(' ')).toContain('Jonah Ellis');
+  });
+
+  it('says so when the friends cannot be loaded, without inventing any', async () => {
     getFriends.mockRejectedValue(new Error('offline'));
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.findAll('.friend')).toHaveLength(0);
+    expect(wrapper.get('.hint[role="alert"]').text()).toBe(
+      'We could not load your friends. You can invite them later.',
+    );
+  });
+
+  it('invites friends once the reader has some', async () => {
+    getFriends.mockResolvedValue([]);
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Add friends to invite them to a group.');
   });
 
   it('previews the challenge as the form changes', async () => {
     const wrapper = mountView();
     const preview = wrapper.get('.glance');
+    await wrapper.get('#group-name').setValue('November Pages');
 
     expect(preview.text()).toContain('November Pages');
     expect(preview.text()).toContain('1–30 November 2026');
@@ -107,14 +151,16 @@ describe('CreateGroupView', () => {
 
   it('counts the invited friends in the button', async () => {
     const wrapper = mountView();
+    await flushPromises();
     const submit = () => wrapper.get('button[type="submit"]').text();
 
+    await wrapper.findAll('.friend')[0]!.trigger('click');
+    expect(submit()).toBe('Create group & send 1 invite');
+
+    await wrapper.findAll('.friend')[1]!.trigger('click');
     expect(submit()).toBe('Create group & send 2 invites');
 
-    await wrapper.findAll('.friend')[2]!.trigger('click');
-    expect(submit()).toBe('Create group & send 3 invites');
-
-    await wrapper.get('#friend-search').setValue('nadia');
+    await wrapper.get('#friend-search').setValue('jonah');
     expect(wrapper.findAll('.friend')).toHaveLength(1);
   });
 
@@ -132,6 +178,7 @@ describe('CreateGroupView', () => {
     createChallengeGroup.mockResolvedValueOnce({ id } as ApiChallengeGroup);
     await router.push('/groups/new');
     const wrapper = mountView();
+    await wrapper.get('#group-name').setValue('November Pages');
 
     await wrapper.get('form').trigger('submit');
 
@@ -147,6 +194,7 @@ describe('CreateGroupView', () => {
   it('shows the server error when the challenge cannot be created', async () => {
     createChallengeGroup.mockRejectedValueOnce(new Error('Invalid start date: 2026-02-30'));
     const wrapper = mountView();
+    await wrapper.get('#group-name').setValue('November Pages');
 
     await wrapper.get('form').trigger('submit');
 
@@ -181,7 +229,7 @@ describe('CreateGroupView', () => {
     await wrapper.get('#round-deadline').setValue('2026-12-15');
 
     expect(wrapper.get('.glance').text()).toContain('Emma');
-    // Maya stays selected from the defaults; Jonah is added.
+    await wrapper.findAll('.friend')[0]!.trigger('click');
     await wrapper.findAll('.friend')[1]!.trigger('click');
     await wrapper.get('form').trigger('submit');
 
@@ -227,7 +275,10 @@ describe('CreateGroupView', () => {
 
   it('deselects an invited friend and shows the chosen picture name', async () => {
     const wrapper = mountView();
+    await flushPromises();
 
+    await wrapper.findAll('.friend')[0]!.trigger('click');
+    await wrapper.findAll('.friend')[1]!.trigger('click');
     await wrapper.findAll('.friend')[0]!.trigger('click');
     expect(wrapper.findAll('.friend')[0]!.attributes('aria-pressed')).toBe('false');
     expect(wrapper.get('button[type="submit"]').text()).toBe('Create group & send 1 invite');

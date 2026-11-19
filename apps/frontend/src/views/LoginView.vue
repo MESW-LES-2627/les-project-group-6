@@ -137,16 +137,7 @@ async function submit(kind: 'login' | 'signup') {
             <label class="remember">
               <input v-model="login.remember" type="checkbox" /> Keep me signed in
             </label>
-            <button
-              class="link-button"
-              type="button"
-              @click="
-                loginMessage = 'Password recovery is not available yet.';
-                loginError = false;
-              "
-            >
-              Forgot password?
-            </button>
+            <RouterLink class="link-button" to="/forgot-password">Forgot password?</RouterLink>
           </div>
           <button class="button submit" type="submit" :disabled="pending !== null">
             {{ pending === 'login' ? 'Logging in…' : 'Log in' }}

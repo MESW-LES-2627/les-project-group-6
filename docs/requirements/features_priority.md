@@ -50,7 +50,7 @@ sign up → find or add a book → put it in my library → read with the timer
 | ID | Feature | Scope in Core |
 |---|---|---|
 | F-READ-01 | Reading session timer | Start and stop a session for a library book. Only one active session per user. The session survives closing the tab (start time is stored on the server). Summary at the end. Minutes go to the profile and to active challenges. **Cut:** pause and resume can wait until Extras if time is short. |
-| F-READ-04 | Daily streak | Current and longest streak, computed from sessions (one session of at least 5 minutes per day). **Cut:** freeze and weekly streak move to Extras. |
+| F-READ-04 | Daily streak | Current and longest streak. A day counts with a session of at least 5 minutes, 5+ pages logged on a book in progress, or finishing a book that was in progress. **Cut:** freeze and weekly streak move to Extras. |
 
 ### Profile and friends
 

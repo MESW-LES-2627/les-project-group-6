@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
-import { mockChallenge, mockClub } from '@/mocks/groups';
 import {
   getBookClub,
   getChallengeGroup,
@@ -16,18 +15,12 @@ import ChallengeGroupView from '@/views/ChallengeGroupView.vue';
 
 const props = defineProps<{ groupId: string }>();
 
-// The two mock groups keep the design data; any other id is loaded from the API,
-// as a challenge first and then as a book club.
+// The group is loaded from the API, as a challenge first and then as a book club.
 const apiChallenge = ref<ChallengeDetail | null>(null);
 const apiClub = ref<BookClubDetail | null>(null);
 /** Bumped after each reload so the club page starts from the new data. */
 const version = ref(0);
-const loading = ref(false);
-const challenge = computed(() =>
-  props.groupId === mockChallenge.id ? mockChallenge : apiChallenge.value,
-);
-const club = computed(() => (props.groupId === mockClub.id ? mockClub : apiClub.value));
-const isMock = computed(() => props.groupId === mockChallenge.id || props.groupId === mockClub.id);
+const loading = ref(true);
 /** The signed-in reader (the router guard guarantees a profile). */
 const meId = computed(() => session.state.me?.id ?? '');
 
@@ -37,7 +30,6 @@ async function loadClub() {
 }
 
 onMounted(async () => {
-  if (isMock.value) return;
   loading.value = true;
   try {
     apiChallenge.value = mapApiGroupToChallengeDetail(
@@ -66,24 +58,22 @@ async function reloadClub() {
 
 <template>
   <ChallengeGroupView
-    v-if="challenge"
-    :key="challenge.id"
-    :challenge="challenge"
-    :me-id="isMock ? undefined : meId"
-    :live="!isMock"
+    v-if="apiChallenge"
+    :key="apiChallenge.id"
+    :challenge="apiChallenge"
+    :me-id="meId"
   />
   <BookClubGroupView
-    v-else-if="club"
-    :key="`${club.id}-${version}`"
-    :club="club"
-    :me-id="isMock ? undefined : meId"
-    :live="!isMock"
+    v-else-if="apiClub"
+    :key="`${apiClub.id}-${version}`"
+    :club="apiClub"
+    :me-id="meId"
     @changed="reloadClub"
   />
   <main v-else-if="loading" class="page-column missing" aria-busy="true"></main>
   <main v-else class="page-column missing">
     <h1>This group could not be found.</h1>
-    <p>Open October Sprint or Classics to see the challenge and book club pages.</p>
+    <p>It may have been removed, or you are not a member.</p>
     <RouterLink class="button" :to="{ name: 'groups' }">Back to groups</RouterLink>
   </main>
 </template>

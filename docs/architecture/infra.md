@@ -48,20 +48,25 @@ The app is reachable 24/7, but no feature in Core needs a process that does work
 
 | Value | Calculated from |
 |---|---|
-| Current and longest streak | The user's sessions, grouped by day in the user's timezone (a day counts when it has at least one session of 5 counted minutes or more; a session counts on the day it started) |
 | Total minutes, books read | `reading_sessions` and `user_books` |
 | Challenge status (scheduled, active, finished) | `start_date`, `end_date` and the current time |
 | Leaderboard | Sessions inside the challenge period, from current members |
 | Winners and "challenges won" | The same leaderboard once the challenge has ended |
 
 - *Why:* no scheduler to run or monitor, no "midnight job" to reset streaks or close challenges, and the backend stays stateless, so a host that sleeps when idle still works.
-- *Consequence:* cached tables from [table_UML.md](table_UML.md) (`USER_STREAK`, `LEADERBOARD_ENTRY`, `challenge_winners`, and the counter columns on `USER` such as `counted_minutes`, `books_read_count`, `challenges_won`) are **not** created in Core. We add them only if queries become slow.
-- *Rejected:* storing the values and keeping them up to date, because it needs a scheduled job to reset streaks and close challenges.
+- *Exception, the streak (F-READ-04):* `users` stores `current_streak`, `longest_streak` and `last_read_date` (the last day, in the user's timezone, that counted). They are updated when the reader reads, never by a job:
+    - A day counts when the reader finishes a session of **5 counted minutes or more** (on the day it ends), moves a book that is **in progress forward by 5 pages or more**, or moves a book from **in progress to finished**. The last two let readers who read away from the app keep their streak.
+    - On a counted day: `last_read_date` is today → no change; it is yesterday → `current_streak + 1`; otherwise → `current_streak = 1`. Then `longest_streak = max(longest_streak, current_streak)` and `last_read_date = today`.
+    - On read, the streak shown is `current_streak` while `last_read_date` is today or yesterday, and 0 after that, so no midnight reset is needed.
+    - *Why stored:* days counted from page progress leave no session behind, so they cannot be worked out from `reading_sessions` alone.
+    - *Rejected:* a `hit_streak` flag reset every day, because it needs a midnight job (without it the streak never went past 1, see the review on PR #160).
+- *Consequence:* cached tables from [table_UML.md](table_UML.md) (`USER_STREAK`, whose fields live on `users` instead, `LEADERBOARD_ENTRY`, `challenge_winners`, and the counter columns on `USER` such as `counted_minutes`, `books_read_count`, `challenges_won`) are **not** created in Core. We add them only if queries become slow.
+- *Rejected:* storing the other values and keeping them up to date, because it needs a scheduled job to close challenges.
 
 Known edge cases:
 
 1. **Results could change after a challenge ends** if a member deletes a session. *Proposed:* deleting a session that counted in a finished challenge is blocked.
-2. **Changing timezone recalculates past streaks**, because old sessions may fall on different days. *Proposed:* accepted, since it is rare and harmless.
+2. **Changing timezone does not move days already counted**: `last_read_date` keeps the day of the old timezone, and the profile calendar places sessions in the new one. *Proposed:* accepted, since it is rare and harmless.
 
 ### Days are counted in the user's timezone
 

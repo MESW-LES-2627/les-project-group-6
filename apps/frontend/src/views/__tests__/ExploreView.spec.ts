@@ -18,6 +18,7 @@ vi.mock('@/services/api', async (original) => ({
 }));
 
 const book = (id: string, title: string): ApiBook => ({
+  authors: [],
   id,
   title,
   description: null,

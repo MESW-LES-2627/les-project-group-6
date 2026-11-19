@@ -1,13 +1,26 @@
 <script setup lang="ts">
+import { ref } from 'vue';
+
 import type { Book } from '@/types/profile';
 
-// A generated cover, used until books have real cover images.
+// The book's cover image, or a generated cover when it has none (or it fails to load).
 // Decorative: the surrounding link or list item carries the title for screen readers.
 defineProps<{ book: Book }>();
+
+const failed = ref(false);
 </script>
 
 <template>
+  <img
+    v-if="book.coverUrl && !failed"
+    class="cover image"
+    :src="book.coverUrl"
+    alt=""
+    aria-hidden="true"
+    @error="failed = true"
+  />
   <div
+    v-else
     class="cover"
     aria-hidden="true"
     :style="{ background: book.cover.background, color: book.cover.ink }"
@@ -25,6 +38,10 @@ defineProps<{ book: Book }>();
 </template>
 
 <style scoped>
+.image {
+  object-fit: cover;
+}
+
 .cover {
   position: relative;
   display: block;

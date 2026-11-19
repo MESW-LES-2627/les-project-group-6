@@ -1,25 +1,141 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import MemberAvatar from '@/components/groups/MemberAvatar.vue';
 import BookCoverImage from '@/components/library/BookCoverImage.vue';
 import { mockHome } from '@/mocks/home';
+import {
+  acceptFriendRequest,
+  answerInvite,
+  declineFriendRequest,
+  getActiveReadingSession,
+  getChallengeGroup,
+  getExplore,
+  getFriendRequests,
+  getPendingInvites,
+  getUserBookClubs,
+  getUserGroups,
+  getUserLibrary,
+} from '@/services/api';
+import { session } from '@/stores/session';
+import type {
+  BedsideBook,
+  ChallengeSummary,
+  ClubSummary,
+  HomeFriendRequest,
+  HomeInvitation,
+  TrendingBook,
+} from '@/types/home';
+import {
+  firstNameOf,
+  greetingFor,
+  pickBedside,
+  toChallengeSummary,
+  toClubSummary,
+  toFriendRequest,
+  toInvitation,
+  toTrending,
+} from '@/utils/home';
 
-// Mock data until the home API exists. Accepting or declining only changes this page.
-const home = mockHome;
-const { bedside, streak, challenge, club, goals } = home;
+// Every section loads from the API on its own, so one failing request does not blank
+// the page. The streak, goals, friend activity and "reading now" are not built yet and
+// still come from src/mocks/home.ts.
+const { streak, goals } = mockHome;
 
-const friendRequest = ref(home.friendRequest);
-const invitation = ref(home.invitation);
+const now = new Date();
+const greeting = greetingFor(now);
+const firstName = computed(() => firstNameOf(session.state.me?.displayName));
+const dateLine = now.toLocaleDateString('en-US', {
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+});
+
+type Load = 'loading' | 'ready' | 'error';
+
+const bedside = ref<BedsideBook | null>(null);
+const libraryEmpty = ref(false);
+const bedsideState = ref<Load>('loading');
+
+const challenges = ref<ChallengeSummary[]>([]);
+const clubs = ref<ClubSummary[]>([]);
+const groupsState = ref<Load>('loading');
+
+const friendRequests = ref<HomeFriendRequest[]>([]);
+const invitations = ref<HomeInvitation[]>([]);
 const message = ref('');
 
-const bedsidePercent = Math.round((bedside.currentPage / bedside.pages) * 100);
-const pagesToGo = bedside.pages - bedside.currentPage;
+const trending = ref<TrendingBook[]>([]);
+const trendingState = ref<Load>('loading');
+
+async function loadBedside() {
+  try {
+    const [library, active, myClubs] = await Promise.all([
+      getUserLibrary(),
+      getActiveReadingSession(),
+      getUserBookClubs().catch(() => []),
+    ]);
+    bedside.value = pickBedside(library, active, myClubs);
+    libraryEmpty.value = library.length === 0;
+    bedsideState.value = 'ready';
+  } catch {
+    bedsideState.value = 'error';
+  }
+}
+
+async function loadGroups() {
+  try {
+    const meId = session.state.me?.id ?? '';
+    const [groups, myClubs] = await Promise.all([getUserGroups(), getUserBookClubs()]);
+    const active = groups.filter((group) => group.status === 'active');
+    const details = await Promise.all(active.map((group) => getChallengeGroup(group.id)));
+    challenges.value = details.map((detail) => toChallengeSummary(detail, meId, now));
+    clubs.value = myClubs
+      .filter((club) => club.round.outcome === 'active')
+      .map((club) => toClubSummary(club));
+    groupsState.value = 'ready';
+  } catch {
+    groupsState.value = 'error';
+  }
+}
+
+async function loadRequests() {
+  // Invites are optional on Home: a failure just shows nothing to answer.
+  const [requests, invites] = await Promise.all([
+    getFriendRequests().catch(() => []),
+    getPendingInvites().catch(() => []),
+  ]);
+  friendRequests.value = requests.map(toFriendRequest);
+  invitations.value = invites.map(toInvitation);
+}
+
+async function loadTrending() {
+  try {
+    trending.value = toTrending(await getExplore());
+    trendingState.value = 'ready';
+  } catch {
+    trendingState.value = 'error';
+  }
+}
+
+onMounted(() => {
+  void loadBedside();
+  void loadGroups();
+  void loadRequests();
+  void loadTrending();
+});
+
+const bedsidePercent = computed(() =>
+  bedside.value ? Math.round((bedside.value.currentPage / bedside.value.pages) * 100) : 0,
+);
+const pagesToGo = computed(() =>
+  bedside.value ? Math.max(0, bedside.value.pages - bedside.value.currentPage) : 0,
+);
+
 const booksToGo = goals.booksGoal - goals.booksRead;
 const minutesToGo = goals.minutesGoal - goals.minutesRead;
-const firstName = home.readerName;
-
 const goalBars = [
   {
     label: `${goals.booksRead} of ${goals.booksGoal} books`,
@@ -31,14 +147,11 @@ const goalBars = [
   },
 ];
 
-const clubFinishedPercent = Math.round((club.finished / club.total) * 100);
-
 // The last seven days, oldest first. A day is read when the streak reaches back to it.
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const today = new Date(`${home.isoDate}T12:00:00`);
 const week = Array.from({ length: 7 }, (_, i) => {
-  const date = new Date(today);
-  date.setDate(today.getDate() - 6 + i);
+  const date = new Date(now);
+  date.setDate(now.getDate() - 6 + i);
   const daysAgo = 6 - i;
   const isToday = daysAgo === 0;
   const read = streak.todayComplete ? daysAgo < streak.days : daysAgo > 0 && daysAgo <= streak.days;
@@ -53,69 +166,112 @@ const week = Array.from({ length: 7 }, (_, i) => {
   };
 });
 
-const hasRequests = computed(() => friendRequest.value || invitation.value);
+const hasRequests = computed(() => friendRequests.value.length > 0 || invitations.value.length > 0);
+const hasGroups = computed(() => challenges.value.length > 0 || clubs.value.length > 0);
 
-function respondToFriend(accept: boolean) {
-  if (!friendRequest.value) return;
-  message.value = accept
-    ? `You and ${friendRequest.value.name} are now friends.`
-    : `You declined ${friendRequest.value.name}'s request.`;
-  friendRequest.value = null;
+async function respondToFriend(request: HomeFriendRequest, accept: boolean) {
+  try {
+    if (accept) await acceptFriendRequest(request.id);
+    else await declineFriendRequest(request.id);
+    friendRequests.value = friendRequests.value.filter((r) => r.id !== request.id);
+    message.value = accept
+      ? `You and ${request.name} are now friends.`
+      : `You declined ${request.name}'s request.`;
+  } catch (error) {
+    message.value = (error as Error).message;
+  }
 }
 
-function declineInvitation() {
-  if (!invitation.value) return;
-  message.value = `You declined ${invitation.value.title}.`;
-  invitation.value = null;
+async function respondToInvite(invite: HomeInvitation, accept: boolean) {
+  try {
+    await answerInvite(invite.id, accept ? 'accept' : 'decline');
+    invitations.value = invitations.value.filter((i) => i.id !== invite.id);
+    message.value = accept ? `You joined ${invite.title}.` : `You declined ${invite.title}.`;
+    if (accept) void loadGroups();
+  } catch (error) {
+    message.value = (error as Error).message;
+  }
 }
 </script>
 
 <template>
   <main class="page-column home">
     <header class="greeting">
-      <h1>Good morning, {{ firstName }}.</h1>
-      <p class="greeting-line">{{ home.date }}</p>
+      <h1>
+        {{ greeting }}<template v-if="firstName">, {{ firstName }}</template
+        >.
+      </h1>
+      <p class="greeting-line">{{ dateLine }}</p>
     </header>
 
     <section class="bedside" aria-labelledby="bedside-title">
-      <RouterLink
-        class="bedside-cover"
-        :to="`/library/${bedside.id}`"
-        tabindex="-1"
-        aria-hidden="true"
-      >
-        <BookCoverImage :src="bedside.cover" :title="bedside.title" />
-      </RouterLink>
-      <div class="bedside-body">
-        <h2 id="bedside-title" class="bedside-title">{{ bedside.title }}</h2>
-        <p class="bedside-author">{{ bedside.author }} · reading with the {{ bedside.club }}</p>
-        <div class="bedside-progress">
-          <progress
-            class="progress-bar"
-            :value="bedside.currentPage"
-            :max="bedside.pages"
-            :aria-label="`${bedside.title} progress`"
-          ></progress>
-          <p class="progress-label">
-            <span
-              >Page {{ bedside.currentPage }} of {{ bedside.pages }} · {{ bedsidePercent }}%</span
-            >
-            <span class="muted">{{ pagesToGo }} pages to go</span>
+      <template v-if="bedside">
+        <RouterLink
+          class="bedside-cover"
+          :to="`/library/${bedside.id}`"
+          tabindex="-1"
+          aria-hidden="true"
+        >
+          <BookCoverImage :src="bedside.cover" :title="bedside.title" />
+        </RouterLink>
+        <div class="bedside-body">
+          <h2 id="bedside-title" class="bedside-title">{{ bedside.title }}</h2>
+          <p v-if="bedside.author || bedside.club" class="bedside-author">
+            {{ bedside.author }}<template v-if="bedside.author && bedside.club"> · </template
+            ><template v-if="bedside.club">reading with {{ bedside.club }}</template>
           </p>
+          <div class="bedside-progress">
+            <progress
+              class="progress-bar"
+              :value="bedside.currentPage"
+              :max="bedside.pages"
+              :aria-label="`${bedside.title} progress`"
+            ></progress>
+            <p class="progress-label">
+              <span
+                >Page {{ bedside.currentPage }} of {{ bedside.pages }} · {{ bedsidePercent }}%</span
+              >
+              <span class="muted">{{ pagesToGo }} pages to go</span>
+            </p>
+          </div>
+          <div class="bedside-actions">
+            <RouterLink class="button" :to="`/session/${bedside.id}`">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M8 5.5v13l10-6.5z" />
+              </svg>
+              {{ bedside.sessionRunning ? 'Resume session' : 'Start session' }}
+            </RouterLink>
+            <RouterLink class="text-link" :to="`/library/${bedside.id}`">Book details</RouterLink>
+          </div>
         </div>
-        <div class="bedside-actions">
-          <RouterLink class="button" :to="`/session/${bedside.id}`">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M8 5.5v13l10-6.5z" />
-            </svg>
-            Start session
-          </RouterLink>
-          <RouterLink class="text-link" :to="`/library/${bedside.id}`">Book details</RouterLink>
-        </div>
-        <p class="last-session">
-          Last session {{ bedside.lastSession.when.toLowerCase() }} ·
-          {{ bedside.lastSession.minutes }} min · {{ bedside.lastSession.pages }} pages
+      </template>
+      <div v-else class="bedside-body">
+        <h2 id="bedside-title" class="bedside-title">
+          {{ bedsideState === 'loading' ? 'Finding your book…' : 'Nothing on your bedside yet' }}
+        </h2>
+        <p v-if="bedsideState === 'error'" class="note" role="alert">
+          We could not load your reading. Please refresh the page.
         </p>
+        <template v-else-if="bedsideState === 'ready'">
+          <p class="note">
+            {{
+              libraryEmpty
+                ? 'Your library is empty. Add your first book to start a reading session.'
+                : 'Start a book from your library and it will wait for you here.'
+            }}
+          </p>
+          <div class="bedside-actions">
+            <RouterLink class="button" :to="libraryEmpty ? '/explore' : '/library'">
+              {{ libraryEmpty ? 'Explore books' : 'Open your library' }}
+            </RouterLink>
+          </div>
+        </template>
       </div>
 
       <aside class="glance" aria-label="Your week and goals">
@@ -174,27 +330,35 @@ function declineInvitation() {
             <h2 id="groups-title" class="section-title">Your groups</h2>
             <RouterLink class="text-link" to="/groups">All groups</RouterLink>
           </div>
-          <ul class="group-list">
-            <li>
+          <p v-if="groupsState === 'loading'" class="note" role="status">Loading your groups…</p>
+          <p v-else-if="groupsState === 'error'" class="note" role="alert">
+            We could not load your groups. Please refresh the page.
+          </p>
+          <p v-else-if="!hasGroups" class="note">
+            No active challenges or book clubs.
+            <RouterLink class="text-link" to="/groups/new">Create one</RouterLink>
+          </p>
+          <ul v-else class="group-list">
+            <li v-for="challenge in challenges" :key="challenge.id">
               <RouterLink
                 class="rank-tile"
                 :to="`/groups/${challenge.id}`"
                 tabindex="-1"
                 aria-hidden="true"
               >
-                #{{ challenge.rank }}<span>of {{ challenge.readers }}</span>
+                {{ challenge.rank ? `#${challenge.rank}` : '—'
+                }}<span>of {{ challenge.readers }}</span>
               </RouterLink>
               <div class="group-body">
                 <div class="group-line">
                   <RouterLink class="group-name" :to="`/groups/${challenge.id}`">
                     {{ challenge.name }}
                   </RouterLink>
-                  <span class="section-meta">{{ challenge.daysLeft }} days left</span>
+                  <span class="section-meta">
+                    {{ challenge.daysLeft }} {{ challenge.daysLeft === 1 ? 'day' : 'days' }} left
+                  </span>
                 </div>
-                <p class="group-meta">
-                  Challenge · {{ challenge.countedMinutes }} counted min ·
-                  {{ challenge.behindLeaders }} behind the leaders
-                </p>
+                <p class="group-meta">Challenge · {{ challenge.score }}</p>
                 <progress
                   class="progress-bar"
                   :value="challenge.progress"
@@ -203,29 +367,28 @@ function declineInvitation() {
                 ></progress>
               </div>
             </li>
-            <li>
+            <li v-for="club in clubs" :key="club.id">
               <RouterLink
                 class="small-cover"
                 :to="`/groups/${club.id}`"
                 tabindex="-1"
                 aria-hidden="true"
               >
-                <BookCoverImage :src="bedside.cover" :title="bedside.title" />
+                <BookCoverImage :src="club.cover" :title="club.bookTitle" />
               </RouterLink>
               <div class="group-body">
                 <div class="group-line">
                   <RouterLink class="group-name" :to="`/groups/${club.id}`">
-                    {{ club.name }}
+                    {{ club.name }} · {{ club.bookTitle }}
                   </RouterLink>
                   <span class="section-meta">deadline {{ club.deadline }}</span>
                 </div>
                 <p class="group-meta">
-                  Book club · {{ club.finished }} of {{ club.total }} finished · you’re at
-                  {{ club.progress }}%
+                  Book club · {{ club.finished }} of {{ club.total }} finished
                 </p>
                 <progress
                   class="progress-bar gold"
-                  :value="clubFinishedPercent"
+                  :value="club.total ? Math.round((club.finished / club.total) * 100) : 0"
                   max="100"
                   aria-label="Club members finished"
                 ></progress>
@@ -240,7 +403,7 @@ function declineInvitation() {
             <a class="text-link" href="#">All activity</a>
           </div>
           <ul class="activity">
-            <li v-for="item in home.activity" :key="item.id">
+            <li v-for="item in mockHome.activity" :key="item.id">
               <MemberAvatar :initials="item.initials" />
               <div>
                 <p class="activity-title">{{ item.title }}</p>
@@ -255,7 +418,7 @@ function declineInvitation() {
         <section :class="['section', { ruled: hasRequests }]" aria-labelledby="now-title">
           <h2 id="now-title" class="section-title heading-gap">Reading now</h2>
           <ul class="reading-now">
-            <li v-for="friend in home.readingNow" :key="friend.name">
+            <li v-for="friend in mockHome.readingNow" :key="friend.name">
               <MemberAvatar :initials="friend.initials" size="sm" />
               <span>
                 {{ friend.name }}
@@ -270,26 +433,44 @@ function declineInvitation() {
         <section v-if="hasRequests" class="section" aria-labelledby="waiting-title">
           <h2 id="waiting-title" class="section-title heading-gap">Waiting for you</h2>
           <div class="requests">
-            <div v-if="friendRequest">
+            <div v-for="request in friendRequests" :key="request.id">
               <p class="request-line">
-                <strong>{{ friendRequest.name }}</strong> wants to be friends
+                <strong>{{ request.name }}</strong> wants to be friends
               </p>
               <div class="request-actions">
-                <button type="button" class="button button-small" @click="respondToFriend(true)">
+                <button
+                  type="button"
+                  class="button button-small"
+                  @click="respondToFriend(request, true)"
+                >
                   Accept
                 </button>
-                <button type="button" class="button-outline" @click="respondToFriend(false)">
+                <button
+                  type="button"
+                  class="button-outline"
+                  @click="respondToFriend(request, false)"
+                >
                   Decline
                 </button>
               </div>
             </div>
-            <div v-if="invitation">
+            <div v-for="invite in invitations" :key="invite.id">
               <p class="request-line">
-                <strong>{{ invitation.title }}</strong> · {{ invitation.detail }}
+                <strong>{{ invite.title }}</strong> · {{ invite.detail }}
               </p>
               <div class="request-actions">
-                <RouterLink class="button button-small" to="/groups">View invite</RouterLink>
-                <button type="button" class="button-outline" @click="declineInvitation">
+                <button
+                  type="button"
+                  class="button button-small"
+                  @click="respondToInvite(invite, true)"
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  class="button-outline"
+                  @click="respondToInvite(invite, false)"
+                >
                   Decline
                 </button>
               </div>
@@ -302,11 +483,17 @@ function declineInvitation() {
 
     <section class="section trending-section" aria-labelledby="trending-title">
       <div class="section-heading heading-gap">
-        <h2 id="trending-title" class="section-title">Trending among friends</h2>
-        <a class="text-link" href="#">Explore</a>
+        <!-- Not "this week": the e2e test finds the week strip's heading by "This week" -->
+        <h2 id="trending-title" class="section-title">Trending now</h2>
+        <RouterLink class="text-link" to="/explore">Explore</RouterLink>
       </div>
-      <ul class="trending">
-        <li v-for="book in home.trending" :key="book.id">
+      <p v-if="trendingState === 'loading'" class="note" role="status">Loading…</p>
+      <p v-else-if="trendingState === 'error'" class="note" role="alert">
+        We could not load what is trending.
+      </p>
+      <p v-else-if="!trending.length" class="note">Nobody has started a book this week yet.</p>
+      <ul v-else class="trending">
+        <li v-for="book in trending" :key="book.id">
           <div class="trending-cover">
             <BookCoverImage :src="book.cover" :title="book.title" />
           </div>

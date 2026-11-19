@@ -25,6 +25,11 @@ export function fakeAuth(account: AuthAccount | null = TEST_ACCOUNT) {
   let current = account;
   const listeners: ((a: AuthAccount | null) => void)[] = [];
   const auth: AuthProvider = {
+    requestPasswordReset: async () => {},
+    recoveryStatus: async () => false,
+    hasRecoverySession: async () => false,
+    updateRecoveryPassword: async () => {},
+    finishRecovery: async () => {},
     signIn: async () => {
       current = TEST_ACCOUNT;
       return 'authenticated';

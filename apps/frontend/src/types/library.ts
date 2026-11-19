@@ -16,7 +16,8 @@ export interface LibraryBook {
   pages: number;
   /** Page the reader stopped at; 0 for a book that is not started. */
   currentPage: number;
-  genre: string;
+  /** Not served by the API yet; the genre filter only lists genres that books have. */
+  genre?: string;
   /** Short line under the progress bar, for example "Ready when you are". */
   summary: string;
   /** 1 to 5, only for finished books. */
@@ -62,24 +63,25 @@ export interface Library {
 
 export type LibrarySort = 'recent' | 'title' | 'author';
 
+/** Edition facts the catalogue knows; publisher, year and genres are not stored yet. */
 export interface BookEdition {
-  publishedYear: number;
-  publisher: string;
-  isbn: string;
-  genres: string[];
+  isbn: string | null;
 }
 
+/** The reader's book club whose current round reads this book. */
 export interface ReadingClubSummary {
+  groupId: string;
   name: string;
-  monthLabel: string;
+  roundLabel: string;
   memberCount: number;
   deadlineLabel: string;
 }
 
 export interface BookDetail {
+  /** The authors, e.g. "Terry Pratchett, Neil Gaiman"; empty when unknown. */
   tagline: string;
+  /** The catalogue description; empty when there is none. */
   synopsis: string;
-  readThroughLabel: string;
   edition: BookEdition;
   club?: ReadingClubSummary;
 }

@@ -67,8 +67,9 @@ describe('Reading status API Endpoints', () => {
         displayName: 'Other Reader',
       }),
     );
-    book = Book.create({ title: 'Circe', pageCount: 393 });
-    await bookRepository.save(book);
+    book = await bookRepository.saveWithAuthors(Book.create({ title: 'Circe', pageCount: 393 }), [
+      'Madeline Miller',
+    ]);
   });
 
   after(async () => {
@@ -200,9 +201,10 @@ describe('Reading status API Endpoints', () => {
         currentPage: number;
         startedOn: string | null;
         finishedOn: string | null;
-        book: { id: string; title: string; pageCount: number };
+        book: { id: string; title: string; pageCount: number; authors: string[] };
       }>;
       assert.strictEqual(library.length, 1);
+      assert.deepStrictEqual(library[0]?.book.authors, ['Madeline Miller']);
       assert.strictEqual(library[0]?.status, 'finished');
       assert.strictEqual(library[0]?.currentPage, 393);
       assert.strictEqual(typeof library[0]?.startedOn, 'string');

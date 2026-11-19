@@ -9,7 +9,6 @@ import MemberAvatar from '@/components/groups/MemberAvatar.vue';
 import ToggleSwitch from '@/components/groups/ToggleSwitch.vue';
 import PagePlate from '@/components/layout/PagePlate.vue';
 import BookCoverImage from '@/components/library/BookCoverImage.vue';
-import { mockCurrentMemberId } from '@/mocks/groups';
 import {
   getFriends,
   inviteToGroup,
@@ -21,17 +20,12 @@ import {
 import type { BookClubDetail, GroupMember, ProposalOption } from '@/types/groups';
 import { toIsoDate } from '@/utils/groups';
 
-// A club from the API (`live`) saves every action and asks the parent to reload
-// (`changed`); the mock club keeps its changes on this page.
-const props = withDefaults(
-  defineProps<{
-    club: BookClubDetail;
-    /** The viewing reader's member id; the mock page uses Eleanor. */
-    meId?: string;
-    live?: boolean;
-  }>(),
-  { meId: mockCurrentMemberId, live: false },
-);
+// The club comes from the API: every action is saved and asks the parent to reload (`changed`).
+const props = defineProps<{
+  club: BookClubDetail;
+  /** The signed-in reader's member id. */
+  meId: string;
+}>();
 const emit = defineEmits<{ changed: [] }>();
 
 const me = props.club.members.find((m) => m.id === props.meId) ?? {
@@ -47,13 +41,12 @@ const yourVote = ref<string | null>(props.club.voting?.yourVote ?? null);
 const voted = ref(props.club.voting?.voted ?? 0);
 const anonymous = props.club.voting?.anonymous ?? true;
 const changingVote = ref(false);
-const proposal = ref('');
 const pickedProposal = ref<PickedBook | null>(null);
 const proposalMessage = ref('');
 const actionError = ref('');
 const showAdmin = ref(false);
 
-// Admin panel (live clubs)
+// Admin panel
 const friends = ref<GroupMember[]>([]);
 const invited = ref<string[]>([]);
 const inviteMessage = ref('');
@@ -69,7 +62,7 @@ const invitable = computed(() =>
   friends.value.filter((f) => !props.club.members.some((m) => m.id === f.id)),
 );
 
-/** Runs a live action, shows its error, and asks the page to reload on success. */
+/** Runs an action, shows its error, and asks the page to reload on success. */
 async function act(work: () => Promise<unknown>, onDone?: () => void) {
   actionError.value = '';
   try {
@@ -82,43 +75,21 @@ async function act(work: () => Promise<unknown>, onDone?: () => void) {
 }
 
 async function castVote(option: ProposalOption) {
-  if (props.live) {
-    await act(() => voteForProposal(props.club.id, option.id));
-    return;
-  }
-  const previous = options.value.find((o) => o.id === yourVote.value);
-  if (previous) previous.votes -= 1;
-  else voted.value += 1;
-  option.votes += 1;
-  yourVote.value = option.id;
-  changingVote.value = false;
+  await act(() => voteForProposal(props.club.id, option.id));
 }
 
 async function submitProposal() {
-  if (props.live) {
-    const picked = pickedProposal.value;
-    if (!picked) return;
-    await act(
-      () => proposeBook(props.club.id, picked.id),
-      () => (pickedProposal.value = null),
-    );
-    return;
-  }
-  const title = proposal.value.trim();
-  if (!title) return;
-  options.value.push({
-    id: `proposal-${options.value.length}`,
-    title,
-    author: 'Proposed by you',
-    votes: 0,
-  });
-  proposal.value = '';
-  proposalMessage.value = `${title} was added to the vote.`;
+  const picked = pickedProposal.value;
+  if (!picked) return;
+  await act(
+    () => proposeBook(props.club.id, picked.id),
+    () => (pickedProposal.value = null),
+  );
 }
 
 async function toggleAdmin() {
   showAdmin.value = !showAdmin.value;
-  if (!showAdmin.value || !props.live || friends.value.length) return;
+  if (!showAdmin.value || friends.value.length) return;
   try {
     friends.value = await getFriends();
   } catch (e) {
@@ -176,7 +147,7 @@ async function startRound() {
           Start reading {{ book.title }}
         </RouterLink>
         <button
-          v-if="!live || club.isAdmin"
+          v-if="club.isAdmin"
           type="button"
           class="plate-link"
           :aria-expanded="showAdmin"
@@ -205,8 +176,7 @@ async function startRound() {
 
       <section v-if="showAdmin" id="admin-panel" class="admin" aria-labelledby="admin-title">
         <h2 id="admin-title" class="section-title heading-gap">Admin &amp; settings</h2>
-        <p v-if="!live" class="lede">Only {{ club.adminName }} can change this club.</p>
-        <div v-else class="admin-grid">
+        <div class="admin-grid">
           <div class="admin-block">
             <h3 class="block-title">Invite friends</h3>
             <ul v-if="invitable.length" class="invite-list">
@@ -282,7 +252,7 @@ async function startRound() {
             <GroupChat
               :messages="club.messages"
               :me="me"
-              :group-id="live ? club.id : undefined"
+              :group-id="club.id"
               :members="club.members"
               :is-admin="club.isAdmin"
               label="Message your club"
@@ -362,22 +332,11 @@ async function startRound() {
 
               <form v-if="votingOpen" class="proposal" @submit.prevent="submitProposal">
                 <BookPicker
-                  v-if="live"
                   v-model="pickedProposal"
                   input-id="proposal-title"
                   label="Propose a book"
                   placeholder="Search book title…"
                 />
-                <template v-else>
-                  <label for="proposal-title" class="sr-only">Propose a book</label>
-                  <input
-                    id="proposal-title"
-                    v-model="proposal"
-                    class="field-input"
-                    type="text"
-                    placeholder="Propose a book"
-                  />
-                </template>
                 <button type="submit" class="button-outline">Propose</button>
               </form>
               <p v-if="proposalMessage" class="lede" role="status">{{ proposalMessage }}</p>

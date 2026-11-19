@@ -55,6 +55,7 @@ import type { GroupMembership } from '../features/group-chat/group-membership-qu
 import { JoinAnnouncer } from '../features/group-chat/join-announcer.js';
 import { DenyAllAuthProvider, type AuthProvider } from '../features/auth/auth-provider.js';
 import { meRoutes } from '../features/user/me-routes.js';
+import { StreakService } from '../features/user/streak-service.js';
 import { UserService } from '../features/user/user-service.js';
 import { authenticate, requireUser } from '../middleware/auth.js';
 import { healthRoutes } from './health-routes.js';
@@ -128,6 +129,10 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
 
   router.use(healthRoutes(healthCheck));
 
+  const streakService = userRepository
+    ? new StreakService(userRepository, readingSessionRepository)
+    : undefined;
+
   const authenticated = authenticate(authProvider);
   const withUser = requireUser(userRepository);
   if (userRepository) {
@@ -136,6 +141,7 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
         new UserService(userRepository, friendRepository, readingSessionRepository),
         authenticated,
         withUser,
+        streakService,
       ),
     );
   }
@@ -149,7 +155,7 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
 
   const readingStatuses =
     bookRepository && readingStatusRepository
-      ? new ReadingStatusService(readingStatusRepository, bookRepository)
+      ? new ReadingStatusService(readingStatusRepository, bookRepository, streakService)
       : undefined;
 
   if (readingStatuses) {
@@ -186,6 +192,7 @@ export function apiRouter(deps: ApiDependencies = {}): Router {
           bookRepository,
           undefined,
           readingStatuses,
+          streakService,
         ),
       ),
     );

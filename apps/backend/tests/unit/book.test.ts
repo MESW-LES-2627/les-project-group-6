@@ -14,6 +14,15 @@ describe('Book', () => {
     assert.strictEqual(book.isCommunityAdded, false);
   });
 
+  test('create keeps author names trimmed, without blanks or repeats', () => {
+    const book = Book.create({
+      title: 'Good Omens',
+      authors: [' Terry Pratchett', 'Neil Gaiman', '', 'Terry Pratchett '],
+    });
+    assert.deepStrictEqual(book.authors, ['Terry Pratchett', 'Neil Gaiman']);
+    assert.deepStrictEqual(Book.create({ title: 'Anonymous' }).authors, []);
+  });
+
   test('create refuses an invalid book', () => {
     assert.throws(() => Book.create({ title: '' }), InvalidBookTitleError);
     assert.throws(() => Book.create({ title: 'Dune', isbn13: '123' }), InvalidIsbnError);

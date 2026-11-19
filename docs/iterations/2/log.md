@@ -9,7 +9,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Area | State |
 |---|---|
 | Releases | One GitHub Release per sprint (`iter-0` to `iter-4`), made by hand with `iteration-release.yml`; `vX.Y.Z` stay as tags only. `iter-0` and `iter-1` released |
-| Auth (F-AUTH-01) | Login is email and password only; username login removed from the form |
+| Auth (F-AUTH-01, F-AUTH-02) | Login/signup plus frontend password recovery on `feat/8-password-reset`; automated checks recorded below. Supabase dashboard configuration and live recovery email verification remain outstanding |
 | Friends (F-SOC-01) | Friend request API (send, list incoming, accept, decline, remove) behind the auth middleware (PR #114) |
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
 | Library folders (#125, F-LIB-03) | Folder create/rename/delete and book membership behind the auth middleware, reusing `lists`/`list_books` (migration 0011); frontend sidebar CRUD and a book-page picker. Branch `feat/125-organize-library` |
@@ -17,7 +17,13 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with search-as-you-type (fuzzy title, author and ISBN via `pg_trgm`, `GET /book?q=`) and Trending / Most read this week lists, `GET /explore`, migrations 0008–0009. Explore page merged in PR #141, fuzzy search in PR #142. Open Library fallback (#120) in PR #144; manual add of a missing book (#120, F-BOOK-02) from the search results |
 | E2E tests (#127) | 13 Playwright tests and the `e2e.yml` workflow written, not run yet (fixtures and secrets missing) |
 | Reviews (#122, F-LIB-02) | Rate 1–5 with an optional comment, edit and delete, only for In progress, Finished or DNF books. Book page shows my, friends' and public reviews and the public average; profile lists my reviews. Migration 0010. Draft PR #150 |
+| Mock data (branch `feat/mock-to-real`) | Home, library, book, session, groups and profile pages use only API data for every feature whose issue is closed; no fallback to mocks. Mocks remain only for features not built yet (streak, goals, XP level, notifications, challenges won, recap, friend activity). Books now carry `authors` |
+| Streak & minutes (#121, F-READ-04, F-PROF-01) | Streak stored as `current_streak`, `longest_streak`, `last_read_date` on `users` (migration 0013), counted from 5+ minute sessions, 5+ pages on a book in progress, or finishing a book in progress. Profile shows the live streak, 28-day calendar and total minutes. PR #160, review fixes applied |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
+
+## Next steps
+
+- Verify the [password recovery Supabase setup and live email flow](../../architecture/password-recovery.md) with an approved disposable non-production account.
 
 ## Log
 
@@ -63,7 +69,6 @@ A running record of what the team did and decided in iteration 2. The [release n
 - New `make test-history` ([`scripts/test-history.sh`](../../../scripts/test-history.sh)) prints, for each PR merged into `main`, how many source and test files it changed. It is the evidence that tests arrive with each change.
 - First run: backend 378 tests pass, 95.4% lines and 93.6% branches (with Postgres up and migrations applied); frontend 172 tests pass, 83.7% statements and 79.8% branches.
 - **Decision: CI fails below 95% line coverage** in both apps (`--test-coverage-lines=95` in the backend, `thresholds.lines` in [`vitest.config.ts`](../../../apps/frontend/vitest.config.ts)). Backend and Frontend CI now run `test:coverage` and upload the report as an artifact. *Rejected:* a ratchet that locks the current numbers. **The frontend (84.8%) fails the gate until tests are added**, which also blocks frontend prod deploys, since CD calls CI. Start with `services/api.ts` and `chat-socket.ts`.
-
 
 - Split #126 and #127 into Task sub-issues and assign owners. #126 now has a [spec](../../superpowers/specs/2026-11-11-explore-page-design.md) to split from. #125 is built on `feat/125-organize-library`; open its PR and merge.
 - In project 23, add the views that the API cannot create: **Current sprint** (board, filter `iteration:@current`, columns by Status) and group **Prioritized backlog** by Iteration.
@@ -141,7 +146,6 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 - **Decision: with no "added this week" activity, `GET /explore` returns `suggestions`**, up to 10 random books from the catalogue (`IBookRepository.random`, `ORDER BY random()`). The Trending tab shows them with a note, without the "#1" tag and with "A pick to start with" instead of a reader count. Real trending replaces them as soon as one book is added. *Rejected:* padding `trending` with random books, because it would show fake reader counts; and picking them in the frontend, because there is no endpoint that lists the catalogue.
 - "Most read this week" keeps its empty message.
-
 
 ### 2026-11-11: Book search design: fuzzy, search-as-you-type (F-EXP-01)
 
@@ -266,6 +270,34 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Tests.** 7 unit tests pass; the integration suite needs Postgres and runs in CI.
 - **Next:** frontend (tag a book on the book page, real tags in the library sidebar filter).
 
+### 2026-11-16: Streak calculation service and backend API triggers (#121, #31, #34, F-READ-04)
+
+- Branch `feat/streak-and-minutes`. Began User Story [#121](https://github.com/MESW-LES-2627/les-project-group-6/issues/121) ("Reading streak and total minutes on my profile").
+- **Backend streak calculation:**
+  - Added [`streak-service.ts`](../../../apps/backend/src/features/user/streak-service.ts) inside `features/user/` encapsulating all streak calculations and database persistence updates.
+  - Implemented the streak roadmap:
+    1. If `hitStreak` is true: streak does not need update.
+    2. If `hitStreak` is false: check if read the day before. If not, sets `hitStreak = true` and `currentStreak = 1`. If yes, sets `hitStreak = true` and increments `currentStreak`.
+    3. Checks `currentStreak` against `longestStreak` and updates `longestStreak = Math.max(longestStreak, currentStreak)`.
+  - Added live status calculation (`calculateStreakStatus`) and 28-day history calculation (`getStreakCalendar`) for `StreakCalendar.vue`.
+  - Added domain methods to [`User`](../../../apps/backend/src/features/user/user.ts): `recordReadingDay(readDayBefore)`, `resetDailyHitStreak()`, and `resetStreak()`.
+  - Extended [`IReadingSessionRepository`](../../../apps/backend/src/features/reading-session/reading-session-repository.ts) with `findCompletedSessions(userId, since)` and implemented in `DrizzleReadingSessionRepository` and `InMemoryReadingSessionRepository`.
+  - Added timezone-aware ISO date utilities in [`calendar.ts`](../../../apps/backend/src/utils/calendar.ts) (`isoDayInTimezone`, `previousIsoDay`, `nextIsoDay`).
+- **Reading triggers & API endpoints:**
+  - In [`reading-status-service.ts`](../../../apps/backend/src/features/reading-status/reading-status-service.ts), triggered `streakService.recordReadToday(userId)` when a book in `in-progress` status has its `currentPage` updated to a higher page.
+  - In [`reading-session-service.ts`](../../../apps/backend/src/features/reading-session/reading-session-service.ts), triggered `streakService.recordReadToday(session.userId)` upon finishing a reading session.
+  - In [`me-routes.ts`](../../../apps/backend/src/features/user/me-routes.ts), exposed dedicated `GET /me/streak` returning live streak metrics and 28-day calendar grid; enhanced `GET /me` and `PATCH /me` with live-evaluated streak fields (`currentStreak`, `longestStreak`, `hitStreak`, `streakType`).
+  - In [`user-service.ts`](../../../apps/backend/src/features/user/user-service.ts), included live `currentStreak` and `longestStreak` on visible user profiles fetched via `GET /users/:username`.
+  - Wired all components together in [`router.ts`](../../../apps/backend/src/api/router.ts) and documented endpoints in [`api_routes.md`](../../architecture/api_routes.md).
+- **Tests:** 23 new unit tests across [`streak-service.test.ts`](../../../apps/backend/tests/unit/streak-service.test.ts), [`reading-status-service.test.ts`](../../../apps/backend/tests/unit/reading-status-service.test.ts), [`reading-session-service.test.ts`](../../../apps/backend/tests/unit/reading-session-service.test.ts), [`user-service.test.ts`](../../../apps/backend/tests/unit/user-service.test.ts), and [`me-routes.test.ts`](../../../apps/backend/tests/unit/me-routes.test.ts). All 278 backend unit tests pass.
+
+### 2026-11-16: Frontend user profile and streaks integration (#121, #54, #60, F-READ-04)
+
+- **Frontend profile & streak integration:**
+  - In [`services/api.ts`](../../../apps/frontend/src/services/api.ts), added `getStreak()` calling `GET /me/streak` with Supabase JWT `Authorization: Bearer` token validation, and updated `ApiMe` with `streakType`, `currentStreak`, `longestStreak`, and `hitStreak`.
+  - In [`views/ProfileView.vue`](../../../apps/frontend/src/views/ProfileView.vue), replaced mock user and streak data with live calls to `getMe()` and `getStreak()`. The profile bookplate displays the authenticated user's name, `@username`, member since date, initials, and bio, while `StreakCalendar.vue` renders the user's 28-day history calendar and live streak numbers.
+  - In [`views/__tests__/ProfileView.spec.ts`](../../../apps/frontend/src/views/__tests__/ProfileView.spec.ts), added unit tests verifying that the logged-in user profile and live streak calendar are displayed from the API responses, and that graceful fallbacks remain intact when offline.
+- **Tests:** All 191 frontend unit tests pass (33 test files).
 
 ### 2026-11-16: Mutation testing and requirement traceability
 
@@ -285,6 +317,14 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Decision: the panel normalises names like the API (trim, single spaces, lower case)** and refuses a tag the book already has before calling the API. *Rejected:* a separate tag manager, since the backend creates tags on first use and deletes them when empty.
 - **Tests.** 13 new unit tests ([`BookReadingPanel.spec.ts`](../../../apps/frontend/src/components/library/__tests__/BookReadingPanel.spec.ts), `LibraryView.api.spec.ts`, `BookDetailView.spec.ts`); frontend 201 unit tests pass. New e2e [`library-tags.spec.ts`](../../../apps/frontend/e2e/library-tags.spec.ts): tag the fixture book, filter the library by it, remove it, and several tags on one book. They use unique names and remove the tags in teardown.
 
+### 2026-11-17: Frontend password recovery (#8, F-AUTH-02)
+
+- Added `/forgot-password` and `/reset-password`, login navigation, accessible validated forms, account-neutral confirmation/errors and session-bound recovery operations in the existing [auth adapter](../../../apps/frontend/src/services/auth.ts). Recovery routes precede profile redirects; other private routes retain protection. **Decision:** use the installed SDK's implicit flow and recovery event with tab-local context; rejected treating an ordinary stored session as recovery proof or creating a second Supabase client. Cleanup signs out only the matching recovery session locally.
+- Added adapter/component/router tests and a [frontend-only desktop/mobile Playwright suite](../../../apps/frontend/e2e/recovery.spec.ts). The [recovery guide](../../architecture/password-recovery.md) documents exact redirect destinations, the required 3600-second email-link expiry, delivery prerequisites and manual verification. Created the missing [docs index](../../README.md) and corrected the root repository layout to the actual `iterations/` paths.
+- Full issue acceptance criteria were inaccessible; implementation follows the supplied task and repository F-AUTH-02 rules. Issue status was not changed. No commits, pushes, PRs, backend/database changes or hosted setting changes were made. Live email/link expiry verification remains outstanding.
+
+- **Validation:** 234 Vitest tests pass; 20 mocked desktop/mobile Playwright scenarios pass, including recovery refresh, reused/malformed links, expired recovery ownership, existing login/signup/logout, remember-me and profile redirects. Production build/typecheck and scoped ESLint/Prettier pass. Full lint has two existing `@ts-nocheck` errors, formatting fails only on unchanged `src/services/api.ts`, and the global coverage gate fails at 86% lines versus 95%. Exact commands and live gaps are in the [check record](../../architecture/password-recovery.md#automated-check-record--2026-11-17). No database-clearing tests were run.
+
 ### 2026-11-17: Frontend coverage raised to pass the 95% gate
 
 - Test PR [#161](https://github.com/MESW-LES-2627/les-project-group-6/pull/161) ran the new "Test with coverage" step. Backend passed at 95.56% of lines; frontend failed at 85.26%.
@@ -303,10 +343,43 @@ A running record of what the team did and decided in iteration 2. The [release n
 
 - [README.md](../../../README.md) now has the project description, links to each iteration's `CLAIM.md`, an architecture diagram (Vue frontend, Express backend, PostgreSQL, Supabase Auth, Open Library API), the repository tree with comments inside it, and a table of every `make` command. The long per-folder explanations were dropped; [docs/architecture/](../../architecture/) and each app's README hold the details.
 
+### 2026-11-17: Mock data replaced with API data (`feat/mock-to-real`)
+
+- **Audit first.** Compared every `src/mocks/` import with the issues: mocks were still used by pages whose issues are closed (home #23 #44 #47 #133, groups #57 #110 #107, session #14 #46, library #12 #125, book #24, profile #77). Open PRs [#154](https://github.com/MESW-LES-2627/les-project-group-6/pull/154) (home) and [#160](https://github.com/MESW-LES-2627/les-project-group-6/pull/160) (profile streak) touch the same files and will conflict.
+- **Decision: no fallback to mock data.** A failed request now shows an error or an empty state, so a cached prototype value can never be shown instead of (or on top of) the reader's real data. Deleted `mocks/library.ts`, `mocks/session.ts`, `mocks/groups.ts` and the prototype covers in `assets/covers/`; `mocks/home.ts` and `mocks/profile.ts` keep only the sections whose features are not built (streak #121, goals, XP level, challenges won #61, recap, notifications, friend activity and friends reading now, which are Extras). *Rejected:* keeping mocks behind an offline switch, since it is exactly the fallback that could overwrite real data.
+- **Backend.** Book responses carry `authors` (they were stored in `book_authors` but never read): on the `Book` entity, loaded by the repository with one query per batch through the shared [`book-authors-query.ts`](../../../apps/backend/src/features/book/book-authors-query.ts), and in `GET /me/library`, book clubs and poll proposals. `GET /me/friend-requests` adds `requester: { displayName, username }` so Home can name who is asking. No migration.
+- **Frontend.** [`api.ts`](../../../apps/frontend/src/services/api.ts) drops the hard-coded `KNOWN_AUTHORS`/`KNOWN_GENRES` maps, the fake "★★★★★" summary and the missing `/placeholder-cover.png`. [`HomeView.vue`](../../../apps/frontend/src/views/HomeView.vue) loads the bedside book (running session first), active challenges with rank, active clubs, friend requests and invites, and trending books, each section on its own. [`ProfileView.vue`](../../../apps/frontend/src/views/ProfileView.vue) loads the reader, books in progress, shelf, recent books and folders, with real cover images. The session page lists the reader's real eligible groups and only the rules the server enforces; the book page shows authors, description, ISBN and the club reading it (publisher, year and genres are not stored, so they are no longer invented). Group pages lost the `october-sprint`/`classics` ids, the mock friends and the fixed form defaults. New helpers [`utils/home.ts`](../../../apps/frontend/src/utils/home.ts) and [`utils/profile.ts`](../../../apps/frontend/src/utils/profile.ts).
+- **Tests.** Backend 395 pass (new: authors on the entity, API and library; requester on friend requests). Frontend 486 pass, line coverage 98.9%; tests that relied on mocks now mock the API, with shared fixtures in `src/__tests__/`. Two e2e tests updated (time-of-day greeting, empty group name). The e2e suite was run locally on Node 24 against the seeded test database through the `/api` proxy, with the seed accounts as fixtures: 14 of 15 pass. The run caught the Home trending heading, renamed from "Trending this week" to "Trending now" because the home test finds the week strip by "This week". `complete-profile` was not run: seed logins carry sign-up metadata, so the app creates their profile on first login.
+
+### 2026-11-17: Seed with real Supabase logins (`pnpm db:seed`)
+
+- **Why.** The old seed inserted `users` rows with made-up ids, so nobody could log in as them, and creating test users by hand meant confirming emails.
+- **Decision: create the logins through the Supabase Auth Admin API, already confirmed.** [`supabase-admin.ts`](../../../apps/backend/src/database/seed/supabase-admin.ts) calls the Admin REST endpoints with the service role key from `apps/backend/.env` (new `SUPABASE_SERVICE_ROLE_KEY`); accounts show up in Authentication > Users and no email is sent. *Rejected:* inserting bcrypt hashes into `auth.users` with SQL, because that is Supabase's internal schema and needs a direct connection to it; and adding `@supabase/supabase-js` to the backend for three HTTP calls.
+- **Data.** [`seed-data.ts`](../../../apps/backend/src/database/seed/seed-data.ts) describes eight readers (each with a testing role), 16 books with authors, libraries in every status, sessions (a 12-day streak, a running session), friendships and pending requests, active/completed/upcoming challenges, two book clubs (completed and active rounds, an open vote), chat, an invite, reviews, folders and tags, with dates relative to the run day. [`populate.ts`](../../../apps/backend/src/database/seed/populate.ts) writes it in one transaction with stable ids.
+- **Books from Open Library.** The 16 books' titles, authors, page counts, covers and descriptions were looked up once by ISBN ([search](https://openlibrary.org/dev/docs/api/search), [books](https://openlibrary.org/dev/docs/api/books) and work records) and written into `seed-data.ts`, so the seed does not need Open Library to run. Covers use cover-id URLs (`/b/id/<id>-L.jpg`), like [`open-library-catalog.ts`](../../../apps/backend/src/features/book/open-library-catalog.ts), because [ISBN and OLID cover URLs are rate limited](https://openlibrary.org/dev/docs/api/covers); every cover was checked to exist. Finished books sit on their last page, and the six books of the first seed get their cover and description refreshed but keep their page count, so no real reader ends up past the last page.
+- **Credentials.** Emails `<username>@example.com` and generated passwords go to `apps/backend/seed-accounts.local.json`, git-ignored and readable only by the owner. Re-running reuses the logins and passwords and rebuilds only the seed accounts' data. The seed refuses a non-local `DATABASE_URL` unless `SEED_ALLOW_REMOTE_DATABASE=true`.
+- **Verified** by running `populate` twice against the local test database and reading every page's endpoint through the API; backend tests still pass (395). The Supabase step was not run: the service role key is not in the local `.env` yet. Documented in the [backend README](../../../apps/backend/README.md#seed-data).
+
+### 2026-11-18: Streak rework after the PR #160 review (#121, F-READ-04)
+
+- Branch `feat/streak-and-minutes`, review on [PR #160](https://github.com/MESW-LES-2627/les-project-group-6/pull/160). The review found two bugs that kept the streak at 1: `hitStreak` was set but never reset, and finishing a session saved it before the streak check, which then saw today as already counted.
+- **Decision: store `last_read_date` instead of the `hit_streak` flag.** On a counted day: same day → no change; yesterday → `current_streak + 1`; otherwise → 1; then `longest_streak = max(...)`. The live streak is `current_streak` while `last_read_date` is today or yesterday, else 0. No midnight reset is needed, and saving the session first no longer matters. *Rejected:* resetting `hit_streak` every day, because it needs a scheduled job. Recorded in [infra.md](../../architecture/infra.md).
+- **Decision: what counts as reading.** A session of 5+ counted minutes, moving a book that is in progress forward by 5+ pages, or moving it from in progress to finished. The last two let readers who read away from the app keep their streak. Starting a book at a later page, abandoning it, or marking a shelved book finished does not count. Rules in [`streak-rules.ts`](../../../apps/backend/src/features/user/streak-rules.ts); [requirements](../../requirements/requirements.md) and [priorities](../../requirements/features_priority.md) updated.
+- **Database.** Migration [`0013_streak_last_read_date.sql`](../../../apps/backend/src/database/migrations/0013_streak_last_read_date.sql) adds `last_read_date`, backfills it from the last 5+ minute session in the reader's timezone, zeroes streaks with no reading day behind them, and drops `hit_streak`. [`schema.sql`](../../../apps/backend/src/database/schema.sql) updated. The [seed](../../../apps/backend/src/database/seed.ts) gives `demo_reader` a 7-day run two weeks ago and a 3-day run ending yesterday, plus a 3-minute session today that does not count.
+- **API.** `hitStreak` is replaced by `readToday`; `GET /me/streak` also returns `lastReadDate`. The calendar marks days with a 5+ minute session and every day of the current run. [`api_routes.md`](../../architecture/api_routes.md) updated.
+- **Frontend.** [`ProfileView.vue`](../../../apps/frontend/src/views/ProfileView.vue) no longer falls back to the mock user, streak or reading time when the API fails: it shows an empty state and an error message.
+- **Tests.** Multi-day regression test (Mon–Wed → 3, skip two days, Sat → 1), `finish` updating the streak after the session is saved, and the 5-minute and 5-page limits, in [`streak-service.test.ts`](../../../apps/backend/tests/unit/streak-service.test.ts) and the service tests. Test files tagged `@req F-READ-04`. New e2e [`streak.spec.ts`](../../../apps/frontend/e2e/streak.spec.ts) (log 5 pages → the profile streak counts today), not run yet. Backend 432 tests and frontend 205 unit tests pass.
+
+### 2026-11-18: Merged `main` (streak rework) into `feat/mock-to-real`
+
+- Merged `main` after [PR #160](https://github.com/MESW-LES-2627/les-project-group-6/pull/160) so [PR #165](https://github.com/MESW-LES-2627/les-project-group-6/pull/165) can merge. Conflicts were in the seed, the profile page, its tests and these logs.
+- **Seed.** Kept the branch's Supabase seed ([`seed.ts`](../../../apps/backend/src/database/seed.ts)); [`populate.ts`](../../../apps/backend/src/database/seed/populate.ts) now writes `last_read_date` (the reader's latest session day when they have a streak) instead of the removed `hit_streak`.
+- **Profile.** [`ProfileView.vue`](../../../apps/frontend/src/views/ProfileView.vue) keeps the branch's library, folders and reviews from the API and main's live streak from `GET /me/streak`, with an error instead of mock data. The mock streak and imported hours were removed from [`mocks/profile.ts`](../../../apps/frontend/src/mocks/profile.ts).
+
 ### 2026-11-19: Authors can no longer be duplicated by concurrent imports (#143)
 
 - Branch `fix/unique-author-names`. Two Open Library imports of different books by the same author could both miss the author lookup and both insert it, because `authors.name` was not unique.
-- **Database.** Migration [`0013_unique_author_names.sql`](../../../apps/backend/src/database/migrations/0013_unique_author_names.sql) merges existing duplicates (book links and the `target_author_id` of challenges, leaderboards and reading goals move to the kept row), then adds the unique index `authors_name_normalized_key` on `f_unaccent(lower(name))`. [`schema.ts`](../../../apps/backend/src/database/schema.ts) and `schema.sql` match.
+- **Database.** Migration [`0014_unique_author_names.sql`](../../../apps/backend/src/database/migrations/0014_unique_author_names.sql) merges existing duplicates (book links and the `target_author_id` of challenges, leaderboards and reading goals move to the kept row), then adds the unique index `authors_name_normalized_key` on `f_unaccent(lower(name))`. [`schema.ts`](../../../apps/backend/src/database/schema.ts) and `schema.sql` match.
 - **Backend.** [`saveWithAuthors`](../../../apps/backend/src/features/book/book-repository.ts) now inserts with `ON CONFLICT DO NOTHING` and re-selects by the folded name on conflict.
 - **Decision: the name is unique ignoring case and accents**, the same normalisation that search uses, so "José Saramago" and "jose saramago" are one author. *Rejected:* exact-name uniqueness, which would still let search show one author as two.
 - **Tests.** Two new integration tests in [`book-repository.test.ts`](../../../apps/backend/tests/integration/book-repository.test.ts) (concurrent imports, case/accent variants); one search test no longer links two names that are now the same author. Backend: 393 tests pass.

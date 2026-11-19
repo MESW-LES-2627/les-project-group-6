@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { currentUserId } from '../../middleware/auth.js';
-import { toFriendshipDto } from './friend-dto.js';
+import { toFriendshipDto, toIncomingRequestDto } from './friend-dto.js';
 import type { FriendService } from './friend-service.js';
 
 // Mounted behind `authenticate` + `requireUser`: the acting reader always comes from the token.
@@ -14,8 +14,8 @@ export function friendRoutes(friends: FriendService): Router {
   });
 
   router.get('/me/friend-requests', async (_req, res) => {
-    const pending = await friends.pendingRequestsFor(currentUserId(res));
-    res.status(200).json(pending.map(toFriendshipDto));
+    const pending = await friends.incomingRequestsFor(currentUserId(res));
+    res.status(200).json(pending.map(toIncomingRequestDto));
   });
 
   router.post('/friend-requests/:id/accept', async (req, res) => {

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
 
 import ProfileBookplate from '@/components/profile/ProfileBookplate.vue';
 import ChallengesSummary from '@/components/profile/ChallengesSummary.vue';
@@ -13,75 +12,147 @@ import ReadingTime from '@/components/profile/ReadingTime.vue';
 import BookShelf from '@/components/profile/BookShelf.vue';
 import ReviewList from '@/components/profile/ReviewList.vue';
 import StreakCalendar from '@/components/profile/StreakCalendar.vue';
-import { mockNewUserProfile, mockProfile } from '@/mocks/profile';
+import { mockProfile } from '@/mocks/profile';
 import {
+  getLibraryFolders,
   getMe,
   getReadingStats,
+  getStreak,
+  getUserLibrary,
+  getUserProfile,
   getUserReviews,
+  type ApiLibraryItem,
   type ApiProfileReview,
   type ApiReadingStats,
+  type ApiStreak,
 } from '@/services/api';
+import type { FolderSummary } from '@/types/library';
+import type { ProfileUser, ReadingTimeStats, Streak } from '@/types/profile';
+import {
+  currentlyReadingFrom,
+  foldersFrom,
+  recentlyAddedFrom,
+  shelfFrom,
+  toProfileUser,
+} from '@/utils/profile';
 
-// Mock data until the profile API exists. `/profile?state=new` shows the empty states.
-// Reading time already comes from the server-timed sessions.
-const route = useRoute();
+// The reader, their books, shelf, folders, streak, reading time and reviews come from the
+// API. The user, streak and reading time never fall back to mock data: a failed request
+// shows an empty state and an error. The chapter, challenges won and monthly recap are not
+// built yet and still come from src/mocks/profile.ts.
+const user = ref<ProfileUser | null>(null);
+const library = ref<ApiLibraryItem[]>([]);
+const folderSummaries = ref<FolderSummary[]>([]);
+const streakData = ref<ApiStreak | null>(null);
 const readingStats = ref<ApiReadingStats | null>(null);
-
-const profile = computed(() => {
-  const base = route.query.state === 'new' ? mockNewUserProfile : mockProfile;
-  if (!readingStats.value) return base;
-  const { totalMinutes, sessionsCount } = readingStats.value;
-  return {
-    ...base,
-    readingTime: { ...base.readingTime, countedMinutes: totalMinutes, sessionsCount },
-  };
-});
-
 // F-LIB-02: my rated books. `null` (hidden) when the API cannot be reached or refuses.
 const reviews = ref<ApiProfileReview[] | null>(null);
+const loadFailed = ref<{ user: boolean; streak: boolean; readingTime: boolean }>({
+  user: false,
+  streak: false,
+  readingTime: false,
+});
 
-async function loadReviews() {
+const EMPTY_STREAK: Streak = { days: [], current: 0, longest: 0, freezesLeft: 0 };
+const EMPTY_READING_TIME: ReadingTimeStats = {
+  countedMinutes: 0,
+  sessionsCount: 0,
+  importedHours: 0,
+};
+
+const currentlyReading = computed(() => currentlyReadingFrom(library.value));
+const shelf = computed(() => shelfFrom(library.value));
+const recentlyAdded = computed(() => recentlyAddedFrom(library.value));
+const folders = computed(() => foldersFrom(folderSummaries.value, library.value));
+
+const streak = computed<Streak>(() => {
+  if (!streakData.value) return EMPTY_STREAK;
+  const { days, current, longest, freezesLeft } = streakData.value;
+  return { days, current, longest, freezesLeft };
+});
+
+const readingTime = computed<ReadingTimeStats>(() => {
+  if (!readingStats.value) return EMPTY_READING_TIME;
+  const { totalMinutes, sessionsCount } = readingStats.value;
+  return { ...EMPTY_READING_TIME, countedMinutes: totalMinutes, sessionsCount };
+});
+
+const loadError = computed(() => {
+  const failed = loadFailed.value;
+  if (failed.user) return 'We could not load your profile. Refresh the page to try again.';
+  if (failed.streak || failed.readingTime) {
+    return 'Some of your reading stats could not be loaded. Refresh the page to try again.';
+  }
+  return null;
+});
+
+async function loadUser() {
   try {
     const me = await getMe();
-    reviews.value = await getUserReviews(me.id);
+    const [profile, mine] = await Promise.all([
+      getUserProfile(me.username).catch(() => null),
+      getUserReviews(me.id).catch(() => null),
+    ]);
+    user.value = toProfileUser(me, profile?.bio ?? null);
+    reviews.value = mine;
   } catch {
-    reviews.value = null;
+    loadFailed.value.user = true;
   }
 }
 
-onMounted(async () => {
-  void loadReviews();
+async function loadStreak() {
+  try {
+    streakData.value = await getStreak();
+  } catch {
+    loadFailed.value.streak = true;
+  }
+}
+
+async function loadReadingTime() {
   try {
     readingStats.value = await getReadingStats();
   } catch {
-    // Keep the mock reading time when the API is unreachable
+    loadFailed.value.readingTime = true;
   }
-});
+}
+
+// The library and folders keep their empty states when their requests fail.
+async function loadLibrary() {
+  const [items, folderList] = await Promise.all([
+    getUserLibrary().catch(() => []),
+    getLibraryFolders().catch(() => []),
+  ]);
+  library.value = items;
+  folderSummaries.value = folderList;
+}
+
+onMounted(() => Promise.all([loadUser(), loadStreak(), loadReadingTime(), loadLibrary()]));
 </script>
 
 <template>
   <main class="profile">
-    <ProfileBookplate :user="profile.user" />
+    <ProfileBookplate v-if="user" :user="user" />
 
     <div class="page-column">
-      <CurrentlyReading :items="profile.currentlyReading" />
+      <p v-if="loadError" class="load-error" role="alert">{{ loadError }}</p>
+      <CurrentlyReading :items="currentlyReading" />
 
       <div class="columns">
         <div class="column">
-          <BookShelf class="divided" :spines="profile.shelf" />
-          <CoverGrid :books="profile.recentlyAdded" />
+          <BookShelf class="divided" :spines="shelf" />
+          <CoverGrid :books="recentlyAdded" />
         </div>
         <div class="column">
-          <ChapterLevel class="divided" :chapter="profile.chapter" />
-          <StreakCalendar class="divided" :streak="profile.streak" />
-          <ReadingTime class="divided" :stats="profile.readingTime" />
-          <ChallengesSummary :won="profile.challengesWon" />
+          <ChapterLevel class="divided" :chapter="mockProfile.chapter" />
+          <StreakCalendar class="divided" :streak="streak" />
+          <ReadingTime class="divided" :stats="readingTime" />
+          <ChallengesSummary :won="mockProfile.challengesWon" />
         </div>
       </div>
 
-      <FolderList class="top-rule" :folders="profile.folders" />
+      <FolderList class="top-rule" :folders="folders" />
       <ReviewList v-if="reviews" class="top-rule" :reviews="reviews" />
-      <MonthRecap class="top-rule" :recap="profile.recap" />
+      <MonthRecap class="top-rule" :recap="mockProfile.recap" />
     </div>
   </main>
 </template>
@@ -90,6 +161,14 @@ onMounted(async () => {
 /* The bookplate runs edge to edge, so drop the default main padding */
 .profile {
   padding: 0;
+}
+
+.load-error {
+  margin: var(--space-4) 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-control);
+  color: var(--color-error);
 }
 
 /* The profile name and section titles use Inter; book titles (h3) keep Lora */

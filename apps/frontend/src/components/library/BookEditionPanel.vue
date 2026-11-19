@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BookCoverImage from '@/components/library/BookCoverImage.vue';
 import type { BookEdition, LibraryBook } from '@/types/library';
 
 defineProps<{
@@ -9,27 +10,22 @@ defineProps<{
 
 <template>
   <aside class="book-column" aria-label="Book and edition">
-    <img class="cover" :src="book.detailCover ?? book.cover" :alt="`Cover of ${book.title}`" />
+    <div class="cover">
+      <BookCoverImage :src="book.detailCover ?? book.cover" :title="book.title" />
+    </div>
 
     <section class="edition-panel">
       <h2 class="edition-title">Your edition</h2>
       <dl class="edition-list">
         <div>
-          <dt class="sr-only">Published</dt>
-          <dd>Published {{ edition.publishedYear }}</dd>
+          <dt class="sr-only">Pages</dt>
+          <dd>{{ book.pages }} pages</dd>
         </div>
-        <div>
-          <dt class="sr-only">Pages and publisher</dt>
-          <dd>{{ book.pages }} pages - {{ edition.publisher }}</dd>
-        </div>
-        <div>
+        <div v-if="edition.isbn">
           <dt class="sr-only">ISBN</dt>
           <dd>ISBN {{ edition.isbn }}</dd>
         </div>
       </dl>
-      <ul class="genres" aria-label="Genres">
-        <li v-for="genre in edition.genres" :key="genre">{{ genre }}</li>
-      </ul>
     </section>
 
     <button type="button" class="correction">Suggest a correction</button>
@@ -46,9 +42,6 @@ defineProps<{
 .cover {
   display: block;
   width: min(214px, 100%);
-  aspect-ratio: 238 / 348;
-  border-radius: var(--radius-control);
-  object-fit: cover;
 }
 
 .edition-panel {
@@ -80,23 +73,6 @@ defineProps<{
 
 .edition-list dd {
   margin: 0;
-}
-
-.genres {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 16px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.genres li {
-  padding: 3px 9px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-muted);
-  font-size: var(--font-size-2xs);
-  line-height: 1.2;
 }
 
 .correction {
