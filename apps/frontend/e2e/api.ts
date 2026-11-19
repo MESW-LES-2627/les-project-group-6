@@ -35,3 +35,12 @@ export async function apiDelete(page: Page, path: string): Promise<void> {
     response.status(),
   );
 }
+
+/** Calls PUT on the API as the signed-in user (teardown only, to restore a fixture). */
+export async function apiPut(page: Page, path: string, body: unknown): Promise<void> {
+  const response = await page.request.put(`/api${path}`, {
+    headers: { Authorization: `Bearer ${await accessToken(page)}` },
+    data: body,
+  });
+  expect(response.ok(), `PUT ${path} returned ${response.status()}`).toBe(true);
+}

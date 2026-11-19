@@ -1,4 +1,4 @@
-import { and, count, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gte, isNotNull, isNull, sql } from 'drizzle-orm';
 import type { NodePgQueryResultHKT } from 'drizzle-orm/node-postgres';
 import type { PgDatabase } from 'drizzle-orm/pg-core';
 import { readingSessions } from '../../database/schema.js';
@@ -14,6 +14,10 @@ export interface ReadingStats {
 export interface IReadingSessionRepository {
   findById(id: ReadingSessionId): Promise<ReadingSession | null>;
   findActiveByUser(userId: UserId): Promise<ReadingSession | null>;
+  findCompletedSessions(
+    userId: UserId,
+    since?: Date,
+  ): Promise<{ endedAt: Date; countedMinutes: number }[]>;
   statsForUser(userId: UserId): Promise<ReadingStats>;
   save(session: ReadingSession): Promise<void>;
   delete(id: ReadingSessionId): Promise<void>;
@@ -75,6 +79,32 @@ export class DrizzleReadingSessionRepository implements IReadingSessionRepositor
       .limit(1);
     const row = rows[0];
     return row ? toDomain(row) : null;
+  }
+
+  async findCompletedSessions(
+    userId: UserId,
+    since?: Date,
+  ): Promise<{ endedAt: Date; countedMinutes: number }[]> {
+    const conditions = [
+      eq(readingSessions.userId, userId.value),
+      isNotNull(readingSessions.endedAt),
+    ];
+    if (since) {
+      conditions.push(gte(readingSessions.endedAt, since.toISOString()));
+    }
+    const rows = await this.db
+      .select({
+        endedAt: readingSessions.endedAt,
+        countedMinutes: readingSessions.countedMinutes,
+      })
+      .from(readingSessions)
+      .where(and(...conditions))
+      .orderBy(desc(readingSessions.endedAt));
+
+    return rows.map((r) => ({
+      endedAt: new Date(r.endedAt!),
+      countedMinutes: r.countedMinutes,
+    }));
   }
 
   async statsForUser(userId: UserId): Promise<ReadingStats> {

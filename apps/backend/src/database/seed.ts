@@ -1,4 +1,6 @@
 import process from 'node:process';
+import { eq, sql } from 'drizzle-orm';
+import { DAY_MS, isoDayInTimezone } from '../utils/calendar.js';
 import { createPool, createDb } from './pool.js';
 import {
   users,
@@ -10,6 +12,7 @@ import {
   bookClubs,
   bookClubRounds,
   groupInvites,
+  readingSessions,
 } from './schema.js';
 
 const pool = createPool();
@@ -104,6 +107,52 @@ async function seed(): Promise<void> {
   }));
 
   await db.insert(readingStatus).values(statuses).onConflictDoNothing();
+
+  // 3b. Reading streak (F-READ-04). Days are relative to the seed run, so the profile
+  // always shows a live streak: a 7-day run two weeks ago (longest) and a 3-day run
+  // ending yesterday (current, still alive until the end of today). Only sessions of
+  // 5+ minutes count, so the 3-minute session today does not extend the streak.
+  const timezone = 'Europe/Lisbon';
+  const daysAgo = (n: number) => new Date(Date.now() - n * DAY_MS);
+  const streakSessions = [
+    ...[16, 15, 14, 13, 12, 11, 10].map((n) => ({ n, minutes: 25 })),
+    ...[3, 2, 1].map((n) => ({ n, minutes: 20 })),
+    { n: 0, minutes: 3 },
+  ];
+  await db
+    .insert(readingSessions)
+    .values(
+      streakSessions.map(({ n, minutes }, index) => {
+        const endedAt = daysAgo(n);
+        return {
+          id: `b0eebc99-9c0b-4ef8-bb6d-6bb9bd3805${String(index).padStart(2, '0')}`,
+          userId: demoUserId,
+          bookId: seedBooks[1]!.id,
+          startedAt: new Date(endedAt.getTime() - minutes * 60_000).toISOString(),
+          endedAt: endedAt.toISOString(),
+          durationSeconds: minutes * 60,
+          countedMinutes: minutes,
+        };
+      }),
+    )
+    // Re-seeding moves the sessions to the new dates, so they match the streak below.
+    .onConflictDoUpdate({
+      target: readingSessions.id,
+      set: {
+        startedAt: sql`excluded.started_at`,
+        endedAt: sql`excluded.ended_at`,
+        durationSeconds: sql`excluded.duration_seconds`,
+        countedMinutes: sql`excluded.counted_minutes`,
+      },
+    });
+  await db
+    .update(users)
+    .set({
+      currentStreak: 3,
+      longestStreak: 7,
+      lastReadDate: isoDayInTimezone(daysAgo(1), timezone),
+    })
+    .where(eq(users.id, demoUserId));
 
   // 4. Friends of the demo user, so groups can invite them
   const friends = [

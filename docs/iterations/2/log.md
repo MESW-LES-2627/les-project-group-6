@@ -17,6 +17,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Explore (#126, F-EXP-04, F-EXP-01) | `/explore` page with search-as-you-type (fuzzy title, author and ISBN via `pg_trgm`, `GET /book?q=`) and Trending / Most read this week lists, `GET /explore`, migrations 0008–0009. Explore page merged in PR #141, fuzzy search in PR #142. Open Library fallback (#120) in PR #144; manual add of a missing book (#120, F-BOOK-02) from the search results |
 | E2E tests (#127) | 13 Playwright tests and the `e2e.yml` workflow written, not run yet (fixtures and secrets missing) |
 | Reviews (#122, F-LIB-02) | Rate 1–5 with an optional comment, edit and delete, only for In progress, Finished or DNF books. Book page shows my, friends' and public reviews and the public average; profile lists my reviews. Migration 0010. Draft PR #150 |
+| Streak & minutes (#121, F-READ-04, F-PROF-01) | Streak stored as `current_streak`, `longest_streak`, `last_read_date` on `users` (migration 0013), counted from 5+ minute sessions, 5+ pages on a book in progress, or finishing a book in progress. Profile shows the live streak, 28-day calendar and total minutes. PR #160, review fixes applied |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
 
 ## Next steps
@@ -270,6 +271,34 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Tests.** 7 unit tests pass; the integration suite needs Postgres and runs in CI.
 - **Next:** frontend (tag a book on the book page, real tags in the library sidebar filter).
 
+### 2026-11-16: Streak calculation service and backend API triggers (#121, #31, #34, F-READ-04)
+
+- Branch `feat/streak-and-minutes`. Began User Story [#121](https://github.com/MESW-LES-2627/les-project-group-6/issues/121) ("Reading streak and total minutes on my profile").
+- **Backend streak calculation:**
+  - Added [`streak-service.ts`](../../../apps/backend/src/features/user/streak-service.ts) inside `features/user/` encapsulating all streak calculations and database persistence updates.
+  - Implemented the streak roadmap:
+    1. If `hitStreak` is true: streak does not need update.
+    2. If `hitStreak` is false: check if read the day before. If not, sets `hitStreak = true` and `currentStreak = 1`. If yes, sets `hitStreak = true` and increments `currentStreak`.
+    3. Checks `currentStreak` against `longestStreak` and updates `longestStreak = Math.max(longestStreak, currentStreak)`.
+  - Added live status calculation (`calculateStreakStatus`) and 28-day history calculation (`getStreakCalendar`) for `StreakCalendar.vue`.
+  - Added domain methods to [`User`](../../../apps/backend/src/features/user/user.ts): `recordReadingDay(readDayBefore)`, `resetDailyHitStreak()`, and `resetStreak()`.
+  - Extended [`IReadingSessionRepository`](../../../apps/backend/src/features/reading-session/reading-session-repository.ts) with `findCompletedSessions(userId, since)` and implemented in `DrizzleReadingSessionRepository` and `InMemoryReadingSessionRepository`.
+  - Added timezone-aware ISO date utilities in [`calendar.ts`](../../../apps/backend/src/utils/calendar.ts) (`isoDayInTimezone`, `previousIsoDay`, `nextIsoDay`).
+- **Reading triggers & API endpoints:**
+  - In [`reading-status-service.ts`](../../../apps/backend/src/features/reading-status/reading-status-service.ts), triggered `streakService.recordReadToday(userId)` when a book in `in-progress` status has its `currentPage` updated to a higher page.
+  - In [`reading-session-service.ts`](../../../apps/backend/src/features/reading-session/reading-session-service.ts), triggered `streakService.recordReadToday(session.userId)` upon finishing a reading session.
+  - In [`me-routes.ts`](../../../apps/backend/src/features/user/me-routes.ts), exposed dedicated `GET /me/streak` returning live streak metrics and 28-day calendar grid; enhanced `GET /me` and `PATCH /me` with live-evaluated streak fields (`currentStreak`, `longestStreak`, `hitStreak`, `streakType`).
+  - In [`user-service.ts`](../../../apps/backend/src/features/user/user-service.ts), included live `currentStreak` and `longestStreak` on visible user profiles fetched via `GET /users/:username`.
+  - Wired all components together in [`router.ts`](../../../apps/backend/src/api/router.ts) and documented endpoints in [`api_routes.md`](../../architecture/api_routes.md).
+- **Tests:** 23 new unit tests across [`streak-service.test.ts`](../../../apps/backend/tests/unit/streak-service.test.ts), [`reading-status-service.test.ts`](../../../apps/backend/tests/unit/reading-status-service.test.ts), [`reading-session-service.test.ts`](../../../apps/backend/tests/unit/reading-session-service.test.ts), [`user-service.test.ts`](../../../apps/backend/tests/unit/user-service.test.ts), and [`me-routes.test.ts`](../../../apps/backend/tests/unit/me-routes.test.ts). All 278 backend unit tests pass.
+
+### 2026-11-16: Frontend user profile and streaks integration (#121, #54, #60, F-READ-04)
+
+- **Frontend profile & streak integration:**
+  - In [`services/api.ts`](../../../apps/frontend/src/services/api.ts), added `getStreak()` calling `GET /me/streak` with Supabase JWT `Authorization: Bearer` token validation, and updated `ApiMe` with `streakType`, `currentStreak`, `longestStreak`, and `hitStreak`.
+  - In [`views/ProfileView.vue`](../../../apps/frontend/src/views/ProfileView.vue), replaced mock user and streak data with live calls to `getMe()` and `getStreak()`. The profile bookplate displays the authenticated user's name, `@username`, member since date, initials, and bio, while `StreakCalendar.vue` renders the user's 28-day history calendar and live streak numbers.
+  - In [`views/__tests__/ProfileView.spec.ts`](../../../apps/frontend/src/views/__tests__/ProfileView.spec.ts), added unit tests verifying that the logged-in user profile and live streak calendar are displayed from the API responses, and that graceful fallbacks remain intact when offline.
+- **Tests:** All 191 frontend unit tests pass (33 test files).
 
 ### 2026-11-16: Mutation testing and requirement traceability
 
@@ -297,6 +326,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 - Full issue acceptance criteria were inaccessible; implementation follows the supplied task and repository F-AUTH-02 rules. Issue status was not changed. No commits, pushes, PRs, backend/database changes or hosted setting changes were made. Live email/link expiry verification remains outstanding.
 
 - **Validation:** 234 Vitest tests pass; 20 mocked desktop/mobile Playwright scenarios pass, including recovery refresh, reused/malformed links, expired recovery ownership, existing login/signup/logout, remember-me and profile redirects. Production build/typecheck and scoped ESLint/Prettier pass. Full lint has two existing `@ts-nocheck` errors, formatting fails only on unchanged `src/services/api.ts`, and the global coverage gate fails at 86% lines versus 95%. Exact commands and live gaps are in the [check record](../../architecture/password-recovery.md#automated-check-record--2026-11-17). No database-clearing tests were run.
+
 ### 2026-11-17: Frontend coverage raised to pass the 95% gate
 
 - Test PR [#161](https://github.com/MESW-LES-2627/les-project-group-6/pull/161) ran the new "Test with coverage" step. Backend passed at 95.56% of lines; frontend failed at 85.26%.
@@ -314,3 +344,13 @@ A running record of what the team did and decided in iteration 2. The [release n
 ### 2026-11-17: README rewritten as a project overview
 
 - [README.md](../../../README.md) now has the project description, links to each iteration's `CLAIM.md`, an architecture diagram (Vue frontend, Express backend, PostgreSQL, Supabase Auth, Open Library API), the repository tree with comments inside it, and a table of every `make` command. The long per-folder explanations were dropped; [docs/architecture/](../../architecture/) and each app's README hold the details.
+
+### 2026-11-18: Streak rework after the PR #160 review (#121, F-READ-04)
+
+- Branch `feat/streak-and-minutes`, review on [PR #160](https://github.com/MESW-LES-2627/les-project-group-6/pull/160). The review found two bugs that kept the streak at 1: `hitStreak` was set but never reset, and finishing a session saved it before the streak check, which then saw today as already counted.
+- **Decision: store `last_read_date` instead of the `hit_streak` flag.** On a counted day: same day → no change; yesterday → `current_streak + 1`; otherwise → 1; then `longest_streak = max(...)`. The live streak is `current_streak` while `last_read_date` is today or yesterday, else 0. No midnight reset is needed, and saving the session first no longer matters. *Rejected:* resetting `hit_streak` every day, because it needs a scheduled job. Recorded in [infra.md](../../architecture/infra.md).
+- **Decision: what counts as reading.** A session of 5+ counted minutes, moving a book that is in progress forward by 5+ pages, or moving it from in progress to finished. The last two let readers who read away from the app keep their streak. Starting a book at a later page, abandoning it, or marking a shelved book finished does not count. Rules in [`streak-rules.ts`](../../../apps/backend/src/features/user/streak-rules.ts); [requirements](../../requirements/requirements.md) and [priorities](../../requirements/features_priority.md) updated.
+- **Database.** Migration [`0013_streak_last_read_date.sql`](../../../apps/backend/src/database/migrations/0013_streak_last_read_date.sql) adds `last_read_date`, backfills it from the last 5+ minute session in the reader's timezone, zeroes streaks with no reading day behind them, and drops `hit_streak`. [`schema.sql`](../../../apps/backend/src/database/schema.sql) updated. The [seed](../../../apps/backend/src/database/seed.ts) gives `demo_reader` a 7-day run two weeks ago and a 3-day run ending yesterday, plus a 3-minute session today that does not count.
+- **API.** `hitStreak` is replaced by `readToday`; `GET /me/streak` also returns `lastReadDate`. The calendar marks days with a 5+ minute session and every day of the current run. [`api_routes.md`](../../architecture/api_routes.md) updated.
+- **Frontend.** [`ProfileView.vue`](../../../apps/frontend/src/views/ProfileView.vue) no longer falls back to the mock user, streak or reading time when the API fails: it shows an empty state and an error message.
+- **Tests.** Multi-day regression test (Mon–Wed → 3, skip two days, Sat → 1), `finish` updating the streak after the session is saved, and the 5-minute and 5-page limits, in [`streak-service.test.ts`](../../../apps/backend/tests/unit/streak-service.test.ts) and the service tests. Test files tagged `@req F-READ-04`. New e2e [`streak.spec.ts`](../../../apps/frontend/e2e/streak.spec.ts) (log 5 pages → the profile streak counts today), not run yet. Backend 432 tests and frontend 205 unit tests pass.
