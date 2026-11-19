@@ -1,10 +1,12 @@
-// @req F-PROF-01 F-READ-04
+// @req F-PROF-01 F-READ-04 F-GRP-04
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import router from '@/router';
 import {
   ApiError,
+  type ApiChallengeGroup,
+  type ApiChallengeGroupDetail,
   type ApiLibraryItem,
   type ApiMe,
   type ApiProfileReview,
@@ -34,6 +36,8 @@ const api = vi.hoisted(() => ({
   getUserReviews: vi.fn<(userId: string) => Promise<ApiProfileReview[]>>(async () => []),
   getUserLibrary: vi.fn<() => Promise<ApiLibraryItem[]>>(async () => []),
   getLibraryFolders: vi.fn<() => Promise<FolderSummary[]>>(async () => []),
+  getUserGroups: vi.fn<() => Promise<ApiChallengeGroup[]>>(async () => []),
+  getChallengeGroup: vi.fn<(id: string) => Promise<ApiChallengeGroupDetail>>(),
 }));
 
 vi.mock('@/services/api', async (importOriginal) => ({
@@ -291,5 +295,49 @@ describe('ProfileView logged-in user and streak', () => {
 
     expect(wrapper.find('[role="alert"]').exists()).toBe(false);
     expect(wrapper.get('.plate .name').text()).toBe('Eleanor Whitmore');
+  });
+});
+
+describe('ProfileView challenges won', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const finished = (id: string, status: ApiChallengeGroup['status'], top: string) =>
+    ({
+      id,
+      status,
+      standings: [
+        { userId: top, score: 50 },
+        { userId: top === 'me-id' ? 'ana' : 'me-id', score: 10 },
+      ],
+    }) as unknown as ApiChallengeGroupDetail;
+
+  it('counts the finished challenges the reader won', async () => {
+    getReadingStats.mockResolvedValueOnce({ totalMinutes: 0, sessionsCount: 0 });
+    const groups = [
+      finished('g1', 'completed', 'me-id'),
+      finished('g2', 'completed', 'me-id'),
+      finished('g3', 'completed', 'ana'),
+      finished('g4', 'active', 'me-id'),
+    ];
+    api.getUserGroups.mockResolvedValueOnce(groups as unknown as ApiChallengeGroup[]);
+    api.getChallengeGroup.mockImplementation(async (id) => groups.find((g) => g.id === id)!);
+
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(api.getChallengeGroup).not.toHaveBeenCalledWith('g4');
+    expect(wrapper.get('.challenges').text()).toContain('2 challenges won');
+  });
+
+  it('shows no wins when the groups cannot be loaded', async () => {
+    getReadingStats.mockResolvedValueOnce({ totalMinutes: 0, sessionsCount: 0 });
+    api.getUserGroups.mockRejectedValueOnce(new Error('offline'));
+
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.get('.challenges').text()).toContain('No challenges won yet');
   });
 });

@@ -14,10 +14,12 @@ import ReviewList from '@/components/profile/ReviewList.vue';
 import StreakCalendar from '@/components/profile/StreakCalendar.vue';
 import { mockProfile } from '@/mocks/profile';
 import {
+  getChallengeGroup,
   getLibraryFolders,
   getMe,
   getReadingStats,
   getStreak,
+  getUserGroups,
   getUserLibrary,
   getUserProfile,
   getUserReviews,
@@ -34,11 +36,13 @@ import {
   recentlyAddedFrom,
   shelfFrom,
   toProfileUser,
+  wonChallenge,
 } from '@/utils/profile';
 
 // The reader, their books, shelf, folders, streak, reading time and reviews come from the
 // API. The user, streak and reading time never fall back to mock data: a failed request
-// shows an empty state and an error. The chapter, challenges won and monthly recap are not
+// shows an empty state and an error. Challenges won are counted from the reader's finished
+// challenges. The chapter and monthly recap are not
 // built yet and still come from src/mocks/profile.ts.
 const user = ref<ProfileUser | null>(null);
 const library = ref<ApiLibraryItem[]>([]);
@@ -47,6 +51,8 @@ const streakData = ref<ApiStreak | null>(null);
 const readingStats = ref<ApiReadingStats | null>(null);
 // F-LIB-02: my rated books. `null` (hidden) when the API cannot be reached or refuses.
 const reviews = ref<ApiProfileReview[] | null>(null);
+// #124: finished challenges where the reader holds the top score (ties count for everyone).
+const challengesWon = ref(0);
 const loadFailed = ref<{ user: boolean; streak: boolean; readingTime: boolean }>({
   user: false,
   streak: false,
@@ -95,8 +101,20 @@ async function loadUser() {
     ]);
     user.value = toProfileUser(me, profile?.bio ?? null);
     reviews.value = mine;
+    void loadChallengesWon(me.id);
   } catch {
     loadFailed.value.user = true;
+  }
+}
+
+// A failed request leaves the count at zero.
+async function loadChallengesWon(userId: string) {
+  try {
+    const finished = (await getUserGroups()).filter((g) => g.status === 'completed');
+    const details = await Promise.all(finished.map((g) => getChallengeGroup(g.id)));
+    challengesWon.value = details.filter((g) => wonChallenge(g, userId)).length;
+  } catch {
+    challengesWon.value = 0;
   }
 }
 
@@ -146,7 +164,7 @@ onMounted(() => Promise.all([loadUser(), loadStreak(), loadReadingTime(), loadLi
           <ChapterLevel class="divided" :chapter="mockProfile.chapter" />
           <StreakCalendar class="divided" :streak="streak" />
           <ReadingTime class="divided" :stats="readingTime" />
-          <ChallengesSummary :won="mockProfile.challengesWon" />
+          <ChallengesSummary :won="challengesWon" />
         </div>
       </div>
 

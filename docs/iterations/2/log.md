@@ -383,3 +383,10 @@ A running record of what the team did and decided in iteration 2. The [release n
 - **Backend.** [`saveWithAuthors`](../../../apps/backend/src/features/book/book-repository.ts) now inserts with `ON CONFLICT DO NOTHING` and re-selects by the folded name on conflict.
 - **Decision: the name is unique ignoring case and accents**, the same normalisation that search uses, so "José Saramago" and "jose saramago" are one author. *Rejected:* exact-name uniqueness, which would still let search show one author as two.
 - **Tests.** Two new integration tests in [`book-repository.test.ts`](../../../apps/backend/tests/integration/book-repository.test.ts) (concurrent imports, case/accent variants); one search test no longer links two names that are now the same author. Backend: 393 tests pass.
+
+### 2026-11-19: Challenges won on the profile (#124, #61, F-PROF-01, F-GRP-04)
+
+- Branch `feat/profile-challenges-won`. The profile's "challenges won" line no longer comes from the mock: [`ProfileView.vue`](../../../apps/frontend/src/views/ProfileView.vue) reads `GET /me/groups`, loads the standings of each completed challenge and counts the ones the reader won.
+- **Rule.** [`wonChallenge`](../../../apps/frontend/src/utils/profile.ts): the challenge is completed and the reader holds the top score, which must be above zero. Everyone tied on the top score wins.
+- **Decision: count on the frontend for now.** No backend change was needed because the standings are already returned. *Rejected for now:* a `challengesWon` field on the API, worth adding if a reader has many challenges (one request per finished challenge).
+- **Tests.** Unit tests for wins, ties, running and empty challenges, and two ProfileView tests (2 wins counted, fallback when groups fail). Frontend: 528 tests pass.

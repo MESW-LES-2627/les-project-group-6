@@ -1,13 +1,14 @@
-// @req F-PROF-01
+// @req F-PROF-01 F-GRP-04
 import { describe, expect, it } from 'vitest';
 
-import type { ApiLibraryItem, ApiMe } from '@/services/api';
+import type { ApiChallengeGroupDetail, ApiLibraryItem, ApiMe } from '@/services/api';
 import {
   foldersFrom,
   generatedCover,
   recentlyAddedFrom,
   shelfFrom,
   toProfileUser,
+  wonChallenge,
 } from '../profile';
 
 const item = (
@@ -84,5 +85,41 @@ describe('profile helpers', () => {
         previewBooks: [expect.objectContaining({ id: 'b' }), expect.objectContaining({ id: 'a' })],
       }),
     ]);
+  });
+});
+
+describe('wonChallenge', () => {
+  const group = (
+    status: ApiChallengeGroupDetail['status'],
+    scores: Record<string, number | null>,
+  ): ApiChallengeGroupDetail =>
+    ({
+      id: 'g1',
+      status,
+      standings: Object.entries(scores).map(([userId, score]) => ({
+        userId,
+        displayName: userId,
+        username: userId,
+        role: 'member',
+        score,
+        books: [],
+      })),
+    }) as unknown as ApiChallengeGroupDetail;
+
+  it('is true for the top scorer of a finished challenge', () => {
+    expect(wonChallenge(group('completed', { me: 40, ana: 30 }), 'me')).toBe(true);
+    expect(wonChallenge(group('completed', { me: 20, ana: 30 }), 'me')).toBe(false);
+  });
+
+  it('counts a tie on the top score as a win for both', () => {
+    const tied = group('completed', { me: 40, ana: 40, bo: 10 });
+    expect(wonChallenge(tied, 'me')).toBe(true);
+    expect(wonChallenge(tied, 'ana')).toBe(true);
+    expect(wonChallenge(tied, 'bo')).toBe(false);
+  });
+
+  it('is false while the challenge runs or when nobody read', () => {
+    expect(wonChallenge(group('active', { me: 40 }), 'me')).toBe(false);
+    expect(wonChallenge(group('completed', { me: 0, ana: null }), 'me')).toBe(false);
   });
 });
