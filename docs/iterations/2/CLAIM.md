@@ -25,7 +25,7 @@ Use links that work on tag `iter-2`. If something does not exist yet, write `non
 | Staging                   | [https://bookmarked-les-stg.onrender.com/](https://bookmarked-les-stg.onrender.com/)                                                                                                                             |
 | CI/CD Pipeline            | See the [pipelines table](#cicd-pipelines) below                                                                                                                                                                 |
 | Stories in this increment | [https://github.com/orgs/MESW-LES-2627/projects/23/views/10](https://github.com/orgs/MESW-LES-2627/projects/23/views/10)                                                                                         |
-| Retrospective             | [https://github.com/MESW-LES-2627/les-project-group-6/blob/iter-2/docs/iterations/2/retrospective.md](https://github.com/MESW-LES-2627/les-project-group-6/blob/iter-2/docs/iterations/2/retrospective.md)       |
+| Retrospective             | [https://github.com/MESW-LES-2627/les-project-group-6/blob/iter-2/docs/iterations/2/retrospective.md](https://github.com/MESW-LES-2627/les-project-group-6/blob/main/docs/iterations/2/retrospective.md)       |
 | Iteration log             | [https://github.com/MESW-LES-2627/les-project-group-6/blob/iter-2/docs/iterations/2/log.md](https://github.com/MESW-LES-2627/les-project-group-6/blob/iter-2/docs/iterations/2/log.md)                           |
 | AI log                    | [https://github.com/MESW-LES-2627/les-project-group-6/blob/iter-2/docs/iterations/2/LLM_LOG.md](https://github.com/MESW-LES-2627/les-project-group-6/blob/iter-2/docs/iterations/2/LLM_LOG.md)                   |
 
