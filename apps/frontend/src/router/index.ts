@@ -84,6 +84,17 @@ const router = createRouter({
       component: () => import('../views/UserView.vue'),
       props: true,
     },
+    // Temporary art review for the reading pet (#199); dev builds only
+    ...(import.meta.env.DEV
+      ? [
+          {
+            path: '/dev/pets',
+            name: 'dev-pets',
+            component: () => import('../views/PetPreviewView.vue'),
+            meta: { public: true },
+          },
+        ]
+      : []),
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
