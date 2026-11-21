@@ -18,6 +18,7 @@ import {
   toRuns,
   type PetAnimal,
   type PetFace,
+  type PetMood,
 } from './sprites';
 
 const props = withDefaults(
@@ -55,8 +56,18 @@ function loadAnimal(): PetAnimal {
 const animal = ref<PetAnimal>(loadAnimal());
 const choosing = ref(false);
 const name = computed(() => PET_NAMES[animal.value]);
-const mood = computed(() => getPetMood(props.lastReadDate, localIsoDate(props.now ?? new Date())));
-const caption = computed(() => moodCaption(name.value, mood.value, props.lastReadDate === null));
+// Dev builds only: buttons beside the pet force a mood, to test it without changing reading data
+const showMoodSwitcher = import.meta.env.DEV;
+const TEST_MOODS: PetMood[] = ['happy', 'neutral', 'sad', 'starving'];
+const testMood = ref<PetMood | null>(null);
+
+const realMood = computed(() =>
+  getPetMood(props.lastReadDate, localIsoDate(props.now ?? new Date())),
+);
+const mood = computed(() => testMood.value ?? realMood.value);
+const caption = computed(() =>
+  moodCaption(name.value, mood.value, !testMood.value && props.lastReadDate === null),
+);
 
 const action = ref<PetAction>('idle');
 const x = ref(50); // position on the track, in % of its width
@@ -139,46 +150,69 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="reading-pet">
-    <div class="pet-track" :style="{ height: `${size + 8}px` }">
-      <button
-        type="button"
-        class="pet-body"
-        :style="{
-          left: `${x}%`,
-          transform: `translateX(-${x}%)`,
-          transitionDuration: action === 'walk' ? `${walkMs}ms` : '0ms',
-        }"
-        :aria-label="`${caption} Pet ${name}.`"
-        @click="pet"
-      >
-        <span :class="['pet-facing', { left: facingLeft }]">
-          <span :class="['pet-motion', `is-${action}`]" data-test="pet-motion">
-            <PetSprite :animal="animal" :face="face" :size="size" />
-          </span>
-        </span>
-        <span v-if="action === 'sleep' && !loving" class="pet-zzz" aria-hidden="true">z</span>
-        <svg
-          v-if="loving"
-          :key="heartKey"
-          class="pet-heart"
-          data-test="pet-heart"
-          width="27"
-          height="24"
-          viewBox="0 0 9 8"
-          shape-rendering="crispEdges"
-          aria-hidden="true"
+    <div class="pet-stage">
+      <div class="pet-track" :style="{ height: `${size + 8}px` }">
+        <button
+          type="button"
+          class="pet-body"
+          :style="{
+            left: `${x}%`,
+            transform: `translateX(-${x}%)`,
+            transitionDuration: action === 'walk' ? `${walkMs}ms` : '0ms',
+          }"
+          :aria-label="`${caption} Pet ${name}.`"
+          @click="pet"
         >
-          <rect
-            v-for="(run, i) in heartRuns"
-            :key="i"
-            :x="run.x"
-            :y="run.y"
-            :width="run.width"
-            height="1"
-            :fill="run.color"
-          />
-        </svg>
-      </button>
+          <span :class="['pet-facing', { left: facingLeft }]">
+            <span :class="['pet-motion', `is-${action}`]" data-test="pet-motion">
+              <PetSprite :animal="animal" :face="face" :size="size" />
+            </span>
+          </span>
+          <span v-if="action === 'sleep' && !loving" class="pet-zzz" aria-hidden="true">z</span>
+          <svg
+            v-if="loving"
+            :key="heartKey"
+            class="pet-heart"
+            data-test="pet-heart"
+            width="27"
+            height="24"
+            viewBox="0 0 9 8"
+            shape-rendering="crispEdges"
+            aria-hidden="true"
+          >
+            <rect
+              v-for="(run, i) in heartRuns"
+              :key="i"
+              :x="run.x"
+              :y="run.y"
+              :width="run.width"
+              height="1"
+              :fill="run.color"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div
+        v-if="showMoodSwitcher"
+        class="pet-moods"
+        role="group"
+        aria-label="Test the pet's mood (dev only)"
+        data-test="pet-moods"
+      >
+        <button type="button" :aria-pressed="testMood === null" @click="testMood = null">
+          Real
+        </button>
+        <button
+          v-for="option in TEST_MOODS"
+          :key="option"
+          type="button"
+          :aria-pressed="testMood === option"
+          @click="testMood = option"
+        >
+          {{ option }}
+        </button>
+      </div>
     </div>
 
     <p class="pet-caption">{{ caption }}</p>
@@ -221,9 +255,40 @@ onBeforeUnmount(() => {
   gap: var(--space-2);
 }
 
+.pet-stage {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+}
+
+.pet-moods {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pet-moods button {
+  padding: 1px 6px;
+  border: 1px dashed var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.pet-moods button[aria-pressed='true'] {
+  border-style: solid;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
 .pet-track {
   position: relative;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   border-bottom: 2px dotted var(--color-border);
 }
 

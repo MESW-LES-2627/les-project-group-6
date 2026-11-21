@@ -88,6 +88,23 @@ describe('ReadingPet', () => {
     expect(mountPet().text()).toContain('Maple');
   });
 
+  it('lets developers force a mood with the side buttons', async () => {
+    const wrapper = mountPet();
+    const moods = wrapper.get('[data-test="pet-moods"]');
+    await moods
+      .findAll('button')
+      .find((b) => b.text() === 'sad')!
+      .trigger('click');
+    expect(wrapper.getComponent(PetSprite).props('face')).toBe('sad');
+    expect(wrapper.text()).toContain('Miso is sad');
+
+    await moods
+      .findAll('button')
+      .find((b) => b.text() === 'Real')!
+      .trigger('click');
+    expect(wrapper.getComponent(PetSprite).props('face')).toBe('happy');
+  });
+
   it('stops its timers when removed', () => {
     const wrapper = mountPet();
     wrapper.unmount();
