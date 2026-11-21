@@ -73,3 +73,20 @@ keep these mood time limits, add to home page, no need to rquirement
 
 #### Explanation of Changes
 Added the `ReadingPet` component to Home: mood from the streak's last reading day, walking and idle actions, a heart on click, a pet picker, and reduced-motion support. Added a sleep face, live pets on `/dev/pets`, and tests.
+
+### 2026-11-21: Side-view walk cycle for the pets
+
+- **Date:** 2026-11-21
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, design, testing
+
+#### Prompt
+```text
+I jsut want to test the pets in front, can you mock the moods with a button on the side to switch the emotions?
+ITS TO GOOD! However, when they walk, they just jump with the front face instead of walk sideways, There is a way to fix this? I like the sprites, can't we just convert this to sprite animations and create the sideways?
+```
+
+#### Explanation of Changes
+Added a dev-only mood switcher beside the pet, and generated side-view 4-frame walk cycles for the four pets (ears up and down) in the same style. The pet now steps through them while walking, and a click mid-walk stops it and turns it to the front. Added tests.

@@ -9,7 +9,7 @@ A running record of what the team did and decided in iteration 3. The [release n
 | Area | State |
 |---|---|
 | Planning | 24 user stories (#178 to #201) from the 2026-11-20 app review, in Iteration 3 on the [board](https://github.com/orgs/MESW-LES-2627/projects/23). Not assigned or estimated yet |
-| Reading pet (#199) | On Home below the goals: cat, dog, fox or rabbit (picker, saved in the browser), walks and plays idle actions, heart on click, mood from the streak's last reading day. Preview at `/dev/pets` (dev only). No backend yet: the pet choice is not saved on the account and minutes read don't feed it yet |
+| Reading pet (#199) | On Home below the goals: cat, dog, fox or rabbit (picker, saved in the browser), walks sideways with a 4-frame walk cycle and plays idle actions, heart on click, mood from the streak's last reading day. Preview at `/dev/pets` (dev only). No backend yet: the pet choice is not saved on the account and minutes read don't feed it yet |
 
 ## Next steps
 
@@ -37,5 +37,11 @@ A running record of what the team did and decided in iteration 3. The [release n
 - [`ReadingPet.vue`](../../../apps/frontend/src/components/pet/ReadingPet.vue) sits in Home's glance column below "Your goals". It walks left and right and plays random idle actions (look around, hop, wiggle, nap), and shows a heart and the love face when clicked.
 - **Decision: the mood comes from the streak's `lastReadDate`** that Home already loads, so no new endpoint is needed. Read today: happy. 1 day away: neutral. 2 to 6 days: sad, walking slower. 7 or more days: starving, no walking. Before the first reading the pet is neutral, so new readers are not greeted by a starving pet. Rules are in [`mood.ts`](../../../apps/frontend/src/components/pet/mood.ts).
 - The reader picks the cat (Miso), dog (Biscuit), fox (Maple) or rabbit (Clover); the choice is stored in the browser for now.
-- Walking reuses the front-facing sprite with a bob and flip. *Rejected for now:* side-view walking frames, which would double the art.
+- Walking first reused the front sprite with a bob; replaced the same day by a side-view walk cycle (see below).
 - No requirement ID for the pet, as decided by the team, so its tests carry no `@req` tag.
+
+### 2026-11-21: Side-view walk cycle for the pets (#199)
+
+- The pets "hopped" with their front face while walking. Each pet now has a side view walking right in 4 frames (contact, passing, contact, passing), mirrored when walking left, with ears up and ears down (sad walk). Drawn with the same generator and style rules as the front sprites; the side faces (happy, neutral, sad) are in [`side-faces.ts`](../../../apps/frontend/src/components/pet/sprites/side-faces.ts), the frames in each animal's file.
+- [`ReadingPet.vue`](../../../apps/frontend/src/components/pet/ReadingPet.vue) steps the frames while walking (faster when happy, slower when sad). Clicking a walking pet stops it where it is and turns it to the front with the love face.
+- The `/dev/pets` page also shows every walk frame for review, and has mood buttons beside each live pet (dev builds only).
