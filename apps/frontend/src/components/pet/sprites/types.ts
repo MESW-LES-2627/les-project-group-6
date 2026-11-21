@@ -4,8 +4,8 @@ export type PetAnimal = 'cat' | 'dog' | 'fox' | 'rabbit';
 /** Moods that come from how recently the reader read. */
 export type PetMood = 'happy' | 'neutral' | 'sad' | 'starving';
 
-/** Every face a pet can show: its mood, or `love` right after a click. */
-export type PetFace = PetMood | 'love';
+/** Every face a pet can show: its mood, `love` right after a click, or `sleep` when napping. */
+export type PetFace = PetMood | 'love' | 'sleep';
 
 /**
  * Pixel art is stored as rows of characters. Each character is a key in a palette;

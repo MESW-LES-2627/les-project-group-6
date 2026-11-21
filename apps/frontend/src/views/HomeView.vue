@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router';
 
 import MemberAvatar from '@/components/groups/MemberAvatar.vue';
 import BookCoverImage from '@/components/library/BookCoverImage.vue';
+import ReadingPet from '@/components/pet/ReadingPet.vue';
 import { mockHome } from '@/mocks/home';
 import {
   acceptFriendRequest,
@@ -343,6 +344,11 @@ async function respondToInvite(invite: HomeInvitation, accept: boolean) {
             {{ minutesToGo.toLocaleString('en-US') }} min to go.
           </p>
         </section>
+
+        <section v-if="streak" class="pet-block" aria-labelledby="pet-title">
+          <h2 id="pet-title" class="section-title">Your reading pet</h2>
+          <ReadingPet :last-read-date="streak.lastReadDate" />
+        </section>
       </aside>
     </section>
 
@@ -636,6 +642,10 @@ async function respondToInvite(invite: HomeInvitation, accept: boolean) {
 
 .goals-block .goals {
   margin-top: var(--space-4);
+}
+
+.pet-block .section-title {
+  margin-bottom: var(--space-2);
 }
 
 .bedside-title {

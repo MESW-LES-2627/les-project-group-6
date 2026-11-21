@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // Temporary page to review the pet art (story #199). Only registered in dev builds.
+import { localIsoDate } from '@/components/pet/mood';
 import PetSprite from '@/components/pet/PetSprite.vue';
+import ReadingPet from '@/components/pet/ReadingPet.vue';
 import { HEART, PET_ANIMALS, type PetFace } from '@/components/pet/sprites';
 
 const FACES: { face: PetFace; label: string }[] = [
@@ -14,6 +16,14 @@ const FACES: { face: PetFace; label: string }[] = [
 const heartRuns = HEART.flatMap((row, y) =>
   [...row].flatMap((ch, x) => (ch === '.' ? [] : [{ x, y, ch }])),
 );
+const daysAgo = (days: number) => localIsoDate(new Date(Date.now() - days * 86_400_000));
+const LIVE = [
+  { label: 'Read today', lastRead: daysAgo(0) },
+  { label: '1 day away', lastRead: daysAgo(1) },
+  { label: '3 days away', lastRead: daysAgo(3) },
+  { label: '8 days away', lastRead: daysAgo(8) },
+];
+
 const HEART_COLORS: Record<string, string> = { o: '#432818', H: '#e0445a', J: '#ff9aa8' };
 </script>
 
@@ -38,6 +48,14 @@ const HEART_COLORS: Record<string, string> = { o: '#432818', H: '#e0445a', J: '#
         </tr>
       </tbody>
     </table>
+
+    <h2>Live pets (click them)</h2>
+    <div class="live">
+      <div v-for="item in LIVE" :key="item.label">
+        <h3>{{ item.label }}</h3>
+        <ReadingPet :last-read-date="item.lastRead" />
+      </div>
+    </div>
 
     <h2>Heart (floats up on click)</h2>
     <svg width="72" height="64" viewBox="0 0 9 8" shape-rendering="crispEdges" aria-hidden="true">
@@ -78,5 +96,12 @@ th[scope='row'] {
 
 td {
   background: #fff8ea;
+}
+
+.live {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
 }
 </style>

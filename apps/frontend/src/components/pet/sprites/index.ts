@@ -6,7 +6,7 @@ import { RABBIT } from './rabbit';
 import type { Grid, Layer, PetAnimal, PetArt, PetFace, Sprite } from './types';
 
 export type { Grid, Layer, PetAnimal, PetFace, PetMood, Sprite } from './types';
-export { HEART } from './faces';
+export { HEART, SHARED_PALETTE } from './faces';
 
 export const PET_SIZE = 32;
 

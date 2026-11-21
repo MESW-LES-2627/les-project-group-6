@@ -1,4 +1,3 @@
-// @req F-GAM-03
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 
@@ -15,7 +14,7 @@ import {
   type PetFace,
 } from '../sprites';
 
-const FACES: PetFace[] = ['happy', 'neutral', 'sad', 'starving', 'love'];
+const FACES: PetFace[] = ['happy', 'neutral', 'sad', 'starving', 'love', 'sleep'];
 
 describe('pet sprites', () => {
   it('offers the cat, dog, fox and rabbit', () => {
