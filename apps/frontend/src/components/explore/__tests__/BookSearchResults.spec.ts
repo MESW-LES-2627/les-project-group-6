@@ -1,4 +1,4 @@
-// @req F-EXP-01
+// @req F-EXP-01 F-BOOK-02
 import { mount } from '@vue/test-utils';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { describe, expect, it } from 'vitest';
@@ -23,7 +23,16 @@ const dune = mapApiBookToLibraryBook({
   coverUrl: null,
 });
 
-function mountResults(props: { books?: (typeof dune)[]; loading?: boolean; error?: boolean } = {}) {
+function mountResults(
+  props: {
+    books?: (typeof dune)[];
+    loading?: boolean;
+    error?: boolean;
+    mode?: 'view' | 'add';
+    ownedIds?: string[];
+    busyId?: string;
+  } = {},
+) {
   return mount(BookSearchResults, {
     props: { query: 'Dune', books: [dune], loading: false, error: false, ...props },
     global: { plugins: [router] },
@@ -47,5 +56,31 @@ describe('BookSearchResults', () => {
     expect(mountResults({ books: [] }).text()).toContain('No books match "Dune".');
     expect(mountResults({ error: true }).text()).toContain('Search is unavailable right now.');
     expect(mountResults({ loading: true }).text()).toContain('Searching…');
+  });
+
+  it('offers Add in add mode and emits the picked book', async () => {
+    const wrapper = mountResults({ mode: 'add' });
+    const add = wrapper.get('.result-add');
+
+    expect(add.text()).toBe('Add');
+    expect(wrapper.find('li a').exists()).toBe(false);
+
+    await add.trigger('click');
+    expect(wrapper.emitted('pick')![0]).toEqual([dune]);
+  });
+
+  it('marks a book already in the library instead of offering Add', () => {
+    const wrapper = mountResults({ mode: 'add', ownedIds: ['b1'] });
+
+    expect(wrapper.get('.owned').text()).toBe('In your library');
+    expect(wrapper.find('.result-add').exists()).toBe(false);
+  });
+
+  it('disables Add while that book is being added', () => {
+    const wrapper = mountResults({ mode: 'add', busyId: 'b1' });
+    const add = wrapper.get('.result-add');
+
+    expect(add.attributes('disabled')).toBeDefined();
+    expect(add.text()).toBe('Adding…');
   });
 });

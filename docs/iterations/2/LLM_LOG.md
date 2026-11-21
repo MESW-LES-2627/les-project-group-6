@@ -859,3 +859,35 @@ Using the oop_assets iteration_1 as a guide, generate the changes as requested w
 
 #### Explanation of Changes
 Read the iteration 1 diagrams and change analysis, the iteration 2 log and the backend code, then drew the iteration 2 class and component diagrams (Mermaid rendered to PNG) and wrote `change_analysis_iteration_2.md` for a second scenario, reader badges. Added the date to the iteration 1 analysis, filled the Iteration 3 section of `design.md`, and updated the docs index and the iteration 2 log.
+
+### 2026-11-21: Add a book from the library page in a modal
+
+- **Date:** 2026-11-21
+- **Author:** gbemme
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+Implement the add book on the library page with a pop up modal, follow the same implementation as the explore page add book. Don't push or commit yet
+```
+
+#### Explanation of Changes
+Added a reusable `AppModal.vue` (Escape/backdrop/close-button dismissal, Tab trap, scroll lock, focus restore) and wired the library plate's **Add book** button to open the shared Explore `AddBookForm` inside it. Submitting calls the same `addBook` + `addToLibrary` flow, then closes the modal and reloads the library and tag counts so the new "Not started" book appears on the shelf. Added `AppModal` tests and four `LibraryView` tests, and recorded the change in the iteration 2 log.
+
+### 2026-11-21: Book search in the library add-book modal
+
+- **Date:** 2026-11-21
+- **Author:** gbemme
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+on the pop up modal, there is no option to search for book but we have this on the explore page, implement this on the modal as well
+```
+
+#### Explanation of Changes
+Added `AddBookModal.vue`, which searches the catalogue with the same debounced, abortable `searchBooks` flow and `BookSearchResults` list as Explore, then adds a result with `addToLibrary`; the manual `AddBookForm` remains available for missing books. Extended `BookSearchResults` with an `add` mode (Add button, busy state, "In your library" tag for owned ids) and updated `LibraryView` to pass the shelf's ids and refresh after adding. Added tests for the modal, results list and library page; all 573 frontend tests pass.

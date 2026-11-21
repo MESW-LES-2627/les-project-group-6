@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 
 import PagePlate from '@/components/layout/PagePlate.vue';
+import AddBookModal from '@/components/library/AddBookModal.vue';
 import LibraryBookCard from '@/components/library/LibraryBookCard.vue';
 import LibrarySidebar from '@/components/library/LibrarySidebar.vue';
 import {
@@ -138,6 +139,26 @@ async function deleteFolder(id: string) {
   }
 }
 
+// F-BOOK-02: search the catalogue or add a missing book, in a modal from the plate.
+const addOpen = ref(false);
+
+function openAddBook() {
+  addOpen.value = true;
+}
+
+function closeAddBook() {
+  addOpen.value = false;
+}
+
+/** Ids already on the shelf, so the modal does not offer to add them again. */
+const libraryBookIds = computed(() => rawBooks.value.map((book) => book.id));
+
+async function onBookAdded() {
+  addOpen.value = false;
+  // The new book is "Not started", so reload the shelf (and its tag counts) to show it.
+  await Promise.all([fetchLibraryData(), fetchTags()]);
+}
+
 const genreOptions = computed(() =>
   [...new Set(rawBooks.value.flatMap((book) => (book.genre ? [book.genre] : [])))].sort(),
 );
@@ -226,7 +247,7 @@ function showEverything() {
     <PagePlate title="Library" title-id="library-title">
       <p>{{ plateLine }}</p>
       <template #actions>
-        <button type="button" class="plate-button">
+        <button type="button" class="plate-button" @click="openAddBook">
           <svg
             width="16"
             height="16"
@@ -261,6 +282,13 @@ function showEverything() {
         </button>
       </template>
     </PagePlate>
+
+    <AddBookModal
+      v-if="addOpen"
+      :owned-ids="libraryBookIds"
+      @close="closeAddBook"
+      @added="onBookAdded"
+    />
 
     <div class="page-column">
       <div class="toolbar">

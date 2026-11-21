@@ -4,18 +4,28 @@ import { RouterLink } from 'vue-router';
 import BookCoverImage from '@/components/library/BookCoverImage.vue';
 import type { LibraryBook } from '@/types/library';
 
-// The books found by the Explore search (F-EXP-01); each one opens its book page.
-const props = defineProps<{
-  query: string;
-  books: LibraryBook[];
-  loading: boolean;
-  error: boolean;
-}>();
-const emit = defineEmits<{ clear: []; add: [] }>();
+// The books found by the Explore search (F-EXP-01). `view` opens each book page;
+// `add` lets the reader put a result on their own shelf from the library modal.
+const props = withDefaults(
+  defineProps<{
+    query: string;
+    books: LibraryBook[];
+    loading: boolean;
+    error: boolean;
+    mode?: 'view' | 'add';
+    /** Ids already on the reader's shelf; they cannot be added a second time. */
+    ownedIds?: string[];
+    /** The book whose Add button is busy. */
+    busyId?: string;
+  }>(),
+  { mode: 'view', ownedIds: () => [], busyId: undefined },
+);
+const emit = defineEmits<{ clear: []; add: []; pick: [book: LibraryBook] }>();
 
 const countLabel = computed(() =>
   props.books.length === 1 ? '1 result' : `${props.books.length} results`,
 );
+const isOwned = (book: LibraryBook) => props.ownedIds.includes(book.id);
 </script>
 
 <template>
@@ -38,7 +48,21 @@ const countLabel = computed(() =>
           <p class="title">{{ book.title }}</p>
           <p class="muted author">{{ book.author }}</p>
         </div>
+        <template v-if="mode === 'add'">
+          <span v-if="isOwned(book)" class="tag owned">In your library</span>
+          <button
+            v-else
+            type="button"
+            class="button button-small result-add"
+            :disabled="busyId === book.id"
+            :aria-label="`Add ${book.title} to your library`"
+            @click="emit('pick', book)"
+          >
+            {{ busyId === book.id ? 'Adding…' : 'Add' }}
+          </button>
+        </template>
         <RouterLink
+          v-else
           class="button-outline button-small"
           :to="{ name: 'book-detail', params: { bookId: book.id } }"
           :aria-label="`View ${book.title}`"
@@ -94,6 +118,14 @@ const countLabel = computed(() =>
 .title {
   margin: 0;
   font-weight: 600;
+}
+
+.owned {
+  flex: none;
+}
+
+.result-add {
+  flex: none;
 }
 
 .add-hint {
