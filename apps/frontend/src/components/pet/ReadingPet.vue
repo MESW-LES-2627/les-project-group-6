@@ -75,6 +75,7 @@ const facingLeft = ref(false);
 const walkMs = ref(0);
 const loving = ref(false);
 const heartKey = ref(0);
+const walkFrame = ref(0);
 
 const face = computed<PetFace>(() => {
   if (loving.value) return 'love';
@@ -86,7 +87,16 @@ const heartRuns = toRuns({ grid: HEART, palette: SHARED_PALETTE });
 
 let actionTimer: ReturnType<typeof setTimeout> | undefined;
 let loveTimer: ReturnType<typeof setTimeout> | undefined;
+let frameTimer: ReturnType<typeof setInterval> | undefined;
 let reducedMotion = false;
+// Where the current walk started, so a click can stop the pet where it is
+let walkFrom = 50;
+let walkStartedAt = 0;
+
+function stopWalking() {
+  clearInterval(frameTimer);
+  frameTimer = undefined;
+}
 
 function schedule(ms: number, next: () => void) {
   clearTimeout(actionTimer);
@@ -94,6 +104,7 @@ function schedule(ms: number, next: () => void) {
 }
 
 function rest() {
+  stopWalking();
   action.value = 'idle';
   schedule(2000 + Math.random() * 4000, nextAction);
 }
@@ -105,6 +116,11 @@ function nextAction() {
     if (Math.abs(target - x.value) < 20) target = x.value < 50 ? x.value + 40 : x.value - 40;
     facingLeft.value = target < x.value;
     walkMs.value = Math.abs(target - x.value) * walkSpeed(mood.value);
+    walkFrom = x.value;
+    walkStartedAt = Date.now();
+    walkFrame.value = 0;
+    stopWalking();
+    frameTimer = setInterval(() => walkFrame.value++, mood.value === 'sad' ? 220 : 140);
     action.value = 'walk';
     x.value = target;
     schedule(walkMs.value, rest);
@@ -116,6 +132,15 @@ function nextAction() {
 
 function pet() {
   if (loving.value) return; // ignore spam clicks while the heart is showing
+  if (action.value === 'walk') {
+    // stop where the pet is now and turn to face the reader
+    const progress = walkMs.value ? Math.min(1, (Date.now() - walkStartedAt) / walkMs.value) : 1;
+    const here = walkFrom + (x.value - walkFrom) * progress;
+    stopWalking();
+    action.value = 'idle';
+    x.value = here;
+    schedule(LOVE_MS, rest);
+  }
   loving.value = true;
   heartKey.value++;
   clearTimeout(loveTimer);
@@ -145,6 +170,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearTimeout(actionTimer);
   clearTimeout(loveTimer);
+  stopWalking();
 });
 </script>
 
@@ -165,7 +191,12 @@ onBeforeUnmount(() => {
         >
           <span :class="['pet-facing', { left: facingLeft }]">
             <span :class="['pet-motion', `is-${action}`]" data-test="pet-motion">
-              <PetSprite :animal="animal" :face="face" :size="size" />
+              <PetSprite
+                :animal="animal"
+                :face="face"
+                :size="size"
+                :walk-frame="action === 'walk' && !loving ? walkFrame : undefined"
+              />
             </span>
           </span>
           <span v-if="action === 'sleep' && !loving" class="pet-zzz" aria-hidden="true">z</span>
@@ -317,10 +348,6 @@ onBeforeUnmount(() => {
   transform: scaleX(-1);
 }
 
-.pet-motion.is-walk {
-  animation: pet-bob 0.36s steps(2) infinite;
-}
-
 .pet-motion.is-hop {
   animation: pet-hop 0.6s ease-out 2;
 }
@@ -388,12 +415,6 @@ onBeforeUnmount(() => {
 .pet-option:hover,
 .pet-option[aria-pressed='true'] {
   border-color: var(--color-primary);
-}
-
-@keyframes pet-bob {
-  50% {
-    transform: translateY(-3px);
-  }
 }
 
 @keyframes pet-hop {

@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { composeSprite, PET_SIZE, toRuns, type PetAnimal, type PetFace } from './sprites';
+import {
+  composeSprite,
+  composeWalkSprite,
+  PET_SIZE,
+  toRuns,
+  type PetAnimal,
+  type PetFace,
+} from './sprites';
 
 const props = withDefaults(
   defineProps<{
@@ -9,11 +16,21 @@ const props = withDefaults(
     face?: PetFace;
     /** Rendered size in px; keep it a multiple of 32 so pixels stay square. */
     size?: number;
+    /** Walk frame to show in the side pose; omit for the front pose. */
+    walkFrame?: number;
   }>(),
-  { face: 'neutral', size: 128 },
+  { face: 'neutral', size: 128, walkFrame: undefined },
 );
 
-const runs = computed(() => toRuns(composeSprite(props.animal, props.face)));
+const runs = computed(() => {
+  const { animal, face, walkFrame } = props;
+  const canWalk = face === 'happy' || face === 'neutral' || face === 'sad';
+  const sprite =
+    walkFrame !== undefined && canWalk
+      ? composeWalkSprite(animal, face, walkFrame)
+      : composeSprite(animal, face);
+  return toRuns(sprite);
+});
 </script>
 
 <template>

@@ -3,9 +3,14 @@ import { DOG } from './dog';
 import { FACES, RUMBLE, SHARED_PALETTE } from './faces';
 import { FOX } from './fox';
 import { RABBIT } from './rabbit';
-import type { Grid, Layer, PetAnimal, PetArt, PetFace, Sprite } from './types';
+import { SIDE_FACES, WALK_BOB } from './side-faces';
+import type { Grid, Layer, PetAnimal, PetArt, PetFace, Sprite, WalkMood } from './types';
 
-export type { Grid, Layer, PetAnimal, PetFace, PetMood, Sprite } from './types';
+export type { Grid, Layer, PetAnimal, PetFace, PetMood, Sprite, WalkMood } from './types';
+export { WALK_BOB } from './side-faces';
+
+/** Frames in a walk cycle. */
+export const WALK_FRAMES = WALK_BOB.length;
 export { HEART, SHARED_PALETTE } from './faces';
 
 export const PET_SIZE = 32;
@@ -62,6 +67,18 @@ export function composeSprite(animal: PetAnimal, face: PetFace): Sprite {
     );
   }
   return { grid, palette };
+}
+
+/** Builds frame `frame` of the side-view walk of `animal` in `mood`, facing right. */
+export function composeWalkSprite(animal: PetAnimal, mood: WalkMood, frame: number): Sprite {
+  const art = PET_ART[animal];
+  const index = ((frame % WALK_FRAMES) + WALK_FRAMES) % WALK_FRAMES;
+  const frames = mood === 'sad' ? art.walkDown : art.walkUp;
+  const bob = WALK_BOB[index] ?? 0;
+  const face = SIDE_FACES[mood];
+  let grid = drawLayer(frames[index] ?? frames[0] ?? [], { ...face, y: face.y + bob });
+  if (art.walkOverlay) grid = drawLayer(grid, { ...art.walkOverlay, y: art.walkOverlay.y + bob });
+  return { grid, palette: { ...SHARED_PALETTE, ...art.palette } };
 }
 
 export interface PixelRun {

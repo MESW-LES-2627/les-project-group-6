@@ -3,7 +3,7 @@
 import { localIsoDate } from '@/components/pet/mood';
 import PetSprite from '@/components/pet/PetSprite.vue';
 import ReadingPet from '@/components/pet/ReadingPet.vue';
-import { HEART, PET_ANIMALS, type PetFace } from '@/components/pet/sprites';
+import { HEART, PET_ANIMALS, WALK_FRAMES, type PetFace } from '@/components/pet/sprites';
 
 const FACES: { face: PetFace; label: string }[] = [
   { face: 'happy', label: 'Happy · read recently' },
@@ -44,6 +44,21 @@ const HEART_COLORS: Record<string, string> = { o: '#432818', H: '#e0445a', J: '#
           <th scope="row">{{ animal }}</th>
           <td v-for="item in FACES" :key="item.face">
             <PetSprite :animal="animal" :face="item.face" :size="128" />
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Walk cycle (side view, mirrored when walking left)</h2>
+    <table>
+      <tbody>
+        <tr v-for="animal in PET_ANIMALS" :key="animal">
+          <th scope="row">{{ animal }}</th>
+          <td v-for="frame in WALK_FRAMES" :key="`happy-${frame}`">
+            <PetSprite :animal="animal" face="happy" :walk-frame="frame - 1" :size="96" />
+          </td>
+          <td v-for="frame in WALK_FRAMES" :key="`sad-${frame}`">
+            <PetSprite :animal="animal" face="sad" :walk-frame="frame - 1" :size="96" />
           </td>
         </tr>
       </tbody>

@@ -27,7 +27,15 @@ export interface PetArt {
   earsDown: Grid;
   /** Drawn over the face (e.g. the dog's glasses). */
   overlay?: Layer;
+  /** Side pose walking right, one grid per frame, ears up and ears down. */
+  walkUp: Grid[];
+  walkDown: Grid[];
+  /** Drawn over the side face (e.g. the dog's glasses seen from the side). */
+  walkOverlay?: Layer;
 }
+
+/** Moods a pet can walk in; starving pets stay put. */
+export type WalkMood = Exclude<PetMood, 'starving'>;
 
 /** A ready-to-draw sprite. */
 export interface Sprite {

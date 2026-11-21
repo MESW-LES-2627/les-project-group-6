@@ -105,6 +105,33 @@ describe('ReadingPet', () => {
     expect(wrapper.getComponent(PetSprite).props('face')).toBe('happy');
   });
 
+  it('walks sideways with a frame cycle, facing where it goes', async () => {
+    const random = vi.spyOn(Math, 'random');
+    random.mockReturnValue(0); // first action in the happy list is a walk, target 0% (left)
+    const wrapper = mountPet();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(wrapper.get('[data-test="pet-motion"]').classes()).toContain('is-walk');
+    expect(wrapper.get('.pet-facing').classes()).toContain('left');
+    const first = wrapper.getComponent(PetSprite).props('walkFrame');
+    await vi.advanceTimersByTimeAsync(140);
+    expect(wrapper.getComponent(PetSprite).props('walkFrame')).toBe((first ?? 0) + 1);
+    random.mockRestore();
+  });
+
+  it('stops walking and faces the reader when clicked mid-walk', async () => {
+    const random = vi.spyOn(Math, 'random');
+    random.mockReturnValue(0);
+    const wrapper = mountPet();
+    await vi.advanceTimersByTimeAsync(2000);
+    await wrapper.get('.pet-body').trigger('click');
+    expect(wrapper.get('[data-test="pet-motion"]').classes()).toContain('is-idle');
+    expect(wrapper.getComponent(PetSprite).props()).toMatchObject({
+      face: 'love',
+      walkFrame: undefined,
+    });
+    random.mockRestore();
+  });
+
   it('stops its timers when removed', () => {
     const wrapper = mountPet();
     wrapper.unmount();

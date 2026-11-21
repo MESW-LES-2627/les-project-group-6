@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import PetSprite from '../PetSprite.vue';
 import {
   composeSprite,
+  composeWalkSprite,
   drawLayer,
   fade,
   HEART,
@@ -11,6 +12,7 @@ import {
   PET_ART,
   PET_SIZE,
   toRuns,
+  WALK_FRAMES,
   type PetFace,
 } from '../sprites';
 
@@ -60,6 +62,54 @@ describe('pet sprites', () => {
     const glasses = PET_ART.dog.overlay!;
     const { grid } = composeSprite('dog', 'love');
     expect(grid[glasses.y]?.slice(glasses.x + 2, glasses.x + 6)).toBe('gggg');
+  });
+});
+
+describe('walk cycle', () => {
+  it.each(PET_ANIMALS)('draws the %s walking in 4 frames of 32x32', (animal) => {
+    for (const frames of [PET_ART[animal].walkUp, PET_ART[animal].walkDown]) {
+      expect(frames).toHaveLength(WALK_FRAMES);
+      for (const grid of frames) {
+        expect(grid).toHaveLength(PET_SIZE);
+        for (const row of grid) expect(row).toHaveLength(PET_SIZE);
+      }
+    }
+  });
+
+  it.each(PET_ANIMALS)('colours every pixel of the walking %s', (animal) => {
+    for (const mood of ['happy', 'neutral', 'sad'] as const) {
+      for (let frame = 0; frame < WALK_FRAMES; frame++) {
+        const { grid, palette } = composeWalkSprite(animal, mood, frame);
+        const missing = new Set([...grid.join('')].filter((ch) => ch !== '.' && !palette[ch]));
+        expect([...missing], `${animal} ${mood} ${frame}`).toEqual([]);
+      }
+    }
+  });
+
+  it('moves the legs between frames and loops after the last one', () => {
+    // contact (legs apart) · passing (legs together, body up) · other contact · passing
+    const frames = [0, 1, 2, 3].map((f) => composeWalkSprite('fox', 'happy', f).grid.join(''));
+    expect(new Set([frames[0], frames[1], frames[2]]).size).toBe(3);
+    expect(frames[3]).toBe(frames[1]);
+    expect(composeWalkSprite('fox', 'happy', 4)).toEqual(composeWalkSprite('fox', 'happy', 0));
+  });
+
+  it('walks with the ears down when sad', () => {
+    expect(composeWalkSprite('cat', 'sad', 0).grid.slice(0, 6)).toEqual(
+      PET_ART.cat.walkDown[0]!.slice(0, 6),
+    );
+  });
+
+  it('shows the side pose in PetSprite when given a walk frame', () => {
+    const wrapper = mount(PetSprite, { props: { animal: 'dog', face: 'happy', walkFrame: 2 } });
+    expect(wrapper.findAll('rect').length).toBe(
+      toRuns(composeWalkSprite('dog', 'happy', 2)).length,
+    );
+  });
+
+  it('falls back to the front pose for faces that cannot walk', () => {
+    const wrapper = mount(PetSprite, { props: { animal: 'dog', face: 'love', walkFrame: 1 } });
+    expect(wrapper.findAll('rect').length).toBe(toRuns(composeSprite('dog', 'love')).length);
   });
 });
 
