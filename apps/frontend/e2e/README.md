@@ -19,6 +19,7 @@ Playwright tests of the main path of every route (#127, [spec](../../../docs/sup
 
 - Tests only change what they can undo (reading sessions, shelf entries). Teardown runs even when a test fails.
 - One exception: `streak.spec.ts` logs pages on the fixture book, which counts today for the test user's streak (F-READ-04). The page is restored; the counted day stays, which is harmless because a day only counts once.
+- `library-add-book.spec.ts` takes the fixture book off the shelf, adds it again through the modal and restores its status, page and dates in teardown. A shelf entry is reversible, and the book, its tags and its folders are not touched.
 - The new-group test never submits. Do not add tests that create groups or books: there is no delete route.
 - Never write to other users' rows, truncate or reseed.
 

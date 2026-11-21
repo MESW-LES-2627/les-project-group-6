@@ -863,7 +863,7 @@ Read the iteration 1 diagrams and change analysis, the iteration 2 log and the b
 ### 2026-11-21: Add a book from the library page in a modal
 
 - **Date:** 2026-11-21
-- **Author:** gbemme
+- **Author:** Nimot Imran
 - **Model:** DeepSeek V4.1 Flash Free
 - **Tool:** OpenCode
 - **Domain:** frontend, testing, docs
@@ -879,7 +879,7 @@ Added a reusable `AppModal.vue` (Escape/backdrop/close-button dismissal, Tab tra
 ### 2026-11-21: Book search in the library add-book modal
 
 - **Date:** 2026-11-21
-- **Author:** gbemme
+- **Author:** Nimot Imran
 - **Model:** DeepSeek V4.1 Flash Free
 - **Tool:** OpenCode
 - **Domain:** frontend, testing, docs
@@ -891,3 +891,19 @@ on the pop up modal, there is no option to search for book but we have this on t
 
 #### Explanation of Changes
 Added `AddBookModal.vue`, which searches the catalogue with the same debounced, abortable `searchBooks` flow and `BookSearchResults` list as Explore, then adds a result with `addToLibrary`; the manual `AddBookForm` remains available for missing books. Extended `BookSearchResults` with an `add` mode (Add button, busy state, "In your library" tag for owned ids) and updated `LibraryView` to pass the shelf's ids and refresh after adding. Added tests for the modal, results list and library page; all 573 frontend tests pass.
+
+### 2026-11-21: E2E test for the library add-book modal
+
+- **Date:** 2026-11-21
+- **Author:** Nimot Imran
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** testing, docs
+
+#### Prompt
+```text
+add e2e test  to this implementation
+```
+
+#### Explanation of Changes
+Added `apps/frontend/e2e/library-add-book.spec.ts` with two Playwright tests: the modal searches the catalogue, marks the fixture book "In your library" and opens the manual form prefilled; and the fixture book is removed from the shelf, added again through the modal, shown as "Not started" and checked to survive a reload, with the original status, page and dates restored in teardown. The tests reuse the fixture book because the API has no delete route for books, and assert the first result row because the catalogue is searched before Open Library. Documented the round trip in the e2e README and the iteration log. The suite could not run locally (no `.env.e2e` or fixtures); typecheck, ESLint and Prettier pass.
