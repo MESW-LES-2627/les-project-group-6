@@ -57,3 +57,19 @@ nice, so, create them and the states
 
 #### Explanation of Changes
 Generated four original 32×32 pixel pets (cat, dog, fox, rabbit) in five faces as editable character grids, a `PetSprite` SVG component, a dev-only preview page at `/dev/pets`, and unit/component tests. Walking, idle actions and Home placement are the next step.
+
+### 2026-11-21: Reading pet on Home
+
+- **Date:** 2026-11-21
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** frontend, testing
+
+#### Prompt
+```text
+keep these mood time limits, add to home page, no need to rquirement
+```
+
+#### Explanation of Changes
+Added the `ReadingPet` component to Home: mood from the streak's last reading day, walking and idle actions, a heart on click, a pet picker, and reduced-motion support. Added a sleep face, live pets on `/dev/pets`, and tests.

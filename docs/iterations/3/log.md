@@ -9,13 +9,12 @@ A running record of what the team did and decided in iteration 3. The [release n
 | Area | State |
 |---|---|
 | Planning | 24 user stories (#178 to #201) from the 2026-11-20 app review, in Iteration 3 on the [board](https://github.com/orgs/MESW-LES-2627/projects/23). Not assigned or estimated yet |
-| Reading pet (#199) | Art step: cat, dog, fox and rabbit in 5 faces, `PetSprite` component, preview at `/dev/pets` (dev only). Not on Home yet; no walking, idle actions or backend |
+| Reading pet (#199) | On Home below the goals: cat, dog, fox or rabbit (picker, saved in the browser), walks and plays idle actions, heart on click, mood from the streak's last reading day. Preview at `/dev/pets` (dev only). No backend yet: the pet choice is not saved on the account and minutes read don't feed it yet |
 
 ## Next steps
 
 - Prioritise, estimate and assign the 24 new stories.
-- Reading pet: approve the art, then walking and idle actions, click heart, mood from reading, pet picker and Home placement.
-- Add a requirement for the reading pet (tests are tagged `F-GAM-03` for now).
+- Reading pet: save the chosen pet on the account and feed it with minutes read (capped at 60 a day).
 
 ## Log
 
@@ -32,3 +31,11 @@ A running record of what the team did and decided in iteration 3. The [release n
 - Art lives as editable character grids in [`components/pet/sprites/`](../../../apps/frontend/src/components/pet/sprites/); [`PetSprite.vue`](../../../apps/frontend/src/components/pet/PetSprite.vue) draws them as a crisp inline SVG. Temporary review page [`PetPreviewView.vue`](../../../apps/frontend/src/views/PetPreviewView.vue) at `/dev/pets`, only registered in dev builds.
 - **Decision: plain SVG and CSS, no Rive.** Rive needs hand-made `.riv` files built in its editor, and the React runtime doesn't fit the Vue app. *Rejected:* a paid sprite pack, because its characters can't be redistributed in a public repo.
 - The style takes ideas from a kawaii pixel pet pack, but the characters and accessories are our own.
+
+### 2026-11-21: Reading pet on Home (#199)
+
+- [`ReadingPet.vue`](../../../apps/frontend/src/components/pet/ReadingPet.vue) sits in Home's glance column below "Your goals". It walks left and right and plays random idle actions (look around, hop, wiggle, nap), and shows a heart and the love face when clicked.
+- **Decision: the mood comes from the streak's `lastReadDate`** that Home already loads, so no new endpoint is needed. Read today: happy. 1 day away: neutral. 2 to 6 days: sad, walking slower. 7 or more days: starving, no walking. Before the first reading the pet is neutral, so new readers are not greeted by a starving pet. Rules are in [`mood.ts`](../../../apps/frontend/src/components/pet/mood.ts).
+- The reader picks the cat (Miso), dog (Biscuit), fox (Maple) or rabbit (Clover); the choice is stored in the browser for now.
+- Walking reuses the front-facing sprite with a bob and flip. *Rejected for now:* side-view walking frames, which would double the art.
+- No requirement ID for the pet, as decided by the team, so its tests carry no `@req` tag.
