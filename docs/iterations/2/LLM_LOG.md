@@ -907,3 +907,56 @@ add e2e test  to this implementation
 
 #### Explanation of Changes
 Added `apps/frontend/e2e/library-add-book.spec.ts` with two Playwright tests: the modal searches the catalogue, marks the fixture book "In your library" and opens the manual form prefilled; and the fixture book is removed from the shelf, added again through the modal, shown as "Not started" and checked to survive a reload, with the original status, page and dates restored in teardown. The tests reuse the fixture book because the API has no delete route for books, and assert the first result row because the catalogue is searched before Open Library. Documented the round trip in the e2e README and the iteration log. The suite could not run locally (no `.env.e2e` or fixtures); typecheck, ESLint and Prettier pass.
+
+### 2026-11-21: Reusable page skeleton
+
+- **Date:** 2026-11-21
+- **Author:** Nimot Imran
+- **Model:** Claude Sonnet 5.5
+- **Tool:** Claude (claude.ai)
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+Having a different skeleton loader component for each page is not efficient, make it reusable so it can be used in other pages that need it, and remove the duplicate ones
+```
+
+#### Explanation of Changes
+Replaced the eight page-specific skeleton components with one `PageSkeleton` (variants `detail`, `profile`, `cards`, `list`) built on the existing `AppSkeleton` block, switched the views to it and wired it into the group page, user profile and reading room. Added unit tests and checked the layouts in a browser at several widths.
+
+
+### 2026-11-22: Chat scroll and the reusable skeleton on Home
+
+- **Date:** 2026-11-22
+- **Author:** Nimot Imran
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+I want to implement this? I want the conversation to be able to scroll and not just a long list. Also add the reuseable skeleton loader to the homepage
+
+User story
+As a group member, I want the chat to scroll, so that I can read older messages without the page growing forever.
+Acceptance criteria
+
+Feature: Chat scroll
+
+  Scenario: Long conversation
+    Given the chat has more messages than fit on the screen
+    When I open the chat
+    Then the messages area scrolls inside the chat and starts at the newest message
+
+  Scenario: Read older messages
+    When I scroll up
+    Then I see older messages
+
+  Scenario: New message while reading old ones
+    Given I scrolled up
+    When a new message arrives
+    Then my position does not jump and I can go back to the newest message
+```
+
+#### Explanation of Changes
+`GroupChat.vue` now gives the message list a bounded height and `overflow-y: auto`, so the conversation scrolls inside the chat instead of stretching the page. It scrolls to the newest message on mount and after history loads, follows new messages while the reader is at the bottom, and keeps the reader's position (showing a "New messages" button) when a message arrives while they are scrolled up. `HomeView.vue` now uses the shared `PageSkeleton` for the bedside book (`detail` with a cover), groups (`rows`) and trending books (`cards` with row cards); `PageSkeleton` gained the reusable `rows` variant for a plain vertical list. Added tests for the three scroll scenarios, the `rows` variant and the Home loading states. Frontend: 585 tests pass; typecheck, ESLint and Prettier pass.

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 
+import PageSkeleton from '@/components/layout/PageSkeleton.vue';
 import ProfileBookplate from '@/components/profile/ProfileBookplate.vue';
 import ChallengesSummary from '@/components/profile/ChallengesSummary.vue';
 import ChapterLevel from '@/components/profile/ChapterLevel.vue';
@@ -45,6 +46,8 @@ import {
 // challenges. The chapter and monthly recap are not
 // built yet and still come from src/mocks/profile.ts.
 const user = ref<ProfileUser | null>(null);
+/** True until the first load of the reader, stats, library and folders settles. */
+const loading = ref(true);
 const library = ref<ApiLibraryItem[]>([]);
 const folderSummaries = ref<FolderSummary[]>([]);
 const streakData = ref<ApiStreak | null>(null);
@@ -144,34 +147,44 @@ async function loadLibrary() {
   folderSummaries.value = folderList;
 }
 
-onMounted(() => Promise.all([loadUser(), loadStreak(), loadReadingTime(), loadLibrary()]));
+onMounted(async () => {
+  try {
+    await Promise.all([loadUser(), loadStreak(), loadReadingTime(), loadLibrary()]);
+  } finally {
+    loading.value = false;
+  }
+});
 </script>
 
 <template>
   <main class="profile">
-    <ProfileBookplate v-if="user" :user="user" />
+    <PageSkeleton v-if="loading" variant="profile" label="Loading your profile…" />
 
-    <div class="page-column">
-      <p v-if="loadError" class="load-error" role="alert">{{ loadError }}</p>
-      <CurrentlyReading :items="currentlyReading" />
+    <template v-else>
+      <ProfileBookplate v-if="user" :user="user" />
 
-      <div class="columns">
-        <div class="column">
-          <BookShelf class="divided" :spines="shelf" />
-          <CoverGrid :books="recentlyAdded" />
+      <div class="page-column">
+        <p v-if="loadError" class="load-error" role="alert">{{ loadError }}</p>
+        <CurrentlyReading :items="currentlyReading" />
+
+        <div class="columns">
+          <div class="column">
+            <BookShelf class="divided" :spines="shelf" />
+            <CoverGrid :books="recentlyAdded" />
+          </div>
+          <div class="column">
+            <ChapterLevel class="divided" :chapter="mockProfile.chapter" />
+            <StreakCalendar class="divided" :streak="streak" />
+            <ReadingTime class="divided" :stats="readingTime" />
+            <ChallengesSummary :won="challengesWon" />
+          </div>
         </div>
-        <div class="column">
-          <ChapterLevel class="divided" :chapter="mockProfile.chapter" />
-          <StreakCalendar class="divided" :streak="streak" />
-          <ReadingTime class="divided" :stats="readingTime" />
-          <ChallengesSummary :won="challengesWon" />
-        </div>
+
+        <FolderList class="top-rule" :folders="folders" />
+        <ReviewList v-if="reviews" class="top-rule" :reviews="reviews" />
+        <MonthRecap class="top-rule" :recap="mockProfile.recap" />
       </div>
-
-      <FolderList class="top-rule" :folders="folders" />
-      <ReviewList v-if="reviews" class="top-rule" :reviews="reviews" />
-      <MonthRecap class="top-rule" :recap="mockProfile.recap" />
-    </div>
+    </template>
   </main>
 </template>
 

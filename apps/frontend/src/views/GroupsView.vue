@@ -5,6 +5,7 @@ import { RouterLink } from 'vue-router';
 import GroupCard from '@/components/groups/GroupCard.vue';
 import MemberAvatar from '@/components/groups/MemberAvatar.vue';
 import PagePlate from '@/components/layout/PagePlate.vue';
+import PageSkeleton from '@/components/layout/PageSkeleton.vue';
 import {
   answerInvite,
   getPendingInvites,
@@ -187,7 +188,7 @@ function rematch(group: GroupSummary) {
           </li>
         </ul>
       </section>
-      <p v-if="loading" class="empty" role="status">Loading your groups…</p>
+      <PageSkeleton v-if="loading" variant="list" label="Loading your groups…" />
       <p v-else-if="loadError" class="empty" role="alert">{{ loadError }}</p>
       <p v-else-if="!sections.length" class="empty">No groups here yet.</p>
     </div>

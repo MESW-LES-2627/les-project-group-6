@@ -8,6 +8,7 @@ import TrendingBookCard from '@/components/explore/TrendingBookCard.vue';
 import UserSearchBar from '@/components/explore/UserSearchBar.vue';
 import UserSearchResults from '@/components/explore/UserSearchResults.vue';
 import PageHeader from '@/components/layout/PageHeader.vue';
+import PageSkeleton from '@/components/layout/PageSkeleton.vue';
 import {
   addBook,
   addToLibrary,
@@ -321,7 +322,7 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
-      <p v-if="loading" class="muted state">Loading…</p>
+      <PageSkeleton v-if="loading" variant="list" label="Loading trending books…" card="column" />
       <div v-else-if="loadError" class="state">
         <p class="muted">Couldn't load trending books.</p>
         <button type="button" class="button-outline button-small" @click="loadOverview">

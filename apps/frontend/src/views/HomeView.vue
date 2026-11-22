@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import MemberAvatar from '@/components/groups/MemberAvatar.vue';
+import PageSkeleton from '@/components/layout/PageSkeleton.vue';
 import BookCoverImage from '@/components/library/BookCoverImage.vue';
 import { mockHome } from '@/mocks/home';
 import {
@@ -223,7 +224,10 @@ async function respondToInvite(invite: HomeInvitation, accept: boolean) {
       <p class="greeting-line">{{ dateLine }}</p>
     </header>
 
-    <section class="bedside" aria-labelledby="bedside-title">
+    <section
+      class="bedside"
+      :aria-labelledby="bedsideState === 'loading' ? undefined : 'bedside-title'"
+    >
       <template v-if="bedside">
         <RouterLink
           class="bedside-cover"
@@ -270,14 +274,15 @@ async function respondToInvite(invite: HomeInvitation, accept: boolean) {
           </div>
         </div>
       </template>
+      <div v-else-if="bedsideState === 'loading'" class="bedside-body bedside-loading">
+        <PageSkeleton variant="detail" cover :rail="false" label="Finding your book…" />
+      </div>
       <div v-else class="bedside-body">
-        <h2 id="bedside-title" class="bedside-title">
-          {{ bedsideState === 'loading' ? 'Finding your book…' : 'Nothing on your bedside yet' }}
-        </h2>
+        <h2 id="bedside-title" class="bedside-title">Nothing on your bedside yet</h2>
         <p v-if="bedsideState === 'error'" class="note" role="alert">
           We could not load your reading. Please refresh the page.
         </p>
-        <template v-else-if="bedsideState === 'ready'">
+        <template v-else>
           <p class="note">
             {{
               libraryEmpty
@@ -353,71 +358,79 @@ async function respondToInvite(invite: HomeInvitation, accept: boolean) {
             <h2 id="groups-title" class="section-title">Your groups</h2>
             <RouterLink class="text-link" to="/groups">All groups</RouterLink>
           </div>
-          <p v-if="groupsState === 'loading'" class="note" role="status">Loading your groups…</p>
-          <p v-else-if="groupsState === 'error'" class="note" role="alert">
-            We could not load your groups. Please refresh the page.
-          </p>
-          <p v-else-if="!hasGroups" class="note">
-            No active challenges or book clubs.
-            <RouterLink class="text-link" to="/groups/new">Create one</RouterLink>
-          </p>
-          <ul v-else class="group-list">
-            <li v-for="challenge in challenges" :key="challenge.id">
-              <RouterLink
-                class="rank-tile"
-                :to="`/groups/${challenge.id}`"
-                tabindex="-1"
-                aria-hidden="true"
-              >
-                {{ challenge.rank ? `#${challenge.rank}` : '—'
-                }}<span>of {{ challenge.readers }}</span>
-              </RouterLink>
-              <div class="group-body">
-                <div class="group-line">
-                  <RouterLink class="group-name" :to="`/groups/${challenge.id}`">
-                    {{ challenge.name }}
-                  </RouterLink>
-                  <span class="section-meta">
-                    {{ challenge.daysLeft }} {{ challenge.daysLeft === 1 ? 'day' : 'days' }} left
-                  </span>
+          <Transition name="skeleton-swap" mode="out-in">
+            <PageSkeleton
+              v-if="groupsState === 'loading'"
+              key="loading"
+              variant="rows"
+              :count="3"
+              label="Loading your groups…"
+            />
+            <p v-else-if="groupsState === 'error'" key="error" class="note" role="alert">
+              We could not load your groups. Please refresh the page.
+            </p>
+            <p v-else-if="!hasGroups" key="empty" class="note">
+              No active challenges or book clubs.
+              <RouterLink class="text-link" to="/groups/new">Create one</RouterLink>
+            </p>
+            <ul v-else key="list" class="group-list">
+              <li v-for="challenge in challenges" :key="challenge.id">
+                <RouterLink
+                  class="rank-tile"
+                  :to="`/groups/${challenge.id}`"
+                  tabindex="-1"
+                  aria-hidden="true"
+                >
+                  {{ challenge.rank ? `#${challenge.rank}` : '—'
+                  }}<span>of {{ challenge.readers }}</span>
+                </RouterLink>
+                <div class="group-body">
+                  <div class="group-line">
+                    <RouterLink class="group-name" :to="`/groups/${challenge.id}`">
+                      {{ challenge.name }}
+                    </RouterLink>
+                    <span class="section-meta">
+                      {{ challenge.daysLeft }} {{ challenge.daysLeft === 1 ? 'day' : 'days' }} left
+                    </span>
+                  </div>
+                  <p class="group-meta">Challenge · {{ challenge.score }}</p>
+                  <progress
+                    class="progress-bar"
+                    :value="challenge.progress"
+                    max="100"
+                    aria-label="Challenge progress"
+                  ></progress>
                 </div>
-                <p class="group-meta">Challenge · {{ challenge.score }}</p>
-                <progress
-                  class="progress-bar"
-                  :value="challenge.progress"
-                  max="100"
-                  aria-label="Challenge progress"
-                ></progress>
-              </div>
-            </li>
-            <li v-for="club in clubs" :key="club.id">
-              <RouterLink
-                class="small-cover"
-                :to="`/groups/${club.id}`"
-                tabindex="-1"
-                aria-hidden="true"
-              >
-                <BookCoverImage :src="club.cover" :title="club.bookTitle" />
-              </RouterLink>
-              <div class="group-body">
-                <div class="group-line">
-                  <RouterLink class="group-name" :to="`/groups/${club.id}`">
-                    {{ club.name }} · {{ club.bookTitle }}
-                  </RouterLink>
-                  <span class="section-meta">deadline {{ club.deadline }}</span>
+              </li>
+              <li v-for="club in clubs" :key="club.id">
+                <RouterLink
+                  class="small-cover"
+                  :to="`/groups/${club.id}`"
+                  tabindex="-1"
+                  aria-hidden="true"
+                >
+                  <BookCoverImage :src="club.cover" :title="club.bookTitle" />
+                </RouterLink>
+                <div class="group-body">
+                  <div class="group-line">
+                    <RouterLink class="group-name" :to="`/groups/${club.id}`">
+                      {{ club.name }} · {{ club.bookTitle }}
+                    </RouterLink>
+                    <span class="section-meta">deadline {{ club.deadline }}</span>
+                  </div>
+                  <p class="group-meta">
+                    Book club · {{ club.finished }} of {{ club.total }} finished
+                  </p>
+                  <progress
+                    class="progress-bar gold"
+                    :value="club.total ? Math.round((club.finished / club.total) * 100) : 0"
+                    max="100"
+                    aria-label="Club members finished"
+                  ></progress>
                 </div>
-                <p class="group-meta">
-                  Book club · {{ club.finished }} of {{ club.total }} finished
-                </p>
-                <progress
-                  class="progress-bar gold"
-                  :value="club.total ? Math.round((club.finished / club.total) * 100) : 0"
-                  max="100"
-                  aria-label="Club members finished"
-                ></progress>
-              </div>
-            </li>
-          </ul>
+              </li>
+            </ul>
+          </Transition>
         </section>
 
         <section class="section" aria-labelledby="circle-title">
@@ -510,22 +523,33 @@ async function respondToInvite(invite: HomeInvitation, accept: boolean) {
         <h2 id="trending-title" class="section-title">Trending now</h2>
         <RouterLink class="text-link" to="/explore">Explore</RouterLink>
       </div>
-      <p v-if="trendingState === 'loading'" class="note" role="status">Loading…</p>
-      <p v-else-if="trendingState === 'error'" class="note" role="alert">
-        We could not load what is trending.
-      </p>
-      <p v-else-if="!trending.length" class="note">Nobody has started a book this week yet.</p>
-      <ul v-else class="trending">
-        <li v-for="book in trending" :key="book.id">
-          <div class="trending-cover">
-            <BookCoverImage :src="book.cover" :title="book.title" />
-          </div>
-          <div>
-            <p class="trending-title">{{ book.title }}</p>
-            <p class="note">{{ book.note }}</p>
-          </div>
-        </li>
-      </ul>
+      <Transition name="skeleton-swap" mode="out-in">
+        <PageSkeleton
+          v-if="trendingState === 'loading'"
+          key="loading"
+          variant="cards"
+          card="row"
+          :count="4"
+          label="Loading trending books…"
+        />
+        <p v-else-if="trendingState === 'error'" key="error" class="note" role="alert">
+          We could not load what is trending.
+        </p>
+        <p v-else-if="!trending.length" key="empty" class="note">
+          Nobody has started a book this week yet.
+        </p>
+        <ul v-else key="list" class="trending">
+          <li v-for="book in trending" :key="book.id">
+            <div class="trending-cover">
+              <BookCoverImage :src="book.cover" :title="book.title" />
+            </div>
+            <div>
+              <p class="trending-title">{{ book.title }}</p>
+              <p class="note">{{ book.note }}</p>
+            </div>
+          </li>
+        </ul>
+      </Transition>
     </section>
   </main>
 </template>
@@ -567,6 +591,11 @@ async function respondToInvite(invite: HomeInvitation, accept: boolean) {
 
 .bedside-body {
   min-width: 0;
+}
+
+/* While the book loads, the skeleton takes the cover and body columns. */
+.bedside-loading {
+  grid-column: 1 / 3;
 }
 
 .glance {
@@ -937,6 +966,10 @@ cite {
 
   .bedside-cover {
     width: 140px;
+  }
+
+  .bedside-loading {
+    grid-column: auto;
   }
 
   .glance {

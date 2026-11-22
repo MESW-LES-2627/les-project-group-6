@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
+import PageSkeleton from '@/components/layout/PageSkeleton.vue';
 import {
   getBookClub,
   getChallengeGroup,
@@ -57,25 +58,27 @@ async function reloadClub() {
 </script>
 
 <template>
-  <ChallengeGroupView
-    v-if="apiChallenge"
-    :key="apiChallenge.id"
-    :challenge="apiChallenge"
-    :me-id="meId"
-  />
-  <BookClubGroupView
-    v-else-if="apiClub"
-    :key="`${apiClub.id}-${version}`"
-    :club="apiClub"
-    :me-id="meId"
-    @changed="reloadClub"
-  />
-  <main v-else-if="loading" class="page-column missing" aria-busy="true"></main>
-  <main v-else class="page-column missing">
-    <h1>This group could not be found.</h1>
-    <p>It may have been removed, or you are not a member.</p>
-    <RouterLink class="button" :to="{ name: 'groups' }">Back to groups</RouterLink>
-  </main>
+  <Transition name="skeleton-swap" mode="out-in">
+    <ChallengeGroupView
+      v-if="apiChallenge"
+      :key="apiChallenge.id"
+      :challenge="apiChallenge"
+      :me-id="meId"
+    />
+    <BookClubGroupView
+      v-else-if="apiClub"
+      :key="`${apiClub.id}-${version}`"
+      :club="apiClub"
+      :me-id="meId"
+      @changed="reloadClub"
+    />
+    <PageSkeleton v-else-if="loading" key="loading" plate label="Loading the group…" />
+    <main v-else key="missing" class="page-column missing">
+      <h1>This group could not be found.</h1>
+      <p>It may have been removed, or you are not a member.</p>
+      <RouterLink class="button" :to="{ name: 'groups' }">Back to groups</RouterLink>
+    </main>
+  </Transition>
 </template>
 
 <style scoped>

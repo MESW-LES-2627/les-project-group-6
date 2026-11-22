@@ -20,6 +20,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Reviews (#122, F-LIB-02) | Rate 1–5 with an optional comment, edit and delete, only for In progress, Finished or DNF books. Book page shows my, friends' and public reviews and the public average; profile lists my reviews. Migration 0010. Draft PR #150 |
 | Mock data (branch `feat/mock-to-real`) | Home, library, book, session, groups and profile pages use only API data for every feature whose issue is closed; no fallback to mocks. Mocks remain only for features not built yet (streak, goals, XP level, notifications, challenges won, recap, friend activity). Books now carry `authors` |
 | Streak & minutes (#121, F-READ-04, F-PROF-01) | Streak stored as `current_streak`, `longest_streak`, `last_read_date` on `users` (migration 0013), counted from 5+ minute sessions, 5+ pages on a book in progress, or finishing a book in progress. Profile shows the live streak, 28-day calendar and total minutes. PR #160, review fixes applied |
+| Chat & loading states | The group chat scrolls inside its panel, opens at the newest message and offers a **New messages** jump when the reader scrolled up. Home uses the shared `PageSkeleton` for its loading sections; 585 frontend tests pass |
 | Planning | Sprints planned on the [prioritized backlog](https://github.com/orgs/MESW-LES-2627/projects/23): 8 stories (49 points) in Iteration 2 (#120 to #127) |
 
 ## Next steps
@@ -457,3 +458,19 @@ Filled [CLAIM.md](CLAIM.md) following the iteration 1 template: permalinks on ta
 - The search asserts the first result row only: the backend searches the catalogue before Open Library, so a book sharing the title cannot break the test.
 - **Not run yet:** `apps/frontend/.env.e2e` and the fixtures are missing locally, as for the rest of the suite. Typecheck, ESLint and Prettier pass. The [e2e README](../../../apps/frontend/e2e/README.md) records the round trip under its rules.
  
+
+### 2026-11-21: One reusable `PageSkeleton` instead of a skeleton per page
+
+- Branch work on the loading placeholders. There were nine skeleton components: the `AppSkeleton` block plus eight page-specific ones (`BookDetailSkeleton`, `ProfileSkeleton`, `UserSkeleton`, `ExploreSkeleton`, `LibrarySkeleton`, `GroupsSkeleton`, `GroupDetailSkeleton`, `SessionSkeleton`). They repeated the same layouts (title lines plus a main column and rail, an identity band, cover cards, short rows) and the same `role="status"` boilerplate. Three of them were not used by any page.
+- **Decision: one [`PageSkeleton`](../../../apps/frontend/src/components/layout/PageSkeleton.vue) with four layouts**, chosen by a `variant` prop: `detail` (optional `cover` and `rail`), `profile`, `cards` (`card="column|row"`, `count`, `sidebar`) and `list` (`sections`, `count`). It announces its `label` once and hides the blocks from screen readers. `AppSkeleton` stays as the single block. A new page picks a variant instead of writing a skeleton. *Rejected:* a slot-based skeleton (every page would repeat the markup again), and a generic block-list config (a new component with no layout of its own).
+- The eight page skeletons are deleted. Library, Explore, Book, Profile and Groups use `PageSkeleton`; the group page, another reader's profile and the reading room, which only showed text or an empty `<main>` while loading, now use it too.
+- **Trade-off:** a skeleton is an approximation, so the layouts are shared rather than pixel-copies of each page (for example, own and other readers' profiles use the same placeholder).
+- Fixed while checking in a browser at 360 to 1280 px: a modifier class clashing with a list class, and fixed-width lines pushing the page sideways on narrow screens.
+- **Tests.** [`PageSkeleton.spec.ts`](../../../apps/frontend/src/components/layout/__tests__/PageSkeleton.spec.ts) (7 tests: announcement, each variant and prop). Frontend: 580 tests pass; typecheck, ESLint and Prettier pass.
+
+
+### 2026-11-22: Chat scroll and the reusable skeleton on Home
+
+- The conversation in [`GroupChat`](../../../apps/frontend/src/components/groups/GroupChat.vue) now scrolls inside the chat (`max-height: min(60vh, 34rem)`) instead of growing the page. It opens at the newest message, follows new messages while the reader is at the bottom, and keeps the reader's position when one arrives while they are reading older ones; a **New messages** button jumps back to the newest message. A 24 px threshold counts a reader a few pixels from the bottom as still at the bottom.
+- [`HomeView`](../../../apps/frontend/src/views/HomeView.vue) now uses the shared [`PageSkeleton`](../../../apps/frontend/src/components/layout/PageSkeleton.vue) instead of text placeholders: `detail` with a cover for the bedside book, `rows` for the groups list and `cards` with row cards for trending books. The new `rows` variant is a plain vertical list of short rows, reusable by any section with that shape.
+- **Tests.** `GroupChat.spec.ts` covers opening at the newest message, following new messages at the bottom, and holding the position while scrolled up with the jump button. `PageSkeleton.spec.ts` covers `rows`, and `HomeView.spec.ts` checks the skeletons while sections load. Frontend: 585 tests pass; typecheck, ESLint and Prettier pass.
