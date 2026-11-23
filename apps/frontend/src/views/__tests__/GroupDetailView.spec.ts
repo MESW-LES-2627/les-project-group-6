@@ -337,4 +337,25 @@ describe('GroupDetailView', () => {
 
     expect(wrapper.get('h1').text()).toBe('This group could not be found.');
   });
+
+  it('shows the group plate skeleton while the group loads', async () => {
+    let resolveGroup!: (group: ApiChallengeGroupDetail) => void;
+    getChallengeGroup.mockReturnValueOnce(
+      new Promise<ApiChallengeGroupDetail>((resolve) => {
+        resolveGroup = resolve;
+      }),
+    );
+    getGroupMessages.mockResolvedValue([]);
+    const wrapper = mountGroup(apiGroup.id);
+    await flushPromises();
+
+    const skeleton = wrapper.get('.page-skeleton');
+    expect(skeleton.classes()).toContain('detail');
+    expect(skeleton.find('.band').exists()).toBe(true);
+    expect(skeleton.find('.detail-body.page-column').exists()).toBe(true);
+
+    resolveGroup(apiGroup);
+    await flushPromises();
+    wrapper.unmount();
+  });
 });

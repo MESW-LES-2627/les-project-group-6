@@ -205,6 +205,17 @@ main {
   color: var(--color-text-muted);
 }
 
+/* Crossfade between a loading skeleton and the content it replaces. */
+.skeleton-swap-enter-active,
+.skeleton-swap-leave-active {
+  transition: opacity var(--duration-lift) var(--ease-out);
+}
+
+.skeleton-swap-enter-from,
+.skeleton-swap-leave-to {
+  opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

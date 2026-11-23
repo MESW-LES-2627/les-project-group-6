@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue';
 
 import PagePlate from '@/components/layout/PagePlate.vue';
+import PageSkeleton from '@/components/layout/PageSkeleton.vue';
+import AddBookModal from '@/components/library/AddBookModal.vue';
 import LibraryBookCard from '@/components/library/LibraryBookCard.vue';
 import LibrarySidebar from '@/components/library/LibrarySidebar.vue';
 import {
@@ -25,6 +27,8 @@ import { sortBooks } from '@/utils/library';
 
 const rawBooks = ref<LibraryBook[]>([]);
 const libraryError = ref<string | null>(null);
+/** True until the first load of books, folders and tags settles. */
+const loading = ref(true);
 
 const folders = ref<FolderSummary[]>([]);
 const folderError = ref<string | null>(null);
@@ -74,10 +78,12 @@ async function fetchTags() {
   }
 }
 
-onMounted(() => {
-  void fetchLibraryData();
-  void fetchFolders();
-  void fetchTags();
+onMounted(async () => {
+  try {
+    await Promise.all([fetchLibraryData(), fetchFolders(), fetchTags()]);
+  } finally {
+    loading.value = false;
+  }
 });
 
 const hasFolderName = (name: string, exceptId?: string) =>
@@ -136,6 +142,26 @@ async function deleteFolder(id: string) {
   } catch (error) {
     folderError.value = error instanceof Error ? error.message : 'Failed to delete the folder';
   }
+}
+
+// F-BOOK-02: search the catalogue or add a missing book, in a modal from the plate.
+const addOpen = ref(false);
+
+function openAddBook() {
+  addOpen.value = true;
+}
+
+function closeAddBook() {
+  addOpen.value = false;
+}
+
+/** Ids already on the shelf, so the modal does not offer to add them again. */
+const libraryBookIds = computed(() => rawBooks.value.map((book) => book.id));
+
+async function onBookAdded() {
+  addOpen.value = false;
+  // The new book is "Not started", so reload the shelf (and its tag counts) to show it.
+  await Promise.all([fetchLibraryData(), fetchTags()]);
 }
 
 const genreOptions = computed(() =>
@@ -226,7 +252,7 @@ function showEverything() {
     <PagePlate title="Library" title-id="library-title">
       <p>{{ plateLine }}</p>
       <template #actions>
-        <button type="button" class="plate-button">
+        <button type="button" class="plate-button" @click="openAddBook">
           <svg
             width="16"
             height="16"
@@ -261,6 +287,13 @@ function showEverything() {
         </button>
       </template>
     </PagePlate>
+
+    <AddBookModal
+      v-if="addOpen"
+      :owned-ids="libraryBookIds"
+      @close="closeAddBook"
+      @added="onBookAdded"
+    />
 
     <div class="page-column">
       <div class="toolbar">
@@ -321,59 +354,70 @@ function showEverything() {
         </div>
       </div>
 
-      <div class="layout">
-        <LibrarySidebar
-          :folders="displayFolders"
-          :tags="displayTags"
-          :active-folder="activeFolder || null"
-          :active-tag="activeTag || null"
-          :error="folderError"
-          @select-folder="selectFolder"
-          @select-tag="selectTag"
-          @create-folder="createFolder"
-          @rename-folder="renameFolder"
-          @delete-folder="deleteFolder"
+      <Transition name="skeleton-swap" mode="out-in">
+        <PageSkeleton
+          v-if="loading"
+          key="loading"
+          variant="cards"
+          sidebar
+          :count="8"
+          label="Loading your library…"
         />
 
-        <section class="results" aria-labelledby="books-title">
-          <div class="section-heading">
-            <h2 id="books-title" class="section-title">{{ heading }}</h2>
-            <span class="section-meta summary">{{ books.length }} of {{ totalCount }} shown</span>
-          </div>
+        <div v-else key="library" class="layout">
+          <LibrarySidebar
+            :folders="displayFolders"
+            :tags="displayTags"
+            :active-folder="activeFolder || null"
+            :active-tag="activeTag || null"
+            :error="folderError"
+            @select-folder="selectFolder"
+            @select-tag="selectTag"
+            @create-folder="createFolder"
+            @rename-folder="renameFolder"
+            @delete-folder="deleteFolder"
+          />
 
-          <p v-if="libraryError" class="empty library-error">{{ libraryError }}</p>
+          <section class="results" aria-labelledby="books-title">
+            <div class="section-heading">
+              <h2 id="books-title" class="section-title">{{ heading }}</h2>
+              <span class="section-meta summary">{{ books.length }} of {{ totalCount }} shown</span>
+            </div>
 
-          <div v-if="books.length > 0" class="grid">
-            <LibraryBookCard v-for="book in books" :key="book.id" :book="book" />
-          </div>
-          <p v-else class="empty">
-            No books match these filters.
-            <button type="button" class="link-button" @click="showEverything">
-              Show all books
-            </button>
-          </p>
+            <p v-if="libraryError" class="empty library-error">{{ libraryError }}</p>
 
-          <div class="results-footer">
-            <button type="button" class="link-button view-all" @click="showEverything">
-              View all {{ totalCount }} books
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M5 12h14" />
-                <path d="m13 6 6 6-6 6" />
-              </svg>
-            </button>
-          </div>
-        </section>
-      </div>
+            <div v-if="books.length > 0" class="grid">
+              <LibraryBookCard v-for="book in books" :key="book.id" :book="book" />
+            </div>
+            <p v-else class="empty">
+              No books match these filters.
+              <button type="button" class="link-button" @click="showEverything">
+                Show all books
+              </button>
+            </p>
+
+            <div class="results-footer">
+              <button type="button" class="link-button view-all" @click="showEverything">
+                View all {{ totalCount }} books
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14" />
+                  <path d="m13 6 6 6-6 6" />
+                </svg>
+              </button>
+            </div>
+          </section>
+        </div>
+      </Transition>
     </div>
   </main>
 </template>

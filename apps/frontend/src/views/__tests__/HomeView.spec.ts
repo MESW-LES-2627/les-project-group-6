@@ -337,6 +337,35 @@ describe('HomeView', () => {
 
     expect(wrapper.text()).toContain('18 of 24 books');
   });
+
+  it('shows the reusable skeletons while the sections load', async () => {
+    let resolveGroups!: (groups: ApiChallengeGroup[]) => void;
+    let resolveTrending!: (explore: ApiExplore) => void;
+    api.getUserGroups.mockReturnValue(
+      new Promise<ApiChallengeGroup[]>((resolve) => {
+        resolveGroups = resolve;
+      }),
+    );
+    api.getExplore.mockReturnValue(
+      new Promise<ApiExplore>((resolve) => {
+        resolveTrending = resolve;
+      }),
+    );
+
+    const wrapper = mount(HomeView, { global: { plugins: [router] } });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Loading your groups…');
+    expect(wrapper.text()).toContain('Loading trending books…');
+    expect(wrapper.findAll('.page-skeleton').length).toBeGreaterThanOrEqual(2);
+
+    resolveGroups([]);
+    resolveTrending({ mostReadThisWeek: [], trending: [], suggestions: [] });
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain('Loading your groups…');
+    wrapper.unmount();
+  });
 });
 
 describe('HomeView streak', () => {

@@ -860,6 +860,108 @@ Using the oop_assets iteration_1 as a guide, generate the changes as requested w
 #### Explanation of Changes
 Read the iteration 1 diagrams and change analysis, the iteration 2 log and the backend code, then drew the iteration 2 class and component diagrams (Mermaid rendered to PNG) and wrote `change_analysis_iteration_2.md` for a second scenario, reader badges. Added the date to the iteration 1 analysis, filled the Iteration 3 section of `design.md`, and updated the docs index and the iteration 2 log.
 
+
+### 2026-11-21: Add a book from the library page in a modal
+
+- **Date:** 2026-11-21
+- **Author:** Nimot Imran
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+Implement the add book on the library page with a pop up modal, follow the same implementation as the explore page add book. Don't push or commit yet
+```
+
+#### Explanation of Changes
+Added a reusable `AppModal.vue` (Escape/backdrop/close-button dismissal, Tab trap, scroll lock, focus restore) and wired the library plate's **Add book** button to open the shared Explore `AddBookForm` inside it. Submitting calls the same `addBook` + `addToLibrary` flow, then closes the modal and reloads the library and tag counts so the new "Not started" book appears on the shelf. Added `AppModal` tests and four `LibraryView` tests, and recorded the change in the iteration 2 log.
+
+### 2026-11-21: Book search in the library add-book modal
+
+- **Date:** 2026-11-21
+- **Author:** Nimot Imran
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+on the pop up modal, there is no option to search for book but we have this on the explore page, implement this on the modal as well
+```
+
+#### Explanation of Changes
+Added `AddBookModal.vue`, which searches the catalogue with the same debounced, abortable `searchBooks` flow and `BookSearchResults` list as Explore, then adds a result with `addToLibrary`; the manual `AddBookForm` remains available for missing books. Extended `BookSearchResults` with an `add` mode (Add button, busy state, "In your library" tag for owned ids) and updated `LibraryView` to pass the shelf's ids and refresh after adding. Added tests for the modal, results list and library page; all 573 frontend tests pass.
+
+### 2026-11-21: E2E test for the library add-book modal
+
+- **Date:** 2026-11-21
+- **Author:** Nimot Imran
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** testing, docs
+
+#### Prompt
+```text
+add e2e test  to this implementation
+```
+
+#### Explanation of Changes
+Added `apps/frontend/e2e/library-add-book.spec.ts` with two Playwright tests: the modal searches the catalogue, marks the fixture book "In your library" and opens the manual form prefilled; and the fixture book is removed from the shelf, added again through the modal, shown as "Not started" and checked to survive a reload, with the original status, page and dates restored in teardown. The tests reuse the fixture book because the API has no delete route for books, and assert the first result row because the catalogue is searched before Open Library. Documented the round trip in the e2e README and the iteration log. The suite could not run locally (no `.env.e2e` or fixtures); typecheck, ESLint and Prettier pass.
+
+### 2026-11-21: Reusable page skeleton
+
+- **Date:** 2026-11-21
+- **Author:** Nimot Imran
+- **Model:** Claude Sonnet 5.5
+- **Tool:** Claude (claude.ai)
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+Having a different skeleton loader component for each page is not efficient, make it reusable so it can be used in other pages that need it, and remove the duplicate ones
+```
+
+#### Explanation of Changes
+Replaced the eight page-specific skeleton components with one `PageSkeleton` (variants `detail`, `profile`, `cards`, `list`) built on the existing `AppSkeleton` block, switched the views to it and wired it into the group page, user profile and reading room. Added unit tests and checked the layouts in a browser at several widths.
+
+
+### 2026-11-22: Chat scroll and the reusable skeleton on Home
+
+- **Date:** 2026-11-22
+- **Author:** Nimot Imran
+- **Model:** DeepSeek V4.1 Flash Free
+- **Tool:** OpenCode
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+I want to implement this? I want the conversation to be able to scroll and not just a long list. Also add the reuseable skeleton loader to the homepage
+
+User story
+As a group member, I want the chat to scroll, so that I can read older messages without the page growing forever.
+Acceptance criteria
+
+Feature: Chat scroll
+
+  Scenario: Long conversation
+    Given the chat has more messages than fit on the screen
+    When I open the chat
+    Then the messages area scrolls inside the chat and starts at the newest message
+
+  Scenario: Read older messages
+    When I scroll up
+    Then I see older messages
+
+  Scenario: New message while reading old ones
+    Given I scrolled up
+    When a new message arrives
+    Then my position does not jump and I can go back to the newest message
+```
+
+#### Explanation of Changes
+`GroupChat.vue` now gives the message list a bounded height and `overflow-y: auto`, so the conversation scrolls inside the chat instead of stretching the page. It scrolls to the newest message on mount and after history loads, follows new messages while the reader is at the bottom, and keeps the reader's position (showing a "New messages" button) when a message arrives while they are scrolled up. `HomeView.vue` now uses the shared `PageSkeleton` for the bedside book (`detail` with a cover), groups (`rows`) and trending books (`cards` with row cards); `PageSkeleton` gained the reusable `rows` variant for a plain vertical list. Added tests for the three scroll scenarios, the `rows` variant and the Home loading states. Frontend: 585 tests pass; typecheck, ESLint and Prettier pass.
+
 ### 2026-11-23: Plain-language rewrite of the iteration 2 change analysis
 
 - **Date:** 2026-11-23
@@ -896,3 +998,4 @@ remove the class_diagram_iteration_2.md and keep just the png file. Add this in 
 
 #### Explanation of Changes
 Renumbered the `docs/design.md` iteration sections to 0/1/2, showed the iteration 2 class diagram only as a PNG, and redrew the iteration 2 component diagram in Mermaid following the iteration 1 draw.io layout with the new services (Search engine, Explore, Statistics, Library organisation, Open Library). Used UML 2 dashed dependencies with orthogonal arrows (ELK layout), fixed the Feedback → Books management direction and the middleware routes, regenerated `component_diagram_iteration_2.png`, and documented the changes and the move from draw.io to Mermaid. Finally, restructured `docs/design.md` into the course design report template (keeping the contents list), replaced the inline Mermaid diagrams with links to the PNGs, and wrote the pattern (State, Observer, Adapter) and code smell (streak rules) sections from the backend code and the change analyses.
+

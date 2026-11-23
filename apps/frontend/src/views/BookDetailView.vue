@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
+import PageSkeleton from '@/components/layout/PageSkeleton.vue';
 import BookEditionPanel from '@/components/library/BookEditionPanel.vue';
 import BookReadingPanel from '@/components/library/BookReadingPanel.vue';
 import BookThoughtsPanel from '@/components/library/BookThoughtsPanel.vue';
@@ -35,8 +36,11 @@ const book = ref<LibraryBook | null>(null);
 const detail = ref<BookDetail | null>(null);
 const folders = ref<FolderSummary[]>([]);
 const tags = ref<TagSummary[]>([]);
+/** True while the book itself loads; reviews and tags have their own quiet failures. */
+const loading = ref(true);
 
 async function fetchBookData() {
+  loading.value = true;
   try {
     const [libraryItems, clubs] = await Promise.all([
       getUserLibrary(),
@@ -49,6 +53,8 @@ async function fetchBookData() {
   } catch {
     book.value = null;
     detail.value = null;
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -161,7 +167,9 @@ const mailtoHref = computed(() => {
 <template>
   <main class="book-detail">
     <div class="page-column">
-      <template v-if="book && detail">
+      <PageSkeleton v-if="loading" cover label="Loading the book…" />
+
+      <template v-else-if="book && detail">
         <header class="detail-hero">
           <div class="hero-copy">
             <p class="eyebrow">

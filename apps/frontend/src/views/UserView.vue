@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 
+import PageSkeleton from '@/components/layout/PageSkeleton.vue';
 import ProfileBookplate from '@/components/profile/ProfileBookplate.vue';
 import ReadingTime from '@/components/profile/ReadingTime.vue';
 import ReviewList from '@/components/profile/ReviewList.vue';
@@ -200,9 +201,7 @@ onMounted(() => void loadProfile());
 
 <template>
   <main class="user-profile">
-    <div v-if="isLoading" class="state-container loading-state">
-      <p class="muted">Loading profile...</p>
-    </div>
+    <PageSkeleton v-if="isLoading" variant="profile" label="Loading profile…" />
 
     <div v-else-if="isNotFound" class="state-container not-found-state">
       <h1 class="state-title">User not found</h1>

@@ -60,6 +60,12 @@ function mountLive(isAdmin = false) {
   });
 }
 
+/** jsdom has no layout, so give the scroller the sizes the component reads. */
+function setScrollSize(list: HTMLElement, scrollHeight: number, clientHeight: number) {
+  Object.defineProperty(list, 'scrollHeight', { configurable: true, value: scrollHeight });
+  Object.defineProperty(list, 'clientHeight', { configurable: true, value: clientHeight });
+}
+
 describe('GroupChat (live)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -84,6 +90,50 @@ describe('GroupChat (live)', () => {
     socket.handlers!.onMessage(message(3));
     await flushPromises();
     expect(wrapper.findAll('.messages > li')).toHaveLength(3);
+  });
+
+  it('opens at the newest message', async () => {
+    const wrapper = mountLive();
+    const list = wrapper.get('.messages').element as HTMLElement;
+    setScrollSize(list, 1200, 400);
+    await flushPromises();
+
+    expect(list.scrollTop).toBe(1200);
+  });
+
+  it('follows new messages while the reader is at the bottom', async () => {
+    const wrapper = mountLive();
+    const list = wrapper.get('.messages').element as HTMLElement;
+    setScrollSize(list, 1200, 400);
+    await flushPromises();
+
+    socket.handlers!.onMessage(message(3));
+    await flushPromises();
+
+    expect(list.scrollTop).toBe(1200);
+    expect(wrapper.find('.new-messages').exists()).toBe(false);
+  });
+
+  it('keeps the reader in place and offers a jump when a message arrives while scrolled up', async () => {
+    const wrapper = mountLive();
+    const list = wrapper.get('.messages').element as HTMLElement;
+    setScrollSize(list, 1200, 400);
+    await flushPromises();
+
+    list.scrollTop = 120;
+    await wrapper.get('.messages').trigger('scroll');
+    expect(wrapper.find('.new-messages').exists()).toBe(false);
+
+    socket.handlers!.onMessage(message(3));
+    await flushPromises();
+
+    expect(list.scrollTop).toBe(120);
+    const jump = wrapper.get('.new-messages');
+    expect(jump.text()).toContain('New messages');
+
+    await jump.trigger('click');
+    expect(list.scrollTop).toBe(1200);
+    expect(wrapper.find('.new-messages').exists()).toBe(false);
   });
 
   it('catches up from the last seq after the socket (re)joins', async () => {

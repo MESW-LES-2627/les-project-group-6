@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watchEffect } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 
+import PageSkeleton from '@/components/layout/PageSkeleton.vue';
 import BookCoverImage from '@/components/library/BookCoverImage.vue';
 import ReadingTimer from '@/components/session/ReadingTimer.vue';
 import SessionSummary from '@/components/session/SessionSummary.vue';
@@ -323,7 +324,7 @@ async function whileBusy(action: () => Promise<void>) {
         </div>
       </template>
 
-      <p v-else-if="loading" class="missing-copy" role="status">Starting your session…</p>
+      <PageSkeleton v-else-if="loading" label="Starting your session…" />
 
       <section v-else class="missing" aria-labelledby="missing-session-title">
         <p class="eyebrow">Reading room <span aria-hidden="true">/</span> Session</p>
