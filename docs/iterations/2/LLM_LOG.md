@@ -876,7 +876,7 @@ I think this file is too technical and hard to read. the objective is to make th
 #### Explanation of Changes
 Rewrote `docs/oop_assets/change_anaysis_iteration_2.md` in plain language: added a glossary of app terms, replaced class, method and file names with descriptions, simplified the diagrams and tables, and kept the same scenario, analysis and decision. Also fixed the broken link to the iteration 1 analysis.
 
-### 2026-11-23: Simple Mermaid view of the iteration 2 component diagram
+### 2026-11-23: Iteration 2 diagrams in design.md
 
 - **Date:** 2026-11-23
 - **Author:** Robert Gleison
@@ -886,56 +886,12 @@ Rewrote `docs/oop_assets/change_anaysis_iteration_2.md` in plain language: added
 
 #### Prompt
 ```text
-ok, so, my component_diagram_iteration is based on drawio and they are simple to facilitate readability. Can you create for me an md file that have the mermaid flow as a continuation of the drawio desing? just with the changes you find interesting?
+remove the class_diagram_iteration_2.md and keep just the png file. Add this in design.md
+[...] everything must be in iteration 2. iteration 3 don't started yet
+[...] get the design of the component_diagram_iteration_1 and add the new services (search engine for books and users, statistics for stats, badges, achievements). Consider them as finished
+[...] use the dotted lines to comply with the uml2 notation. Also don't use rounded arrows but straight arrows with direction changes
+[...] add the reason we changed the design from drawio to mermaid (because is easier to change and review in mermaid). Also, review if the arrows have the correct source-target direction of dependencies
 ```
 
 #### Explanation of Changes
-Compared `component_diagram_iteration_1.png` and `component_diagram_iteration_2.png` and created `docs/oop_assets/component_diagram_iteration_2_simple.md`: a Mermaid flowchart in the draw.io style that shows only the iteration 2 changes (new services, the Books management split, new dependencies, events, planned services), with a short list of the changes.
-
-### 2026-11-23: Search engine and Statistics services in the iteration 2 component diagram
-
-- **Date:** 2026-11-23
-- **Author:** Robert Gleison
-- **Model:** Claude Opus 5.5
-- **Tool:** Claude Code
-- **Domain:** docs, architecture
-
-#### Prompt
-```text
-I think we can simplify. keep the version of component_diagram_iteration_2.png but add a search engine service that can find books (book service?) and users (user service). Also, maybe the statistics service (stats, badges, achievements)?
-```
-
-#### Explanation of Changes
-Edited the Mermaid source of the iteration 2 component diagram in `docs/design.md`: added a Search engine service that calls Books management and Users management, replaced the planned Badge service with a planned Statistics service (stats, badges, achievements), updated the change list, regenerated `component_diagram_iteration_2.png` and removed `component_diagram_iteration_2_simple.md`.
-
-### 2026-11-23: Iteration 2 component diagram in the iteration 1 style
-
-- **Date:** 2026-11-23
-- **Author:** Robert Gleison
-- **Model:** Claude Opus 5.5
-- **Tool:** Claude Code
-- **Domain:** docs, architecture
-
-#### Prompt
-```text
-no, I mean, get the design of the component_diagram_iteration_1 and add the new services. Consider them as finished
-```
-
-#### Explanation of Changes
-Rebuilt the iteration 2 component diagram as a Mermaid flowchart that follows the services and links of the iteration 1 draw.io diagram, adding Search engine, Explore, Statistics, Library organisation and Open Library as built services. Regenerated `component_diagram_iteration_2.png` and replaced its Mermaid source and change list in `docs/design.md`.
-
-### 2026-11-23: Dependency review of the iteration 2 component diagram
-
-- **Date:** 2026-11-23
-- **Author:** Robert Gleison
-- **Model:** Claude Opus 5.5
-- **Tool:** Claude Code
-- **Domain:** docs, architecture
-
-#### Prompt
-```text
-ok, so, add the new png to the desing.md. Add what we changed we we don't have yet. Also add the reason we changed the desging from drawio to mermaid (because is easier to change and review in mermaid). Also, review if the arrows have the correct source-target direction of dependencies
-```
-
-#### Explanation of Changes
-Reviewed every arrow of the iteration 2 component diagram against UML 2 dependency direction: reversed Books management → Feedback to Feedback → Books management, added Feedback's own database link and middleware links to every service the frontend calls. Extended the change list in `docs/design.md`, added a section on moving from draw.io to Mermaid, and regenerated the PNG.
+Renumbered the `docs/design.md` iteration sections to 0/1/2, showed the iteration 2 class diagram only as a PNG, and redrew the iteration 2 component diagram in Mermaid following the iteration 1 draw.io layout with the new services (Search engine, Explore, Statistics, Library organisation, Open Library). Used UML 2 dashed dependencies with orthogonal arrows (ELK layout), fixed the Feedback → Books management direction and the middleware routes, regenerated `component_diagram_iteration_2.png`, and documented the changes and the move from draw.io to Mermaid.
