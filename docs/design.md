@@ -450,8 +450,11 @@ The architecture at the end of iteration 2. It keeps the simple style of the [it
 ```mermaid
 ---
 config:
+  layout: elk
+  elk:
+    nodePlacementStrategy: NETWORK_SIMPLEX
   flowchart:
-    curve: step
+    curve: linear
 ---
 flowchart LR
     FE["App frontend<br/>(Vue SPA static site)"]
