@@ -488,10 +488,18 @@ flowchart LR
     MW -.-> SE
     MW -.-> EX
     MW -.-> ST
+    MW -.-> LO
+    MW -.-> FB
+    MW -.-> RS
+    MW -.-> CH
+    MW -.-> SL
+    MW -.-> BC
+    MW -.-> BCH
 
     BM -. "create/read/search books<br/>update book reading status" .-> DB
     BM -. "find missing books" .-> OL
-    BM -. "create/update/read/delete<br/>book comments and reviews" .-> FB
+    FB -. "book being reviewed" .-> BM
+    FB -. "create/update/read/delete<br/>book comments and reviews" .-> DB
     LO -. "organise books<br/>in the library" .-> BM
 
     SE -. "search books" .-> BM
@@ -530,7 +538,14 @@ flowchart LR
 - **Statistics service (new).** Reading stats, streaks, badges and achievements. It reads the reading sessions and saves the results on the user.
 - **Library organisation service (new).** Folders and tags to organise the books in a reader's library.
 - **Open Library API (new, external).** Books management asks it for books that are not in our database.
-- The middleware now also routes requests to the Search engine, Explore and Statistics services. The rest of the iteration 1 services and links are unchanged.
+- **Every service is reached through the auth middleware.** In iteration 1 only three services had an arrow from it; now every service the frontend calls has one.
+- **Feedback depends on Books management, not the other way round.** A review is about a book, so the Feedback service asks Books management for the book and stores the reviews itself. In iteration 1 the arrow pointed from Books management to Feedback.
+- **Arrows follow UML 2.** Every link is a dependency: a dashed arrow from the component that uses something to the component it uses.
+- The rest of the iteration 1 services and links are unchanged.
+
+#### Why we moved from draw.io to Mermaid
+
+The iteration 0 and 1 component diagrams were drawn in draw.io. From iteration 2 the diagram is written in Mermaid (the source is above) and the PNG is generated from it. Mermaid is text, so it is easier to change, and a change shows up as a normal diff in a pull request, which makes it easier to review. The layout is done automatically, so adding a service does not mean moving boxes by hand.
 
 ### Change analysis
 
