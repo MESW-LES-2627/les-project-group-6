@@ -1,0 +1,79 @@
+---
+config:
+  layout: elk
+  elk:
+    nodePlacementStrategy: NETWORK_SIMPLEX
+  flowchart:
+    curve: linear
+---
+flowchart LR
+    FE["App frontend<br/>(Vue SPA static site)"]
+    AUTH["Authentication service<br/>(Supabase auth)"]
+    MW["Auth middleware<br/>(Supabase auth provider)"]
+    DB[("Supabase DB<br/>postgres")]
+    BUCKET[/"Asset bucket"/]
+    OL["Open Library API<br/>(external)"]
+
+    BM["Books management service"]
+    FB["Feedback service"]
+    LO["Library organisation service<br/>(folders, tags)"]
+    SE["Search engine service"]
+    EX["Explore service"]
+    ST["Statistics service<br/>(stats, badges, achievements)"]
+    GM["Group management service"]
+    CH["Chat service"]
+    SL["Social links service"]
+    UM["Users management service"]
+    RS["Reading session service"]
+    BC["Book club service"]
+    BCH["Book challenge service"]
+
+    FE -. "Authentication" .-> AUTH
+    FE -. "HTTP requests" .-> MW
+    AUTH -. "Check/Create user credentials" .-> DB
+
+    MW -.-> BM
+    MW -.-> GM
+    MW -.-> UM
+    MW -.-> SE
+    MW -.-> EX
+    MW -.-> ST
+    MW -.-> LO
+    MW -.-> FB
+    MW -.-> RS
+    MW -.-> CH
+    MW -.-> SL
+    MW -.-> BC
+    MW -.-> BCH
+
+    BM -. "create/read/search books<br/>update book reading status" .-> DB
+    BM -. "find missing books" .-> OL
+    FB -. "book being reviewed" .-> BM
+    FB -. "create/update/read/delete<br/>book comments and reviews" .-> DB
+    LO -. "organise books<br/>in the library" .-> BM
+
+    SE -. "search books" .-> BM
+    SE -. "search users" .-> UM
+    EX -. "trending and<br/>most read books" .-> BM
+    EX -. "most read" .-> RS
+
+    RS -. "store reading sessions" .-> DB
+    ST -. "reading stats" .-> RS
+    ST -. "streaks, badges<br/>and achievements" .-> UM
+
+    CH -. "store assets" .-> BUCKET
+    GM -. "Check invite" .-> SL
+    SL -. "load friends profile" .-> UM
+    UM -. "updated/read/delete users" .-> DB
+
+    BC -. "propose book" .-> BM
+    BC -. "have reading session" .-> RS
+    BCH -. "have reading session" .-> RS
+    BC -. "have chat" .-> CH
+    BCH -. "have chat" .-> CH
+    BC -. "reuse group logic" .-> GM
+    BCH -. "reuse group logic" .-> GM
+
+    classDef new fill:#e6f4ea,stroke:#2e7d32
+    class LO,SE,EX,ST,OL new
+    linkStyle default stroke-dasharray:6 4
