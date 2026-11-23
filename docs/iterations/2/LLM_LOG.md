@@ -875,3 +875,19 @@ I think this file is too technical and hard to read. the objective is to make th
 
 #### Explanation of Changes
 Rewrote `docs/oop_assets/change_anaysis_iteration_2.md` in plain language: added a glossary of app terms, replaced class, method and file names with descriptions, simplified the diagrams and tables, and kept the same scenario, analysis and decision. Also fixed the broken link to the iteration 1 analysis.
+
+### 2026-11-23: Simple Mermaid view of the iteration 2 component diagram
+
+- **Date:** 2026-11-23
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs, architecture
+
+#### Prompt
+```text
+ok, so, my component_diagram_iteration is based on drawio and they are simple to facilitate readability. Can you create for me an md file that have the mermaid flow as a continuation of the drawio desing? just with the changes you find interesting?
+```
+
+#### Explanation of Changes
+Compared `component_diagram_iteration_1.png` and `component_diagram_iteration_2.png` and created `docs/oop_assets/component_diagram_iteration_2_simple.md`: a Mermaid flowchart in the draw.io style that shows only the iteration 2 changes (new services, the Books management split, new dependencies, events, planned services), with a short list of the changes.
