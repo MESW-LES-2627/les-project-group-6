@@ -859,3 +859,19 @@ Using the oop_assets iteration_1 as a guide, generate the changes as requested w
 
 #### Explanation of Changes
 Read the iteration 1 diagrams and change analysis, the iteration 2 log and the backend code, then drew the iteration 2 class and component diagrams (Mermaid rendered to PNG) and wrote `change_analysis_iteration_2.md` for a second scenario, reader badges. Added the date to the iteration 1 analysis, filled the Iteration 3 section of `design.md`, and updated the docs index and the iteration 2 log.
+
+### 2026-11-23: Plain-language rewrite of the iteration 2 change analysis
+
+- **Date:** 2026-11-23
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs, architecture
+
+#### Prompt
+```text
+I think this file is too technical and hard to read. the objective is to make the teacher understand the file easily. In this sense, avoid to use classes and method names, explain terms like: what is explore, streak, tags, reviews, open library, etc. You can see the change_analysis_iteration_1.md.
+```
+
+#### Explanation of Changes
+Rewrote `docs/oop_assets/change_anaysis_iteration_2.md` in plain language: added a glossary of app terms, replaced class, method and file names with descriptions, simplified the diagrams and tables, and kept the same scenario, analysis and decision. Also fixed the broken link to the iteration 1 analysis.
