@@ -437,3 +437,4 @@ Filled [CLAIM.md](CLAIM.md) following the iteration 1 template: permalinks on ta
 ### 2026-11-23: Plain-language change analysis for iteration 2
 
 Rewrote the [iteration 2 change analysis](../../oop_assets/change_anaysis_iteration_2.md) so a non-developer reader can follow it: a glossary of app terms (streak, Explore, Open Library, tags, reviews…), no class or method names, simpler diagrams. Same scenario and decision.
+- New [`class_diagram_iteration_2.md`](../../oop_assets/class_diagram_iteration_2.md) with the Mermaid source of the iteration 2 class diagram (default Mermaid theme, same as before), so the PNG can be regenerated from it.
