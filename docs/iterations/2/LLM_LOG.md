@@ -907,3 +907,19 @@ I think we can simplify. keep the version of component_diagram_iteration_2.png b
 
 #### Explanation of Changes
 Edited the Mermaid source of the iteration 2 component diagram in `docs/design.md`: added a Search engine service that calls Books management and Users management, replaced the planned Badge service with a planned Statistics service (stats, badges, achievements), updated the change list, regenerated `component_diagram_iteration_2.png` and removed `component_diagram_iteration_2_simple.md`.
+
+### 2026-11-23: Iteration 2 component diagram in the iteration 1 style
+
+- **Date:** 2026-11-23
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs, architecture
+
+#### Prompt
+```text
+no, I mean, get the design of the component_diagram_iteration_1 and add the new services. Consider them as finished
+```
+
+#### Explanation of Changes
+Rebuilt the iteration 2 component diagram as a Mermaid flowchart that follows the services and links of the iteration 1 draw.io diagram, adding Search engine, Explore, Statistics, Library organisation and Open Library as built services. Regenerated `component_diagram_iteration_2.png` and replaced its Mermaid source and change list in `docs/design.md`.

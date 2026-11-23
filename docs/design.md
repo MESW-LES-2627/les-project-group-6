@@ -442,7 +442,7 @@ The domain model at the end of iteration 2 (`iter-2`), following the [iteration 
 
 ![Component diagram, iteration 2](oop_assets/component_diagram_iteration_2.png)
 
-The architecture at the end of iteration 2. The components are modules of **one Express backend** deployed together (the box in the picture); they are drawn as separate services because each one owns its rules and talks to the others through a small contract. Dashed boxes and lines are planned. **Red lines** are the links the [change analysis](#change-analysis-1) marks as unbalanced and accepted for now.
+The architecture at the end of iteration 2. It keeps the simple style of the [iteration 1 component diagram](#component-diagram-1) and adds the new services, shown in green. All services in the diagram are built.
 
 <details>
 <summary>Mermaid source of the component diagram</summary>
@@ -450,100 +450,84 @@ The architecture at the end of iteration 2. The components are modules of **one 
 ```mermaid
 ---
 config:
-  layout: elk
+  flowchart:
+    curve: step
 ---
-flowchart TB
-    FE["App frontend<br/>(Vue SPA, static site)"]
-    SA["Authentication service<br/>(Supabase Auth)"]
+flowchart LR
+    FE["App frontend<br/>(Vue SPA static site)"]
+    AUTH["Authentication service<br/>(Supabase auth)"]
+    MW["Auth middleware<br/>(Supabase auth provider)"]
+    DB[("Supabase DB<br/>postgres")]
+    BUCKET[/"Asset bucket"/]
     OL["Open Library API<br/>(external)"]
-    DB[("Supabase DB<br/>Postgres")]
-    BK[/"Asset bucket<br/>(planned)"/]
 
-    subgraph BE["Backend API: one Express app, one module per component"]
-        direction TB
-        AM["Auth middleware<br/>(verifies JWT)"]
-        UM["Users management<br/>profile, reading streak"]
-        SE["Search engine service<br/>find books and users"]
-        SL["Social links<br/>friend requests, friends"]
-        BM["Books management<br/>catalogue, fuzzy search,<br/>add a missing book"]
-        LS["Library service<br/>reading status, library view"]
-        LO["Library organisation<br/>folders, tags"]
-        FS["Feedback service<br/>ratings and reviews"]
-        EX["Explore service<br/>trending, most read"]
-        RS["Reading session service<br/>timer, counted minutes"]
-        GM["Group management<br/>members, invites, leave"]
-        BC["Book club service<br/>rounds, polls"]
-        CH["Book challenge service<br/>competition rules"]
-        CS["Chat service<br/>messages, live push"]
-        ST["Statistics service<br/>stats, badges, achievements<br/>(planned)"]
-        NF["Notification and feed<br/>(planned)"]
-    end
+    BM["Books management service"]
+    FB["Feedback service"]
+    LO["Library organisation service<br/>(folders, tags)"]
+    SE["Search engine service"]
+    EX["Explore service"]
+    ST["Statistics service<br/>(stats, badges, achievements)"]
+    GM["Group management service"]
+    CH["Chat service"]
+    SL["Social links service"]
+    UM["Users management service"]
+    RS["Reading session service"]
+    BC["Book club service"]
+    BCH["Book challenge service"]
 
-    FE -->|"login, signup,<br/>password recovery"| SA
-    FE -->|"HTTP + JWT"| AM
-    FE <-->|"Socket.IO"| CS
-    AM -->|"load profile"| UM
-    SE -->|"find books"| BM
-    SE -->|"find users"| UM
+    FE -. "Authentication" .-> AUTH
+    FE -. "HTTP requests" .-> MW
+    AUTH -. "Check/Create user credentials" .-> DB
 
-    BM -->|"BookCatalog port<br/>3 s timeout, 1 h cache"| OL
-    LS -->|"find book"| BM
-    LO -->|"LibraryMembership:<br/>is the book in my library?"| LS
-    FS -->|"can I review?<br/>(reading status)"| LS
-    FS -->|"who sees it?<br/>(friends, profile)"| SL
-    FS -->|"book"| BM
-    EX -->|"topBooks()"| RS
-    EX -->|"mostAdded()"| LS
-    EX -->|"books"| BM
+    MW -.-> BM
+    MW -.-> GM
+    MW -.-> UM
+    MW -.-> SE
+    MW -.-> EX
+    MW -.-> ST
 
-    RS -->|"count a reading day"| UM
-    LS -->|"count a reading day"| UM
-    RS -->|"ensure in progress"| LS
-    UM -->|"streak calendar,<br/>reading stats"| RS
+    BM -. "create/read/search books<br/>update book reading status" .-> DB
+    BM -. "find missing books" .-> OL
+    BM -. "create/update/read/delete<br/>book comments and reviews" .-> FB
+    LO -. "organise books<br/>in the library" .-> BM
 
-    CH -->|"countedMinutes()"| RS
-    BC -->|"countedMinutes()"| RS
-    BC -->|"progressOf()"| LS
-    BC -->|"propose a book"| BM
-    CH -->|"reuse group logic"| GM
-    BC -->|"reuse group logic"| GM
-    CH -->|"postSystem()"| CS
-    BC -->|"postSystem()"| CS
-    GM -->|"invite only friends"| SL
-    GM -.->|"MemberJoined:<br/>announce"| CS
-    GM -.->|"MemberJoined:<br/>add book to library"| BC
+    SE -. "search books" .-> BM
+    SE -. "search users" .-> UM
+    EX -. "trending and<br/>most read books" .-> BM
+    EX -. "most read" .-> RS
 
-    RS -.->|"SessionCompleted"| ST
-    UM -.->|"StreakExtended"| ST
-    GM -.->|"MemberJoined"| ST
-    ST -.->|"BadgeEarned"| NF
-    CS -.->|"store assets"| BK
+    RS -. "store reading sessions" .-> DB
+    ST -. "reading stats" .-> RS
+    ST -. "streaks, badges<br/>and achievements" .-> UM
 
-    BE ==>|"all components read and write"| DB
-    SA -->|"check or create credentials"| DB
+    CH -. "store assets" .-> BUCKET
+    GM -. "Check invite" .-> SL
+    SL -. "load friends profile" .-> UM
+    UM -. "updated/read/delete users" .-> DB
 
-    classDef planned stroke-dasharray: 5 5,fill:#f6f6f6,stroke:#888
-    class ST,NF,BK planned
-    classDef ext fill:#fff4e5,stroke:#b9770e
-    class OL,SA ext
-    linkStyle 15,16,18 stroke:#c0392b,stroke-width:2px
-    style BE fill:#fafafa,stroke:#999
+    BC -. "propose book" .-> BM
+    BC -. "have reading session" .-> RS
+    BCH -. "have reading session" .-> RS
+    BC -. "have chat" .-> CH
+    BCH -. "have chat" .-> CH
+    BC -. "reuse group logic" .-> GM
+    BCH -. "reuse group logic" .-> GM
+
+    classDef new fill:#e6f4ea,stroke:#2e7d32
+    class LO,SE,EX,ST,OL new
+    linkStyle default stroke-dasharray:6 4
 ```
 
 </details>
 
 #### What changed from iteration 1
 
-- **Books management** asks the outside **Open Library API** when a search finds fewer than 5 local books, through the `BookCatalog` port (3 s timeout, in-memory cache for 1 hour). Search is typo-tolerant (Postgres `pg_trgm`), and a reader can add a missing book by hand.
-- **Library service (new).** Owns the reading status of each book and the library view. It publishes two read contracts: `LibraryMembership` (is this book in the reader's library?) and `ReadingProgressQuery` (`progressOf`, `mostAdded`).
-- **Library organisation (new).** Folders and tags. It uses `LibraryMembership` and never reads the library's tables.
-- **Feedback service** now exists: ratings and reviews, shown to the reader, their friends and (for public profiles) everyone.
-- **Explore service (new).** Trending and most-read lists, built from `topBooks()` of the Reading session service and `mostAdded()` of the Library service.
-- **Reading session service** publishes `ReadingActivityQuery` (`countedMinutes`, `topBooks`), which Book challenge, Book club and Explore use. They no longer read the sessions table. It also publishes `SessionCompleted`.
-- **Users management** now owns the **reading streak**. Reading session and Library service call it to count a reading day (red lines).
-- **Group management** also handles leaving a group and publishes `MemberJoined`, which Chat (announcement) and Book club (add the round book to the library) react to.
-- **Search engine service (new).** One entry point for search: it finds books through Books management and users through Users management, so the frontend has a single search to call.
-- **Statistics service and Notification and feed (planned).** The Statistics service holds reading stats, badges and achievements. Both subscribe to events only; nothing existing calls them.
+- **Search engine service (new).** One place to search: it finds books through Books management and users through Users management.
+- **Explore service (new).** Trending and most-read books, built from Books management and the reading sessions.
+- **Statistics service (new).** Reading stats, streaks, badges and achievements. It reads the reading sessions and saves the results on the user.
+- **Library organisation service (new).** Folders and tags to organise the books in a reader's library.
+- **Open Library API (new, external).** Books management asks it for books that are not in our database.
+- The middleware now also routes requests to the Search engine, Explore and Statistics services. The rest of the iteration 1 services and links are unchanged.
 
 ### Change analysis
 
