@@ -434,3 +434,6 @@ Filled [CLAIM.md](CLAIM.md) following the iteration 1 template: permalinks on ta
 - **Decision: a Badge module that subscribes to events** (`SessionCompleted`, `MemberJoined` and one new `StreakExtended`) and publishes `BadgeEarned`. *Rejected:* calling a badge service from each module like the streak (four modules would depend on the most volatile one), working badges out when read (no moment to notify or feed), and an event bus with a queue (too much infrastructure).
 - **Decision kept:** the streak stays a direct call, as decided on 2026-11-19 for `SessionCompleted`. The strong, volatile link from Reading Session and Reading Status to the streak is recorded as accepted debt, to revisit with "streak freeze" (#9).
  
+### 2026-11-23: Plain-language change analysis for iteration 2
+
+Rewrote the [iteration 2 change analysis](../../oop_assets/change_anaysis_iteration_2.md) so a non-developer reader can follow it: a glossary of app terms (streak, Explore, Open Library, tags, reviews…), no class or method names, simpler diagrams. Same scenario and decision.
