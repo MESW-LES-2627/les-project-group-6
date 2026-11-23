@@ -436,6 +436,7 @@ Filled [CLAIM.md](CLAIM.md) following the iteration 1 template: permalinks on ta
 - **Decision: a Badge module that subscribes to events** (`SessionCompleted`, `MemberJoined` and one new `StreakExtended`) and publishes `BadgeEarned`. *Rejected:* calling a badge service from each module like the streak (four modules would depend on the most volatile one), working badges out when read (no moment to notify or feed), and an event bus with a queue (too much infrastructure).
 - **Decision kept:** the streak stays a direct call, as decided on 2026-11-19 for `SessionCompleted`. The strong, volatile link from Reading Session and Reading Status to the streak is recorded as accepted debt, to revisit with "streak freeze" (#9).
 
+
 ### 2026-11-21: Add a book from the library page in a modal (#120, F-BOOK-02)
 
 - Branch `feat/library-add-book`. The **Add book** button on the library plate did nothing, while Explore already let a reader create a book no source knows. This reuses that form and flow instead of writing a second one.
@@ -474,3 +475,15 @@ Filled [CLAIM.md](CLAIM.md) following the iteration 1 template: permalinks on ta
 - The conversation in [`GroupChat`](../../../apps/frontend/src/components/groups/GroupChat.vue) now scrolls inside the chat (`max-height: min(60vh, 34rem)`) instead of growing the page. It opens at the newest message, follows new messages while the reader is at the bottom, and keeps the reader's position when one arrives while they are reading older ones; a **New messages** button jumps back to the newest message. A 24 px threshold counts a reader a few pixels from the bottom as still at the bottom.
 - [`HomeView`](../../../apps/frontend/src/views/HomeView.vue) now uses the shared [`PageSkeleton`](../../../apps/frontend/src/components/layout/PageSkeleton.vue) instead of text placeholders: `detail` with a cover for the bedside book, `rows` for the groups list and `cards` with row cards for trending books. The new `rows` variant is a plain vertical list of short rows, reusable by any section with that shape.
 - **Tests.** `GroupChat.spec.ts` covers opening at the newest message, following new messages at the bottom, and holding the position while scrolled up with the jump button. `PageSkeleton.spec.ts` covers `rows`, and `HomeView.spec.ts` checks the skeletons while sections load. Frontend: 585 tests pass; typecheck, ESLint and Prettier pass.
+
+ 
+### 2026-11-23: Plain-language change analysis for iteration 2
+
+Rewrote the [iteration 2 change analysis](../../oop_assets/change_anaysis_iteration_2.md) so a non-developer reader can follow it: a glossary of app terms (streak, Explore, Open Library, tags, reviews…), no class or method names, simpler diagrams. Same scenario and decision.
+
+### 2026-11-23: Iteration 2 diagrams in design.md
+
+- [`design.md`](../../design.md) sections renumbered to match the iteration folders and PNG names (Iteration 0, 1, 2 instead of 1, 2, 3), since iteration 3 has not started. Fixed the broken links to the change analyses.
+- The [iteration 2 class diagram](../../design.md#223-iteration-2) is shown only as its [PNG](../../oop_assets/class_diagram_iteration_2.png); the inline Mermaid block and the separate source file were removed.
+- The [iteration 2 component diagram](../../design.md#33-iteration-2) ([PNG](../../oop_assets/component_diagram_iteration_2.png)) was redrawn in Mermaid, following the simple style of the iteration 1 draw.io diagram. New services (built): Search engine (books and users), Explore, Statistics (stats, badges, achievements), Library organisation and the Open Library API. Arrows use UML 2 dependency notation. Reviewing the directions, Feedback now depends on Books management (reversed in iteration 1) and the auth middleware routes to every service. Mermaid replaces draw.io because text is easier to change and review in a pull request; a more detailed version was tried and dropped as harder to read.
+- [`design.md`](../../design.md) now follows the course's design report template (project overview, domain discovery and modeling, architecture, change scenarios, design patterns, code smells), keeping a contents list at the top. Diagrams are linked as PNGs. New sections document the State, Observer and Adapter patterns in the code and the streak rules as a shotgun-surgery smell.

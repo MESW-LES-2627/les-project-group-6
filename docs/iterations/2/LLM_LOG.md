@@ -860,6 +860,7 @@ Using the oop_assets iteration_1 as a guide, generate the changes as requested w
 #### Explanation of Changes
 Read the iteration 1 diagrams and change analysis, the iteration 2 log and the backend code, then drew the iteration 2 class and component diagrams (Mermaid rendered to PNG) and wrote `change_analysis_iteration_2.md` for a second scenario, reader badges. Added the date to the iteration 1 analysis, filled the Iteration 3 section of `design.md`, and updated the docs index and the iteration 2 log.
 
+
 ### 2026-11-21: Add a book from the library page in a modal
 
 - **Date:** 2026-11-21
@@ -960,3 +961,41 @@ Feature: Chat scroll
 
 #### Explanation of Changes
 `GroupChat.vue` now gives the message list a bounded height and `overflow-y: auto`, so the conversation scrolls inside the chat instead of stretching the page. It scrolls to the newest message on mount and after history loads, follows new messages while the reader is at the bottom, and keeps the reader's position (showing a "New messages" button) when a message arrives while they are scrolled up. `HomeView.vue` now uses the shared `PageSkeleton` for the bedside book (`detail` with a cover), groups (`rows`) and trending books (`cards` with row cards); `PageSkeleton` gained the reusable `rows` variant for a plain vertical list. Added tests for the three scroll scenarios, the `rows` variant and the Home loading states. Frontend: 585 tests pass; typecheck, ESLint and Prettier pass.
+
+### 2026-11-23: Plain-language rewrite of the iteration 2 change analysis
+
+- **Date:** 2026-11-23
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs, architecture
+
+#### Prompt
+```text
+I think this file is too technical and hard to read. the objective is to make the teacher understand the file easily. In this sense, avoid to use classes and method names, explain terms like: what is explore, streak, tags, reviews, open library, etc. You can see the change_analysis_iteration_1.md.
+```
+
+#### Explanation of Changes
+Rewrote `docs/oop_assets/change_anaysis_iteration_2.md` in plain language: added a glossary of app terms, replaced class, method and file names with descriptions, simplified the diagrams and tables, and kept the same scenario, analysis and decision. Also fixed the broken link to the iteration 1 analysis.
+
+### 2026-11-23: Iteration 2 diagrams in design.md
+
+- **Date:** 2026-11-23
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs, architecture
+
+#### Prompt
+```text
+remove the class_diagram_iteration_2.md and keep just the png file. Add this in design.md
+[...] everything must be in iteration 2. iteration 3 don't started yet
+[...] get the design of the component_diagram_iteration_1 and add the new services (search engine for books and users, statistics for stats, badges, achievements). Consider them as finished
+[...] use the dotted lines to comply with the uml2 notation. Also don't use rounded arrows but straight arrows with direction changes
+[...] add the reason we changed the design from drawio to mermaid (because is easier to change and review in mermaid). Also, review if the arrows have the correct source-target direction of dependencies
+[...] put my design.md in the same template as the teacher template. however, keep the index at the beginning. Also, in the mermaid images, you can link the png assets in oop_assets instead of add the whole mermaid code in the design.md
+```
+
+#### Explanation of Changes
+Renumbered the `docs/design.md` iteration sections to 0/1/2, showed the iteration 2 class diagram only as a PNG, and redrew the iteration 2 component diagram in Mermaid following the iteration 1 draw.io layout with the new services (Search engine, Explore, Statistics, Library organisation, Open Library). Used UML 2 dashed dependencies with orthogonal arrows (ELK layout), fixed the Feedback → Books management direction and the middleware routes, regenerated `component_diagram_iteration_2.png`, and documented the changes and the move from draw.io to Mermaid. Finally, restructured `docs/design.md` into the course design report template (keeping the contents list), replaced the inline Mermaid diagrams with links to the PNGs, and wrote the pattern (State, Observer, Adapter) and code smell (streak rules) sections from the backend code and the change analyses.
+
