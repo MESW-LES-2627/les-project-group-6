@@ -891,3 +891,19 @@ ok, so, my component_diagram_iteration is based on drawio and they are simple to
 
 #### Explanation of Changes
 Compared `component_diagram_iteration_1.png` and `component_diagram_iteration_2.png` and created `docs/oop_assets/component_diagram_iteration_2_simple.md`: a Mermaid flowchart in the draw.io style that shows only the iteration 2 changes (new services, the Books management split, new dependencies, events, planned services), with a short list of the changes.
+
+### 2026-11-23: Search engine and Statistics services in the iteration 2 component diagram
+
+- **Date:** 2026-11-23
+- **Author:** Robert Gleison
+- **Model:** Claude Opus 5.5
+- **Tool:** Claude Code
+- **Domain:** docs, architecture
+
+#### Prompt
+```text
+I think we can simplify. keep the version of component_diagram_iteration_2.png but add a search engine service that can find books (book service?) and users (user service). Also, maybe the statistics service (stats, badges, achievements)?
+```
+
+#### Explanation of Changes
+Edited the Mermaid source of the iteration 2 component diagram in `docs/design.md`: added a Search engine service that calls Books management and Users management, replaced the planned Badge service with a planned Statistics service (stats, badges, achievements), updated the change list, regenerated `component_diagram_iteration_2.png` and removed `component_diagram_iteration_2_simple.md`.

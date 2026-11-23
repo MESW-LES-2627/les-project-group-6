@@ -462,7 +462,8 @@ flowchart TB
     subgraph BE["Backend API: one Express app, one module per component"]
         direction TB
         AM["Auth middleware<br/>(verifies JWT)"]
-        UM["Users management<br/>profile, user search,<br/>reading streak"]
+        UM["Users management<br/>profile, reading streak"]
+        SE["Search engine service<br/>find books and users"]
         SL["Social links<br/>friend requests, friends"]
         BM["Books management<br/>catalogue, fuzzy search,<br/>add a missing book"]
         LS["Library service<br/>reading status, library view"]
@@ -474,7 +475,7 @@ flowchart TB
         BC["Book club service<br/>rounds, polls"]
         CH["Book challenge service<br/>competition rules"]
         CS["Chat service<br/>messages, live push"]
-        BD["Badge service<br/>(planned)"]
+        ST["Statistics service<br/>stats, badges, achievements<br/>(planned)"]
         NF["Notification and feed<br/>(planned)"]
     end
 
@@ -482,6 +483,8 @@ flowchart TB
     FE -->|"HTTP + JWT"| AM
     FE <-->|"Socket.IO"| CS
     AM -->|"load profile"| UM
+    SE -->|"find books"| BM
+    SE -->|"find users"| UM
 
     BM -->|"BookCatalog port<br/>3 s timeout, 1 h cache"| OL
     LS -->|"find book"| BM
@@ -510,20 +513,20 @@ flowchart TB
     GM -.->|"MemberJoined:<br/>announce"| CS
     GM -.->|"MemberJoined:<br/>add book to library"| BC
 
-    RS -.->|"SessionCompleted"| BD
-    UM -.->|"StreakExtended"| BD
-    GM -.->|"MemberJoined"| BD
-    BD -.->|"BadgeEarned"| NF
+    RS -.->|"SessionCompleted"| ST
+    UM -.->|"StreakExtended"| ST
+    GM -.->|"MemberJoined"| ST
+    ST -.->|"BadgeEarned"| NF
     CS -.->|"store assets"| BK
 
     BE ==>|"all components read and write"| DB
     SA -->|"check or create credentials"| DB
 
     classDef planned stroke-dasharray: 5 5,fill:#f6f6f6,stroke:#888
-    class BD,NF,BK planned
+    class ST,NF,BK planned
     classDef ext fill:#fff4e5,stroke:#b9770e
     class OL,SA ext
-    linkStyle 13,14,16 stroke:#c0392b,stroke-width:2px
+    linkStyle 15,16,18 stroke:#c0392b,stroke-width:2px
     style BE fill:#fafafa,stroke:#999
 ```
 
@@ -537,9 +540,10 @@ flowchart TB
 - **Feedback service** now exists: ratings and reviews, shown to the reader, their friends and (for public profiles) everyone.
 - **Explore service (new).** Trending and most-read lists, built from `topBooks()` of the Reading session service and `mostAdded()` of the Library service.
 - **Reading session service** publishes `ReadingActivityQuery` (`countedMinutes`, `topBooks`), which Book challenge, Book club and Explore use. They no longer read the sessions table. It also publishes `SessionCompleted`.
-- **Users management** now owns the **reading streak** and user search. Reading session and Library service call it to count a reading day (red lines).
+- **Users management** now owns the **reading streak**. Reading session and Library service call it to count a reading day (red lines).
 - **Group management** also handles leaving a group and publishes `MemberJoined`, which Chat (announcement) and Book club (add the round book to the library) react to.
-- **Badge service and Notification and feed (planned).** They subscribe to events only; nothing existing calls them.
+- **Search engine service (new).** One entry point for search: it finds books through Books management and users through Users management, so the frontend has a single search to call.
+- **Statistics service and Notification and feed (planned).** The Statistics service holds reading stats, badges and achievements. Both subscribe to events only; nothing existing calls them.
 
 ### Change analysis
 
