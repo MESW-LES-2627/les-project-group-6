@@ -153,7 +153,7 @@ The architecture at the end of iteration 2. It keeps the simple style of the [it
 
 #### Why we moved from draw.io to Mermaid
 
-The iteration 0 and 1 component diagrams were drawn in draw.io. From iteration 2 the diagram is written in Mermaid (source: [`component_diagram_iteration_2.mmd`](oop_assets/component_diagram_iteration_2.mmd)) and the PNG is generated from it. Mermaid is text, so it is easier to change, and a change shows up as a normal diff in a pull request, which makes it easier to review. The layout is done automatically, so adding a service does not mean moving boxes by hand.
+The iteration 0 and 1 component diagrams were drawn in draw.io. From iteration 2 the diagram is written in Mermaid and the PNG is generated from it. Mermaid is text, so it is easier to change, and a change shows up as a normal diff in a pull request, which makes it easier to review. The layout is done automatically, so adding a service does not mean moving boxes by hand.
 
 ## 4. Future change scenarios: coupling, cohesion, and design decisions
 
