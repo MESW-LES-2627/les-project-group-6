@@ -7,6 +7,7 @@ import {
   type ApiBookClubDetail,
   type ApiChallengeGroupDetail,
   type ApiChatMessage,
+  type ApiGroupInvite,
   type ApiPoll,
 } from '@/services/api';
 import { TEST_ME } from '@/stores/__tests__/fake-session';
@@ -30,8 +31,11 @@ const getChallengeGroup = vi.hoisted(() =>
 
 const getBookClub = vi.hoisted(() => vi.fn<(groupId: string) => Promise<ApiBookClubDetail>>());
 const getFriends = vi.hoisted(() => vi.fn<() => Promise<GroupMember[]>>());
-const getGroupInvites = vi.hoisted(() => vi.fn<() => Promise<unknown[]>>());
+const getGroupInvites = vi.hoisted(() => vi.fn<(groupId: string) => Promise<ApiGroupInvite[]>>());
 const getGroupMessages = vi.hoisted(() => vi.fn<(groupId: string) => Promise<ApiChatMessage[]>>());
+const inviteToGroup = vi.hoisted(() =>
+  vi.fn<(groupId: string, inviteeId: string) => Promise<ApiGroupInvite>>(),
+);
 const voteForProposal = vi.hoisted(() =>
   vi.fn<(groupId: string, proposalId: string) => Promise<ApiPoll>>(),
 );
@@ -48,6 +52,7 @@ vi.mock('@/services/api', async (importOriginal) => ({
   getFriends,
   getGroupInvites,
   getGroupMessages,
+  inviteToGroup,
   voteForProposal,
   sendGroupMessage,
 }));
@@ -57,6 +62,12 @@ vi.mock('@/services/chat-socket', () => ({ connectChatSocket: () => ({ close: ()
 
 const MAYA = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b01';
 const EMMA = 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01';
+const ANA: GroupMember = {
+  id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380b99',
+  name: 'Ana',
+  initials: 'AN',
+  handle: 'ana',
+};
 
 const apiClub: ApiBookClubDetail = {
   id: 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380c09',
@@ -257,6 +268,59 @@ describe('GroupDetailView', () => {
       ['The Midnight Library', '15 min'],
     ]);
     expect(wrapper.text()).not.toContain('Last month’s result');
+  });
+
+  it('lets the challenge admin invite a friend to the existing group', async () => {
+    getChallengeGroup.mockResolvedValueOnce(apiGroup);
+    getFriends.mockResolvedValue([ANA]);
+    inviteToGroup.mockResolvedValue({} as ApiGroupInvite);
+    const wrapper = mountGroup(apiGroup.id);
+    await flushPromises();
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Admin & settings')!
+      .trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Invite friends');
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Invite')!
+      .trigger('click');
+    await flushPromises();
+
+    expect(inviteToGroup).toHaveBeenCalledWith(apiGroup.id, ANA.id);
+    expect(wrapper.text()).toContain('Invite sent to Ana.');
+    wrapper.unmount();
+  });
+
+  it('does not invite a friend who already has a pending invite', async () => {
+    getChallengeGroup.mockResolvedValueOnce(apiGroup);
+    getFriends.mockResolvedValue([ANA]);
+    getGroupInvites.mockResolvedValueOnce([
+      {
+        id: 'i1',
+        groupId: apiGroup.id,
+        inviteeId: ANA.id,
+        inviterId: DEMO_USER_ID,
+        status: 'pending',
+        createdAt: '2026-11-24T10:00:00Z',
+      },
+    ]);
+    const wrapper = mountGroup(apiGroup.id);
+    await flushPromises();
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Admin & settings')!
+      .trigger('click');
+    await flushPromises();
+
+    const invited = wrapper.findAll('button').find((b) => b.text() === 'Invited')!;
+    expect(invited.attributes('disabled')).toBeDefined();
+    expect(inviteToGroup).not.toHaveBeenCalled();
+    wrapper.unmount();
   });
 
   it('does not show the invite option to a challenge member who is not the admin', async () => {
