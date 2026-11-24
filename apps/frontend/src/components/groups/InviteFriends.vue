@@ -92,7 +92,7 @@ async function invite(friend: GroupMember) {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  width: 100%;
+  width: 30%;
   margin: 0;
   padding: 0;
   list-style: none;
