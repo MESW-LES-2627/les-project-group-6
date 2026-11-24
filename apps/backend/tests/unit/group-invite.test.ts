@@ -97,6 +97,24 @@ describe('Group invites', () => {
     );
   });
 
+  test('the admin lists the pending invites of the group, and nobody else can', async () => {
+    await invites.invite(GROUP.value, ADMIN.value, MAYA.value);
+
+    const pending = await invites.pendingForGroup(GROUP.value, ADMIN.value);
+    assert.deepStrictEqual(
+      pending.map((i) => i.inviteeId.value),
+      [MAYA.value],
+    );
+    await assert.rejects(invites.pendingForGroup(GROUP.value, MAYA.value), NotGroupAdminError);
+    await assert.rejects(
+      invites.pendingForGroup(GroupId.generate().value, ADMIN.value),
+      NotFoundError,
+    );
+
+    await invites.accept(pending[0]!.id.value, MAYA.value);
+    assert.deepStrictEqual(await invites.pendingForGroup(GROUP.value, ADMIN.value), []);
+  });
+
   test('only the invitee answers, and only once', async () => {
     const invite = await invites.invite(GROUP.value, ADMIN.value, MAYA.value);
 

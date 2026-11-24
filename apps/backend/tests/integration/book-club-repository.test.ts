@@ -155,8 +155,13 @@ describe('Book club repositories Integration', () => {
     const [pending] = await invites.pendingFor(MAYA);
     assert.strictEqual(pending!.groupName, 'Classics');
     assert.strictEqual(pending!.inviterName, 'admin_reader');
+    assert.deepStrictEqual(
+      (await invites.pendingForGroup(club.id)).map((i) => i.inviteeId.value),
+      [MAYA.value],
+    );
     invite.accept(MAYA, now);
     await invites.save(invite);
     assert.strictEqual((await invites.pendingFor(MAYA)).length, 0);
+    assert.strictEqual((await invites.pendingForGroup(club.id)).length, 0);
   });
 });

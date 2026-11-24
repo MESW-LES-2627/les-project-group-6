@@ -369,6 +369,12 @@ export class InMemoryGroupInviteRepository implements IGroupInviteRepository {
       .map((invite) => ({ invite, groupName: '', groupKind: 'book-club', inviterName: '' }));
   }
 
+  async pendingForGroup(groupId: GroupId): Promise<GroupInvite[]> {
+    return [...this.invites.values()].filter(
+      (i) => i.groupId.equals(groupId) && i.status === 'pending',
+    );
+  }
+
   async save(invite: GroupInvite): Promise<void> {
     this.invites.set(invite.id.value, invite);
   }

@@ -12,6 +12,11 @@ export function groupInviteRoutes(invites: GroupInviteService): Router {
     res.status(201).json(toGroupInviteDto(invite));
   });
 
+  router.get('/groups/:id/invites', async (req, res) => {
+    const pending = await invites.pendingForGroup(req.params.id, currentUserId(res));
+    res.status(200).json(pending.map(toGroupInviteDto));
+  });
+
   router.get('/me/group-invites', async (_req, res) => {
     const pending = await invites.pendingFor(currentUserId(res));
     res.status(200).json(pending.map(toPendingInviteDto));

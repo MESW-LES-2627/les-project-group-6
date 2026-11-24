@@ -173,12 +173,15 @@ describe('CreateGroupView', () => {
     expect(wrapper.get('#name-error').text()).toBe('Give your group a name.');
   });
 
-  it('creates the challenge through the API and opens its page', async () => {
+  it('creates the challenge through the API, invites friends and opens its page', async () => {
     const id = 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a01';
     createChallengeGroup.mockResolvedValueOnce({ id } as ApiChallengeGroup);
+    inviteToGroup.mockResolvedValue({} as ApiGroupInvite);
     await router.push('/groups/new');
     const wrapper = mountView();
+    await flushPromises();
     await wrapper.get('#group-name').setValue('November Pages');
+    await wrapper.findAll('.friend')[0]!.trigger('click');
 
     await wrapper.get('form').trigger('submit');
 
@@ -188,6 +191,7 @@ describe('CreateGroupView', () => {
       durationDays: 30,
       winMetric: 'pages',
     });
+    expect(inviteToGroup).toHaveBeenCalledWith(id, MAYA.id);
     await vi.waitFor(() => expect(router.currentRoute.value.params.groupId).toBe(id));
   });
 

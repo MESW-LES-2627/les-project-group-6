@@ -1,13 +1,14 @@
 // @req F-GRP-01
 import { flushPromises, mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ApiError } from '@/services/api';
+import { ApiError, type ApiGroupInvite } from '@/services/api';
 import type { GroupMember } from '@/types/groups';
 import InviteFriends from '../InviteFriends.vue';
 
 const api = vi.hoisted(() => ({
   getFriends: vi.fn<() => Promise<GroupMember[]>>(),
+  getGroupInvites: vi.fn<(groupId: string) => Promise<ApiGroupInvite[]>>(),
   inviteToGroup: vi.fn<(groupId: string, inviteeId: string) => Promise<unknown>>(),
 }));
 vi.mock('@/services/api', async (original) => ({
@@ -31,6 +32,7 @@ async function mountList() {
   return wrapper;
 }
 
+beforeEach(() => api.getGroupInvites.mockResolvedValue([]));
 afterEach(() => vi.clearAllMocks());
 
 describe('InviteFriends', () => {
@@ -47,6 +49,26 @@ describe('InviteFriends', () => {
     expect(wrapper.get('button').text()).toBe('Invited');
     expect(wrapper.get('button').attributes('disabled')).toBeDefined();
     expect(wrapper.text()).toContain('Invite sent to Bob.');
+  });
+
+  it('marks a friend with a pending invite as invited and cannot invite them again', async () => {
+    api.getFriends.mockResolvedValue([BOB]);
+    api.getGroupInvites.mockResolvedValue([
+      {
+        id: 'i1',
+        groupId: 'g1',
+        inviteeId: BOB.id,
+        inviterId: 'me',
+        status: 'pending',
+        createdAt: '2026-11-24T10:00:00Z',
+      },
+    ]);
+    const wrapper = await mountList();
+
+    const invited = wrapper.findAll('li').find((li) => li.text().includes('Bob'))!;
+    expect(invited.get('button').text()).toBe('Invited');
+    expect(invited.get('button').attributes('disabled')).toBeDefined();
+    expect(api.inviteToGroup).not.toHaveBeenCalled();
   });
 
   it('shows the server message when an invite is refused', async () => {

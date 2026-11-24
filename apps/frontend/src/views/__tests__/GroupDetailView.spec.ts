@@ -10,6 +10,7 @@ import {
   type ApiPoll,
 } from '@/services/api';
 import { TEST_ME } from '@/stores/__tests__/fake-session';
+import type { GroupMember } from '@/types/groups';
 import GroupDetailView from '../GroupDetailView.vue';
 
 /** The signed-in reader of these tests. */
@@ -28,6 +29,8 @@ const getChallengeGroup = vi.hoisted(() =>
 );
 
 const getBookClub = vi.hoisted(() => vi.fn<(groupId: string) => Promise<ApiBookClubDetail>>());
+const getFriends = vi.hoisted(() => vi.fn<() => Promise<GroupMember[]>>());
+const getGroupInvites = vi.hoisted(() => vi.fn<() => Promise<unknown[]>>());
 const getGroupMessages = vi.hoisted(() => vi.fn<(groupId: string) => Promise<ApiChatMessage[]>>());
 const voteForProposal = vi.hoisted(() =>
   vi.fn<(groupId: string, proposalId: string) => Promise<ApiPoll>>(),
@@ -42,6 +45,8 @@ vi.mock('@/services/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/services/api')>()),
   getChallengeGroup,
   getBookClub,
+  getFriends,
+  getGroupInvites,
   getGroupMessages,
   voteForProposal,
   sendGroupMessage,
@@ -165,6 +170,8 @@ function mountGroup(groupId: string) {
 describe('GroupDetailView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getFriends.mockResolvedValue([]);
+    getGroupInvites.mockResolvedValue([]);
   });
 
   it('sends a chat message on a challenge from the API', async () => {
@@ -250,6 +257,41 @@ describe('GroupDetailView', () => {
       ['The Midnight Library', '15 min'],
     ]);
     expect(wrapper.text()).not.toContain('Last month’s result');
+  });
+
+  it('does not show the invite option to a challenge member who is not the admin', async () => {
+    const memberGroup: ApiChallengeGroupDetail = {
+      ...apiGroup,
+      adminId: MAYA,
+      members: [
+        { userId: MAYA, role: 'admin', joinedAt: '2026-10-31T10:00:00Z' },
+        { userId: DEMO_USER_ID, role: 'member', joinedAt: '2026-11-01T10:00:00Z' },
+      ],
+      standings: [
+        {
+          userId: MAYA,
+          displayName: 'Maya Laurent',
+          username: 'mayareads',
+          role: 'admin',
+          score: 40,
+          books: [],
+        },
+        {
+          userId: DEMO_USER_ID,
+          displayName: 'Demo Reader',
+          username: 'demo_reader',
+          role: 'member',
+          score: 20,
+          books: [],
+        },
+      ],
+    };
+    getChallengeGroup.mockResolvedValueOnce(memberGroup);
+    const wrapper = mountGroup(apiGroup.id);
+    await flushPromises();
+
+    expect(wrapper.findAll('button').some((b) => b.text() === 'Admin & settings')).toBe(false);
+    expect(wrapper.text()).not.toContain('Invite friends');
   });
 
   it('shows no rank while the challenge has no scores yet', async () => {

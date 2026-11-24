@@ -2,11 +2,11 @@
 import { computed, onMounted, ref } from 'vue';
 
 import MemberAvatar from '@/components/groups/MemberAvatar.vue';
-import { getFriends, inviteToGroup } from '@/services/api';
+import { getFriends, getGroupInvites, inviteToGroup } from '@/services/api';
 import type { GroupMember } from '@/types/groups';
 
-// F-GRP-01: the admin invites friends who are not members yet. The server refuses a
-// second pending invite, and that message is shown here.
+// F-GRP-01: the admin invites friends who are not members yet. Friends who already
+// have a pending invite are shown as invited and cannot be invited again.
 const props = defineProps<{ groupId: string; members: readonly GroupMember[] }>();
 
 const friends = ref<GroupMember[]>([]);
@@ -20,7 +20,9 @@ const invitable = computed(() =>
 
 onMounted(async () => {
   try {
-    friends.value = await getFriends();
+    const [friendList, pending] = await Promise.all([getFriends(), getGroupInvites(props.groupId)]);
+    friends.value = friendList;
+    invited.value = pending.map((invite) => invite.inviteeId);
   } catch (e) {
     error.value = (e as Error).message;
   }
