@@ -497,7 +497,7 @@ Rewrote the [iteration 2 change analysis](../../oop_assets/change_anaysis_iterat
 
 ### 2026-11-24: Invite list survives a failed request (#184, F-GRP-01)
 
-- Reported from a manual test: the admin opened **Admin & settings → Invite friends** and only saw "All your friends are already here", so there was no button to invite anyone, and the invited reader saw neither the group nor an invite.
+- Commit `47032bc`. Reported from a manual test: the admin opened **Admin & settings → Invite friends** and only saw "All your friends are already here", so there was no button to invite anyone, and the invited reader saw neither the group nor an invite.
 - **Cause.** [`InviteFriends.vue`](../../../apps/frontend/src/components/groups/InviteFriends.vue) loaded friends and the new admin-only pending list with one `Promise.all`, so a failing pending request (for example an older backend without `GET /groups/:id/invites`) threw the friend list away and left the empty message. [`GroupsView.vue`](../../../apps/frontend/src/views/GroupsView.vue) did the same with the reader's groups and their invites, so a failed invite request blanked the whole groups page.
 - **Fix.** Both pages load the two requests independently: a pending list that cannot be read no longer hides the friends the admin can invite or the groups the reader belongs to. The empty states now say **You have no friends to invite yet** with a link to Explore, or **All your friends are already in this group**, and the error replaces the empty state when the friends themselves cannot load. Only accepted friends can be invited.
 - An invited reader sees the invite under **Groups → Invitations** and **Home → Waiting for you**; the group joins their list after they accept.
