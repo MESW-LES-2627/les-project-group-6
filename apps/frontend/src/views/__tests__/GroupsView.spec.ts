@@ -144,6 +144,18 @@ describe('GroupsView', () => {
     );
   });
 
+  it('still lists the groups when the invite list cannot be read', async () => {
+    getUserGroups.mockResolvedValue([challenge]);
+    getUserBookClubs.mockResolvedValue([]);
+    getPendingInvites.mockRejectedValue(new Error('offline'));
+    const wrapper = await mountLoaded();
+
+    expect(wrapper.findAll('article')).toHaveLength(1);
+    expect(wrapper.text()).toContain('Winter Minutes');
+    expect(wrapper.find('.invites').exists()).toBe(false);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+  });
+
   it('filters by kind', async () => {
     useGroups();
     const wrapper = await mountLoaded();

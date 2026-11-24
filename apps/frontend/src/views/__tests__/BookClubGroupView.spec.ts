@@ -198,6 +198,6 @@ describe('BookClubGroupView', () => {
     await openAdmin(wrapper);
 
     expect(wrapper.get('.invite-error').text()).toBe('Failed to load friends');
-    expect(wrapper.text()).toContain('All your friends are already here.');
+    expect(wrapper.text()).not.toContain('You have no friends to invite yet.');
   });
 });

@@ -2,6 +2,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import router from '@/router';
 import { ApiError, type ApiGroupInvite } from '@/services/api';
 import type { GroupMember } from '@/types/groups';
 import InviteFriends from '../InviteFriends.vue';
@@ -27,12 +28,17 @@ const MAYA = member('maya', 'Maya');
 const BOB = member('bob', 'Bob');
 
 async function mountList() {
-  const wrapper = mount(InviteFriends, { props: { groupId: 'g1', members: [ANA, MAYA] } });
+  const wrapper = mount(InviteFriends, {
+    props: { groupId: 'g1', members: [ANA, MAYA] },
+    global: { plugins: [router] },
+  });
   await flushPromises();
   return wrapper;
 }
 
-beforeEach(() => api.getGroupInvites.mockResolvedValue([]));
+beforeEach(() => {
+  api.getGroupInvites.mockResolvedValue([]);
+});
 afterEach(() => vi.clearAllMocks());
 
 describe('InviteFriends', () => {
@@ -89,6 +95,23 @@ describe('InviteFriends', () => {
     api.getFriends.mockResolvedValue([MAYA]);
     const wrapper = await mountList();
 
-    expect(wrapper.text()).toContain('All your friends are already here.');
+    expect(wrapper.text()).toContain('All your friends are already in this group.');
+  });
+
+  it('points a reader with no friends to Explore', async () => {
+    api.getFriends.mockResolvedValue([]);
+    const wrapper = await mountList();
+
+    expect(wrapper.text()).toContain('You have no friends to invite yet.');
+    expect(wrapper.get('.find-friends').attributes('href')).toBe('/explore');
+  });
+
+  it('still lists friends when the pending-invites data is unavailable', async () => {
+    api.getFriends.mockResolvedValue([BOB]);
+    api.getGroupInvites.mockRejectedValue(new Error('HTTP 404'));
+    const wrapper = await mountList();
+
+    expect(wrapper.findAll('.friend-name').map((n) => n.text())).toEqual(['Bob']);
+    expect(wrapper.text()).not.toContain('All your friends are already in this group.');
   });
 });
