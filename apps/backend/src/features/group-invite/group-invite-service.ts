@@ -2,7 +2,7 @@ import type { Clock } from '../../utils/clock.js';
 import { NotFoundError } from '../../utils/errors.js';
 import type { IFriendRepository } from '../friend/friend-repository.js';
 import type { IGroupRosterRepository } from '../group/group-roster-repository.js';
-import { GroupId, type MemberJoinedListener } from '../group/group.js';
+import { GroupId, NotGroupAdminError, type MemberJoinedListener } from '../group/group.js';
 import type { IUserRepository } from '../user/user-repository.js';
 import { UserId } from '../user/user.js';
 import { GroupInvite, InviteId, InviteRuleError } from './group-invite.js';
@@ -39,6 +39,14 @@ export class GroupInviteService {
 
   async pendingFor(userId: unknown): Promise<PendingInvite[]> {
     return this.invites.pendingFor(UserId.of(userId));
+  }
+
+  /** The admin's unanswered invites for one group, so the invite list can mark them. */
+  async pendingForGroup(groupId: unknown, userId: unknown): Promise<GroupInvite[]> {
+    const group = await this.rosters.findById(GroupId.of(groupId));
+    if (!group) throw new NotFoundError('Group');
+    if (!group.isAdmin(UserId.of(userId))) throw new NotGroupAdminError('see pending invites');
+    return this.invites.pendingForGroup(group.groupId);
   }
 
   /** The invitee joins the group; the listeners react (library, chat). */

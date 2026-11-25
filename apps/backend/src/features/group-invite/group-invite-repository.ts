@@ -17,6 +17,8 @@ export interface IGroupInviteRepository {
   findById(id: InviteId): Promise<GroupInvite | null>;
   hasPending(groupId: GroupId, inviteeId: UserId): Promise<boolean>;
   pendingFor(inviteeId: UserId): Promise<PendingInvite[]>;
+  /** The invites of one group that are still waiting for an answer. */
+  pendingForGroup(groupId: GroupId): Promise<GroupInvite[]>;
   save(invite: GroupInvite): Promise<void>;
 }
 
@@ -77,6 +79,15 @@ export class DrizzleGroupInviteRepository implements IGroupInviteRepository {
       groupKind: groupKindOf(row.groupKind),
       inviterName: row.inviterName,
     }));
+  }
+
+  async pendingForGroup(groupId: GroupId): Promise<GroupInvite[]> {
+    const rows = await this.db
+      .select()
+      .from(groupInvites)
+      .where(and(eq(groupInvites.groupId, groupId.value), eq(groupInvites.status, 'pending')))
+      .orderBy(desc(groupInvites.createdAt));
+    return rows.map(toDomain);
   }
 
   async save(invite: GroupInvite): Promise<void> {

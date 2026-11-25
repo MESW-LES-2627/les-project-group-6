@@ -72,15 +72,18 @@ async function loadMine(): Promise<GroupSummary[]> {
 }
 
 onMounted(async () => {
+  // Load independently: an invite the API cannot read must not hide the reader's groups.
   try {
-    const [mine, pending] = await Promise.all([loadMine(), getPendingInvites()]);
-    groups.value = mine;
-    invites.value = pending;
+    groups.value = await loadMine();
   } catch {
     loadError.value = 'We could not load your groups. Please refresh the page.';
-  } finally {
-    loading.value = false;
   }
+  try {
+    invites.value = await getPendingInvites();
+  } catch {
+    invites.value = [];
+  }
+  loading.value = false;
 });
 
 async function answer(invite: ApiPendingInvite, choice: 'accept' | 'decline') {

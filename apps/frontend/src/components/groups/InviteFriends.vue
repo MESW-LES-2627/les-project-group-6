@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { RouterLink } from 'vue-router';
 
 import MemberAvatar from '@/components/groups/MemberAvatar.vue';
-import { getFriends, inviteToGroup } from '@/services/api';
+import { getFriends, getGroupInvites, inviteToGroup } from '@/services/api';
 import type { GroupMember } from '@/types/groups';
 
-// F-GRP-01: the admin invites friends who are not members yet. The server refuses a
-// second pending invite, and that message is shown here.
+// F-GRP-01: the admin invites friends who are not members yet. Friends who already
+// have a pending invite are shown as invited and cannot be invited again.
 const props = defineProps<{ groupId: string; members: readonly GroupMember[] }>();
 
 const friends = ref<GroupMember[]>([]);
@@ -19,11 +20,16 @@ const invitable = computed(() =>
 );
 
 onMounted(async () => {
+  // Start both requests together, but let each fail on its own: a pending-invite list
+  // the API cannot read must not hide the friends the admin can still invite.
+  const pendingRequest = getGroupInvites(props.groupId).catch(() => null);
   try {
     friends.value = await getFriends();
   } catch (e) {
     error.value = (e as Error).message;
   }
+  const pending = await pendingRequest;
+  if (pending) invited.value = pending.map((invite) => invite.inviteeId);
 });
 
 async function invite(friend: GroupMember) {
@@ -55,7 +61,12 @@ async function invite(friend: GroupMember) {
         </button>
       </li>
     </ul>
-    <p v-else class="lede">All your friends are already here.</p>
+    <p v-else-if="!friends.length && !error" class="lede">
+      You have no friends to invite yet.
+      <RouterLink class="find-friends" :to="{ name: 'explore' }">Find friends</RouterLink>
+    </p>
+    <p v-else-if="friends.length" class="lede">All your friends are already in this group.</p>
+    <p class="hint">Only accepted friends can be invited.</p>
     <p v-if="message" class="lede" role="status">{{ message }}</p>
     <p v-if="error" class="invite-error" role="alert">{{ error }}</p>
   </div>
@@ -81,7 +92,7 @@ async function invite(friend: GroupMember) {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  width: 100%;
+  width: 30%;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -96,6 +107,18 @@ async function invite(friend: GroupMember) {
 .friend-name {
   flex: 1;
   font-size: var(--font-size-sm);
+}
+
+.hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.find-friends {
+  color: var(--color-accent);
+  font-weight: 600;
+  text-decoration: underline;
 }
 
 .invite-error {

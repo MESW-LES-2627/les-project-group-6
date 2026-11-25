@@ -500,6 +500,13 @@ const endpoints: Endpoint[] = [
     error: 'nope',
   },
   {
+    name: 'getGroupInvites',
+    call: () => api.getGroupInvites('g1'),
+    method: 'GET',
+    url: '/api/groups/g1/invites',
+    error: 'nope',
+  },
+  {
     name: 'getPendingInvites',
     call: () => api.getPendingInvites(),
     method: 'GET',

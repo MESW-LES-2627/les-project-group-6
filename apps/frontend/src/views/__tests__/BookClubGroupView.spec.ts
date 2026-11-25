@@ -10,6 +10,7 @@ import BookClubGroupView from '../BookClubGroupView.vue';
 
 const api = vi.hoisted(() => ({
   getFriends: vi.fn<typeof import('@/services/api').getFriends>(),
+  getGroupInvites: vi.fn<typeof import('@/services/api').getGroupInvites>(),
   inviteToGroup: vi.fn<typeof import('@/services/api').inviteToGroup>(),
   openPoll: vi.fn<typeof import('@/services/api').openPoll>(),
   proposeBook: vi.fn<typeof import('@/services/api').proposeBook>(),
@@ -75,6 +76,7 @@ describe('BookClubGroupView', () => {
   beforeEach(() => {
     api.getGroupMessages.mockResolvedValue([]);
     api.getFriends.mockResolvedValue([testClub.members[1]!, NEW_FRIEND]);
+    api.getGroupInvites.mockResolvedValue([]);
     api.searchBooks.mockResolvedValue([PIRANESI]);
   });
   afterEach(() => {
@@ -196,6 +198,6 @@ describe('BookClubGroupView', () => {
     await openAdmin(wrapper);
 
     expect(wrapper.get('.invite-error').text()).toBe('Failed to load friends');
-    expect(wrapper.text()).toContain('All your friends are already here.');
+    expect(wrapper.text()).not.toContain('You have no friends to invite yet.');
   });
 });

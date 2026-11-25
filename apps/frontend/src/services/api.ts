@@ -1087,6 +1087,11 @@ export async function inviteToGroup(groupId: string, inviteeId: string): Promise
   return sendJson('POST', `/groups/${id(groupId)}/invites`, { inviteeId }, 'Failed to invite');
 }
 
+/** The group's unanswered invites; only its admin may read them. */
+export async function getGroupInvites(groupId: string): Promise<ApiGroupInvite[]> {
+  return getJson(`/groups/${id(groupId)}/invites`, 'Failed to load group invites');
+}
+
 export async function getPendingInvites(): Promise<ApiPendingInvite[]> {
   return getJson('/me/group-invites', 'Failed to load invites');
 }

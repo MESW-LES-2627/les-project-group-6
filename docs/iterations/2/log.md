@@ -11,6 +11,7 @@ A running record of what the team did and decided in iteration 2. The [release n
 | Releases | One GitHub Release per sprint (`iter-0` to `iter-4`), made by hand with `iteration-release.yml`; `vX.Y.Z` stay as tags only. `iter-0` and `iter-1` released |
 | Auth (F-AUTH-01, F-AUTH-02) | Login/signup plus frontend password recovery on `feat/8-password-reset`; automated checks recorded below. Supabase dashboard configuration and live recovery email verification remain outstanding |
 | Friends (F-SOC-01) | Friend request API (send, list incoming, accept, decline, remove) behind the auth middleware (PR #114) |
+| Groups (F-GRP-01) | Create, invite, accept/decline, leave and chat. The admin invites friends while creating a group and from the challenge or book club page; friends with a pending invite are marked and cannot be invited twice |
 | Library & reading status (#28, F-LIB-01) | `startedOn`/`finishedOn` dates, delete and library routes behind the auth middleware (PR #115) |
 | Library folders (#125, F-LIB-03) | Folder create/rename/delete and book membership behind the auth middleware, reusing `lists`/`list_books` (migration 0011); frontend sidebar CRUD and a book-page picker. Branch `feat/125-organize-library` |
 | Library tags (#152, F-LIB-04) | Backend and frontend done: tag/untag on the book page, real tags with counts and filter in the library sidebar, 2 e2e tests. Branch `feat/152-library-tags-frontend` |
@@ -476,7 +477,6 @@ Filled [CLAIM.md](CLAIM.md) following the iteration 1 template: permalinks on ta
 - [`HomeView`](../../../apps/frontend/src/views/HomeView.vue) now uses the shared [`PageSkeleton`](../../../apps/frontend/src/components/layout/PageSkeleton.vue) instead of text placeholders: `detail` with a cover for the bedside book, `rows` for the groups list and `cards` with row cards for trending books. The new `rows` variant is a plain vertical list of short rows, reusable by any section with that shape.
 - **Tests.** `GroupChat.spec.ts` covers opening at the newest message, following new messages at the bottom, and holding the position while scrolled up with the jump button. `PageSkeleton.spec.ts` covers `rows`, and `HomeView.spec.ts` checks the skeletons while sections load. Frontend: 585 tests pass; typecheck, ESLint and Prettier pass.
 
- 
 ### 2026-11-23: Plain-language change analysis for iteration 2
 
 Rewrote the [iteration 2 change analysis](../../oop_assets/change_anaysis_iteration_2.md) so a non-developer reader can follow it: a glossary of app terms (streak, Explore, Open Library, tags, reviews…), no class or method names, simpler diagrams. Same scenario and decision.

@@ -135,6 +135,7 @@ Tags are private to the reader. They are created on first use, stored in lower c
 | Method | Path | Description |
 |---|---|---|
 | POST | `/groups/:id/invites` | Invites a friend (`inviteeId`) to a group (challenge or book club). |
+| GET | `/groups/:id/invites` | Lists a group's pending invites, so the admin's invite list can mark them. Admin only. |
 | GET | `/me/group-invites` | Lists the reader's pending group invites. |
 | POST | `/group-invites/:id/accept` | Accepts an invite: joins the group, posts "X joined the group" in the chat, and a book club adds its round book to the library. |
 | POST | `/group-invites/:id/decline` | Declines an invite. |
