@@ -13,6 +13,9 @@ import type {
 import ActiveSessionView from '../ActiveSessionView.vue';
 
 const api = vi.hoisted(() => ({
+  getActiveReadingSession: vi.fn<() => Promise<import('@/services/api').ApiReadingSession | null>>(
+    async () => null,
+  ),
   getUserLibrary: vi.fn<() => Promise<ApiLibraryItem[]>>(),
   getBook: vi.fn<(bookId: string) => Promise<ApiBook>>(),
   getUserGroups: vi.fn<() => Promise<ApiChallengeGroup[]>>(),

@@ -1,4 +1,4 @@
-// @req F-LIB-04 F-LIB-01
+// @req F-LIB-04 F-LIB-01 F-READ-01
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -8,6 +8,9 @@ import { toIsoDate } from '@/utils/groups';
 import BookReadingPanel from '../BookReadingPanel.vue';
 
 const api = vi.hoisted(() => ({
+  getActiveReadingSession: vi.fn<() => Promise<import('@/services/api').ApiReadingSession | null>>(
+    async () => null,
+  ),
   tagBook: vi.fn<(bookId: string, name: string) => Promise<TagSummary>>(),
   untagBook: vi.fn<(bookId: string, tagId: string) => Promise<void>>(),
   updateReadingStatus: vi.fn<(payload: unknown) => Promise<void>>(),
@@ -64,6 +67,7 @@ async function typeTag(wrapper: ReturnType<typeof mountPanel>, value: string) {
 }
 
 beforeEach(() => {
+  api.getActiveReadingSession.mockResolvedValue(null);
   vi.clearAllMocks();
 });
 
@@ -442,5 +446,62 @@ describe('BookReadingPanel library and dates (F-LIB-01)', () => {
     await flushPromises();
 
     expect(api.removeFromLibrary).not.toHaveBeenCalled();
+  });
+});
+
+describe('BookReadingPanel session navigation (#188)', () => {
+  it('offers Start session for this book when no session is running', async () => {
+    const wrapper = mountPanel();
+    await flushPromises();
+    expect(wrapper.get('.start-session').text()).toBe('Start session');
+    expect(wrapper.get('.start-session').attributes('href')).toBe(`/session/${BOOK_ID}`);
+    wrapper.unmount();
+  });
+
+  it.each([BOOK_ID, 'another-book'])(
+    'continues the active session on %s instead of starting this book',
+    async (bookId) => {
+      api.getActiveReadingSession.mockResolvedValue({
+        id: 'existing-session',
+        userId: 'reader',
+        bookId,
+        startedAt: '2026-11-27T09:00:00Z',
+        endedAt: null,
+        elapsedSeconds: 125,
+        countedMinutes: 0,
+      });
+      const wrapper = mountPanel();
+      await flushPromises();
+      expect(wrapper.get('.start-session').text()).toBe('Continue session');
+      expect(wrapper.get('.start-session').attributes('href')).toBe(`/session/${bookId}`);
+      expect(wrapper.text().includes('already running for another book')).toBe(bookId !== BOOK_ID);
+      wrapper.unmount();
+    },
+  );
+
+  it('prevents navigation while checking the active session', async () => {
+    let resolve!: (value: null) => void;
+    api.getActiveReadingSession.mockReturnValue(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const wrapper = mountPanel();
+    expect(wrapper.get('.start-session').element.tagName).toBe('BUTTON');
+    expect(wrapper.get('.start-session').attributes('disabled')).toBeDefined();
+    expect(wrapper.find('a.start-session').exists()).toBe(false);
+    resolve(null);
+    await flushPromises();
+    expect(wrapper.get('.start-session').text()).toBe('Start session');
+    wrapper.unmount();
+  });
+
+  it('shows guidance without offering a new start when the session lookup fails', async () => {
+    api.getActiveReadingSession.mockRejectedValue(new Error('offline'));
+    const wrapper = mountPanel();
+    await flushPromises();
+    expect(wrapper.get('.start-session').attributes('disabled')).toBeDefined();
+    expect(wrapper.get('[role="alert"]').text()).toContain('Could not check your reading session');
+    wrapper.unmount();
   });
 });

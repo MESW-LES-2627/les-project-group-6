@@ -10,6 +10,7 @@ import {
   cancelReadingSession,
   finishReadingSession,
   getBook,
+  getActiveReadingSession,
   getUserBookClubs,
   getUserGroups,
   getUserLibrary,
@@ -58,23 +59,29 @@ const session = computed(() => {
   };
 });
 
-// The book and the session come from the API; starting resumes a session already
-// running on this book. Groups only add context, so a failure there is ignored.
+// Read the active session first: continuing must never create another session.
+// Groups only add context, so a failure there is ignored.
 onMounted(async () => {
+  let bookId = props.bookId;
   try {
-    const item = (await getUserLibrary()).find((entry) => entry.book.id === props.bookId);
+    const active = await getActiveReadingSession();
+    bookId = active?.bookId ?? props.bookId;
+    const item = (await getUserLibrary()).find((entry) => entry.book.id === bookId);
     book.value = item
       ? mapApiLibraryItemToBook(item)
-      : mapApiBookToLibraryBook(await getBook(props.bookId));
-    serverSession.value = await startReadingSession(props.bookId);
+      : mapApiBookToLibraryBook(await getBook(bookId));
+    serverSession.value = active ?? (await startReadingSession(bookId));
+    if (bookId !== props.bookId) {
+      await router.replace({ name: 'active-session', params: { bookId } });
+    }
   } catch (error) {
-    if (book.value) sessionError.value = (error as Error).message;
+    sessionError.value = (error as Error).message;
   } finally {
     loading.value = false;
   }
   try {
     const [challenges, clubs] = await Promise.all([getUserGroups(), getUserBookClubs()]);
-    groups.value = sessionGroupsFor(props.bookId, challenges, clubs);
+    groups.value = sessionGroupsFor(bookId, challenges, clubs);
   } catch {
     groups.value = [];
   }
@@ -324,7 +331,7 @@ async function whileBusy(action: () => Promise<void>) {
         </div>
       </template>
 
-      <PageSkeleton v-else-if="loading" label="Starting your session…" />
+      <PageSkeleton v-else-if="loading" label="Opening your session…" />
 
       <section v-else class="missing" aria-labelledby="missing-session-title">
         <p class="eyebrow">Reading room <span aria-hidden="true">/</span> Session</p>

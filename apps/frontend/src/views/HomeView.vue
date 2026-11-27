@@ -20,6 +20,7 @@ import {
   getUserGroups,
   getUserLibrary,
   type ApiStreak,
+  type ApiReadingSession,
 } from '@/services/api';
 import { session } from '@/stores/session';
 import type {
@@ -63,6 +64,7 @@ const dateLine = now.toLocaleDateString('en-US', {
 type Load = 'loading' | 'ready' | 'error';
 
 const bedside = ref<BedsideBook | null>(null);
+const activeSession = ref<ApiReadingSession | null>(null);
 const libraryEmpty = ref(false);
 const bedsideState = ref<Load>('loading');
 
@@ -84,6 +86,7 @@ async function loadBedside() {
       getActiveReadingSession(),
       getUserBookClubs().catch(() => []),
     ]);
+    activeSession.value = active;
     bedside.value = pickBedside(library, active, myClubs);
     libraryEmpty.value = library.length === 0;
     bedsideState.value = 'ready';
@@ -258,7 +261,7 @@ async function respondToInvite(invite: HomeInvitation, accept: boolean) {
             </p>
           </div>
           <div class="bedside-actions">
-            <RouterLink class="button" :to="`/session/${bedside.id}`">
+            <RouterLink class="button" :to="`/session/${activeSession?.bookId ?? bedside.id}`">
               <svg
                 width="16"
                 height="16"
@@ -268,7 +271,7 @@ async function respondToInvite(invite: HomeInvitation, accept: boolean) {
               >
                 <path d="M8 5.5v13l10-6.5z" />
               </svg>
-              {{ bedside.sessionRunning ? 'Resume session' : 'Start session' }}
+              {{ activeSession ? 'Continue session' : 'Start session' }}
             </RouterLink>
             <RouterLink class="text-link" :to="`/library/${bedside.id}`">Book details</RouterLink>
           </div>
