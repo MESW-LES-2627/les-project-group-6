@@ -87,13 +87,14 @@ See [docs/architecture/](docs/architecture/) for the infrastructure, API routes 
 │       │   └── assets/
 │       ├── e2e/                   # Playwright end-to-end tests
 │       ├── playwright.config.ts
+│       ├── playwright.session.config.ts # isolated desktop/mobile session tests
 │       ├── vitest.config.ts
 │       └── stryker.config.mjs     # mutation testing
 ├── docs/
 │   ├── README.md                  # documentation index
 │   ├── architecture/              # includes password-recovery.md
 │   ├── requirements/
-│   ├── iterations/                # 0–4; active iteration 2
+│   ├── iterations/                # 0–4; active iteration 3
 │   ├── oop_assets/
 │   ├── design.md
 │   └── superpowers/               # specs and implementation plans
@@ -155,7 +156,7 @@ All project documentation. See [docs/README.md](docs/README.md) for an index tha
 
 - `docs/architecture/`: API routes, infrastructure, table UML and the [password recovery guide](docs/architecture/password-recovery.md), including external Supabase setup and live verification steps.
 - `docs/requirements/`: [requirements](docs/requirements/requirements.md) and [feature priorities](docs/requirements/features_priority.md).
-- `docs/iterations/`: iteration deliverables and running project/AI logs (active iteration 2).
+- `docs/iterations/`: iteration deliverables and running project/AI logs (active iteration 3).
 - `docs/oop_assets/` and `docs/design.md`: diagrams, analysis and design references.
 - `docs/superpowers/`: feature specifications and implementation plans.
 

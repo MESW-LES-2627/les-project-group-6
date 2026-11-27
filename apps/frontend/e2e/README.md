@@ -30,3 +30,9 @@ Playwright tests of the main path of every route (#127, [spec](../../../docs/sup
 ## Deterministic recovery/auth regression
 
 `recovery.spec.ts` runs separately with `pnpm exec playwright test --config playwright.recovery.config.ts` from `apps/frontend`. Install Chromium with `pnpm exec playwright install chromium` first. The configuration uses a frontend-only preview on port 4175, synthetic Supabase network fixtures, desktop/mobile Chromium and no shared account or database. It does not read `.env.e2e` or run `auth.setup.ts`. The ordinary stack configuration ignores this file. See the [recovery guide](../../../docs/architecture/password-recovery.md) for external setup and live verification gaps.
+
+## Deterministic session navigation (#188)
+
+From `apps/frontend`, run `corepack pnpm exec playwright test --config playwright.session.config.ts`. This configuration uses desktop/mobile Chromium and an isolated frontend preview on port 4176, with its build under `dist-ssr/session`. `continue-session.spec.ts` restores a synthetic Supabase session and mocks the API at the network boundary; it never starts the backend or reads `.env.e2e`. The ordinary stack configuration excludes it.
+
+The scenarios cover Start with no running session, Continue from Home and another book, refresh, stale direct URLs, finish/cancel, and failed active-session lookup. Request counters verify that continuing and refresh send no new `POST /reading-sessions`. The live-stack `session.spec.ts` now supports an already-running fixture session and only removes sessions the test creates; that live suite requires approved fixtures and was not run for this change.

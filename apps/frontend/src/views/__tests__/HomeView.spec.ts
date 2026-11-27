@@ -1,4 +1,4 @@
-// @req F-HOME-01 F-READ-04
+// @req F-HOME-01 F-READ-04 F-READ-01
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -208,7 +208,7 @@ describe('HomeView', () => {
     expect(wrapper.get('.bedside-actions .button').text()).toContain('Start session');
   });
 
-  it('puts the running session book on the bedside and offers to resume it', async () => {
+  it('puts the running session book on the bedside and offers to continue it', async () => {
     api.getActiveReadingSession.mockResolvedValue({
       id: 's1',
       userId: TEST_ME.id,
@@ -221,8 +221,23 @@ describe('HomeView', () => {
     const wrapper = await mountView();
 
     expect(wrapper.get('#bedside-title').text()).toBe('Persuasion');
-    expect(wrapper.get('.bedside-actions .button').text()).toContain('Resume session');
+    expect(wrapper.get('.bedside-actions .button').text()).toContain('Continue session');
     expect(wrapper.get('.bedside-actions .button').attributes('href')).toBe('/session/persuasion');
+  });
+
+  it('continues the active session even when its book is no longer on the shelf', async () => {
+    api.getActiveReadingSession.mockResolvedValue({
+      id: 's1',
+      userId: TEST_ME.id,
+      bookId: 'dune',
+      startedAt: '2026-11-27T09:00:00Z',
+      endedAt: null,
+      elapsedSeconds: 125,
+      countedMinutes: 0,
+    });
+    const wrapper = await mountView();
+    expect(wrapper.get('.bedside-actions .button').text()).toContain('Continue session');
+    expect(wrapper.get('.bedside-actions .button').attributes('href')).toBe('/session/dune');
   });
 
   it('invites a new reader with an empty library to explore books', async () => {

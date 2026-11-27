@@ -14,7 +14,7 @@ pnpm --filter @bookmarked/frontend dev
 Open the Vite URL (normally http://localhost:5173) and sign in. Every page shows the signed-in reader's data from the API; there is no fallback to mock data, so a failed request shows an error or an empty state, never invented content.
 
 - `/home`: the bedside book (the running session's book, else the latest book in progress), active challenges with the reader's rank, active book clubs, pending friend requests and group invites, and what is trending this week (`GET /explore`).
-- `/library`: the reader's books (`GET /me/library`), folders and tags. `/library/:bookId` shows the book's authors, description, ISBN, reading status, folders, tags, reviews and the club reading it; “Start session” opens `/session/:bookId`, which starts (or resumes) a server-timed session and lists the groups it counts towards.
+- `/library`: the reader's books (`GET /me/library`), folders and tags. `/library/:bookId` shows the book's authors, description, ISBN, reading status, folders, tags, reviews and the club reading it; Home and book-detail actions show “Continue session” whenever a reading session is running, including when viewing another book. They return to that session’s book; otherwise “Start session” opens `/session/:bookId`. The timer reads the active session before creating one, so continuing or refreshing sends no start request and preserves the server timer and session ID (#188, F-READ-01).
 - `/groups`: the reader's challenges and book clubs, `/groups/new` to create one and invite friends, and `/groups/:groupId` for a challenge or club page.
 - `/profile`: the reader's bookplate, books in progress, finished shelf, recently touched books, folders, reading time and reviews.
 
@@ -46,7 +46,7 @@ pnpm --filter @bookmarked/frontend build
 
 Lint uses Oxlint and ESLint with `eslint-plugin-vue`. Formatting uses the root Prettier configuration. Typechecking uses `vue-tsc`, including tests. `test` runs Vitest once with jsdom and `@vue/test-utils`; use `test:watch` for watch mode and `format` to apply Prettier. Frontend CI runs these checks on frontend and shared config changes.
 
-End-to-end tests: `pnpm test:e2e`, see [e2e/README.md](e2e/README.md).
+End-to-end tests: `pnpm test:e2e`, see [e2e/README.md](e2e/README.md). Deterministic session navigation tests run separately with `corepack pnpm --filter @bookmarked/frontend exec playwright test --config playwright.session.config.ts` (desktop/mobile Chromium, mocked API, no shared account or database).
 
 ## Source layout and design
 

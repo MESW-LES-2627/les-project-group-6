@@ -66,4 +66,20 @@ All your friends are already here.
 #### Explanation of Changes
 Found that `InviteFriends.vue` loaded friends and the admin-only pending-invite list with one `Promise.all`, so a failing pending request emptied the friend list and left the "All your friends are already here" message; `GroupsView.vue` used the same pattern for the reader's groups and invites, so a failing invite request hid the groups. Both now load the two requests independently, with separate empty states ("You have no friends to invite yet" with a link to Explore, or "All your friends are already in this group") and an error that replaces the empty state when friends cannot load. Added a component test for a failed pending request and a groups-page test for a failed invite request, and updated the book club error test. Updated the iteration log.
 
+### 2026-11-27: Continue a running reading session (#188)
 
+- **Date:** 2026-11-27
+- **Author:** Segun Adesanya
+- **Model:** GPT-6 (Codex)
+- **Tool:** Codex
+- **Domain:** frontend, testing, docs
+
+#### Prompt
+```text
+Now lets work on issue #188
+
+Remember, this is iteration 3, so logs and co should be under dedicated folders for iteration 3, my log name is Segun Adesanya, just like it was in previous logs in previous iterations.
+```
+
+#### Explanation of Changes
+Updated Home and book details to continue a running session and made the timer restore the existing session before deciding whether a start request is needed. Added unit and component coverage and mocked desktop and mobile browser tests for continuation, refresh, and session creation. Recorded the work in iteration 3 and updated the documentation index and agent instructions to point to the current logs.

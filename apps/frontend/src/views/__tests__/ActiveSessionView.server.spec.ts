@@ -18,6 +18,9 @@ const server = vi.hoisted(() => ({
 }));
 
 const api = vi.hoisted(() => ({
+  getActiveReadingSession: vi.fn<() => Promise<import('@/services/api').ApiReadingSession | null>>(
+    async () => null,
+  ),
   getUserLibrary: vi.fn<() => Promise<unknown[]>>(),
   getUserGroups: vi.fn<() => Promise<unknown[]>>(),
   getUserBookClubs: vi.fn<() => Promise<unknown[]>>(),
@@ -47,9 +50,14 @@ const book: ApiBook = {
 const Stub = { template: '<div />' };
 const router = createRouter({
   history: createMemoryHistory(),
-  routes: ['library', 'book-detail', 'profile'].map((name) => ({
+  routes: ['library', 'book-detail', 'profile', 'active-session'].map((name) => ({
     name,
-    path: name === 'book-detail' ? '/library/:bookId' : `/${name}`,
+    path:
+      name === 'book-detail'
+        ? '/library/:bookId'
+        : name === 'active-session'
+          ? '/session/:bookId'
+          : `/${name}`,
     component: Stub,
   })),
 });
@@ -63,6 +71,9 @@ function mountView() {
 
 describe('ActiveSessionView with a server session', () => {
   beforeEach(() => {
+    api.getActiveReadingSession.mockImplementation(async () =>
+      server.session ? { ...server.session, elapsedSeconds: server.elapsedSeconds } : null,
+    );
     server.session = null;
     server.elapsedSeconds = 0;
     // Not in the library yet: the book comes from the catalogue.
@@ -114,7 +125,7 @@ describe('ActiveSessionView with a server session', () => {
     const reloaded = mountView();
     await flushPromises();
 
-    expect(api.startReadingSession).toHaveBeenCalledTimes(2);
+    expect(api.startReadingSession).toHaveBeenCalledTimes(1);
     expect(reloaded.get('.timer-time').text()).toBe('00:12:05');
 
     await reloaded.get('.timer-button--stop').trigger('click');
@@ -124,6 +135,57 @@ describe('ActiveSessionView with a server session', () => {
     await flushPromises();
     expect(router.currentRoute.value.name).toBe('profile');
     reloaded.unmount();
+  });
+
+  it('opens an already running session without sending a start request', async () => {
+    server.session = {
+      id: SESSION_ID,
+      userId: 'reader',
+      bookId: BOOK_ID,
+      startedAt: '2026-11-27T09:00:00Z',
+      endedAt: null,
+      elapsedSeconds: 0,
+      countedMinutes: 0,
+    };
+    server.elapsedSeconds = 125;
+    const wrapper = mountView();
+    await flushPromises();
+    expect(api.startReadingSession).not.toHaveBeenCalled();
+    expect(wrapper.get('.timer-time').text()).toBe('00:02:05');
+    await wrapper.get('.timer-button--stop').trigger('click');
+    await flushPromises();
+    expect(api.finishReadingSession).toHaveBeenCalledWith(SESSION_ID);
+    wrapper.unmount();
+  });
+
+  it('opens the running book even when the URL points at another book', async () => {
+    const runningBookId = 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02';
+    server.session = {
+      id: SESSION_ID,
+      userId: 'reader',
+      bookId: runningBookId,
+      startedAt: '2026-11-27T09:00:00Z',
+      endedAt: null,
+      elapsedSeconds: 0,
+      countedMinutes: 0,
+    };
+    api.getBook.mockResolvedValue({ ...book, id: runningBookId, title: 'Dune' });
+    const wrapper = mountView();
+    await flushPromises();
+    expect(api.getBook).toHaveBeenCalledWith(runningBookId);
+    expect(api.startReadingSession).not.toHaveBeenCalled();
+    expect(wrapper.get('.session-book-title').text()).toBe('Dune');
+    expect(router.currentRoute.value.path).toBe(`/session/${runningBookId}`);
+    wrapper.unmount();
+  });
+
+  it('does not attempt a start when it cannot check the existing session', async () => {
+    api.getActiveReadingSession.mockRejectedValue(new Error('Could not check the running session'));
+    const wrapper = mountView();
+    await flushPromises();
+    expect(api.startReadingSession).not.toHaveBeenCalled();
+    expect(wrapper.get('[role="alert"]').text()).toContain('Could not check the running session');
+    wrapper.unmount();
   });
 
   it('shows a summary of the finished session before leaving', async () => {

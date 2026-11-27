@@ -7,6 +7,9 @@ import type { ApiBook, ApiLibraryItem } from '@/services/api';
 import BookDetailView from '../BookDetailView.vue';
 
 const api = vi.hoisted(() => ({
+  getActiveReadingSession: vi.fn<() => Promise<import('@/services/api').ApiReadingSession | null>>(
+    async () => null,
+  ),
   getUserLibrary: vi.fn<(...args: unknown[]) => unknown>(),
   getBook: vi.fn<(...args: unknown[]) => unknown>(),
   getBookReviews: vi.fn<(...args: unknown[]) => unknown>(),

@@ -8,7 +8,7 @@ const CI = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: /recovery\.spec\.ts/,
+  testIgnore: /(?:recovery|continue-session)\.spec\.ts/,
   // One shared test user: tests must not run at the same time.
   fullyParallel: false,
   workers: 1,

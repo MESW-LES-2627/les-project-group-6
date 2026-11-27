@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import {
   addBookToFolder,
+  getActiveReadingSession,
+  type ApiReadingSession,
   removeBookFromFolder,
   removeFromLibrary,
   tagBook,
@@ -20,6 +22,17 @@ const props = defineProps<{
   /** All of the reader's tags, used to name the ids on this book. */
   tags: TagSummary[];
 }>();
+
+const activeSession = ref<ApiReadingSession | null>(null);
+const sessionState = ref<'loading' | 'ready' | 'error'>('loading');
+onMounted(async () => {
+  try {
+    activeSession.value = await getActiveReadingSession();
+    sessionState.value = 'ready';
+  } catch {
+    sessionState.value = 'error';
+  }
+});
 
 const emit = defineEmits<{
   updated: [
@@ -300,14 +313,18 @@ async function toggleFolder(folderId: string) {
 
     <div class="actions">
       <RouterLink
+        v-if="sessionState === 'ready'"
         class="start-session"
-        :to="{ name: 'active-session', params: { bookId: book.id } }"
+        :to="{ name: 'active-session', params: { bookId: activeSession?.bookId ?? book.id } }"
       >
         <svg width="11" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
           <path d="M2 1.4v9.2c0 .5.5.8.9.5l7-4.6a.6.6 0 0 0 0-1L2.9.9a.6.6 0 0 0-.9.5Z" />
         </svg>
-        Start session
+        {{ activeSession ? 'Continue session' : 'Start session' }}
       </RouterLink>
+      <button v-else class="start-session" type="button" disabled>
+        {{ sessionState === 'loading' ? 'Checking session…' : 'Session unavailable' }}
+      </button>
       <button
         v-if="book.inLibrary === false"
         type="button"
@@ -321,6 +338,12 @@ async function toggleFolder(folderId: string) {
         {{ isEditing ? 'Close' : 'Update status' }} <span aria-hidden="true">•</span>
       </button>
     </div>
+    <p v-if="sessionState === 'error'" class="editor-message" role="alert">
+      Could not check your reading session. Refresh the page to try again.
+    </p>
+    <p v-else-if="activeSession && activeSession.bookId !== book.id" class="editor-message">
+      A session is already running for another book. Continue it before starting a new one.
+    </p>
     <p v-if="libraryMessage" class="editor-message" role="alert">{{ libraryMessage }}</p>
 
     <form v-if="isEditing" class="status-editor" @submit.prevent="saveStatus">
@@ -543,6 +566,11 @@ async function toggleFolder(folderId: string) {
   text-decoration: none;
   cursor: pointer;
   transition: background-color var(--duration-fast);
+}
+
+.start-session:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .start-session:hover {

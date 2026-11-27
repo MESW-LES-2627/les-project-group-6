@@ -14,6 +14,9 @@ import type { TagSummary } from '@/types/library';
 import BookDetailView from '../BookDetailView.vue';
 
 const api = vi.hoisted(() => ({
+  getActiveReadingSession: vi.fn<() => Promise<import('@/services/api').ApiReadingSession | null>>(
+    async () => null,
+  ),
   getBookReviews: vi.fn<(bookId: string) => Promise<ApiBookReviews>>(),
   getUserLibrary: vi.fn<() => Promise<ApiLibraryItem[]>>(),
   getUserBookClubs: vi.fn<() => Promise<ApiBookClub[]>>(),
